@@ -1,13 +1,11 @@
 # YASH EstPro - Docker Compose Configuration
 # Usage: docker-compose up -d
 
-version: '3.8'
-
 services:
   # MongoDB Database
   mongodb:
     image: mongo:6.0
-    container_name: estipro-mongodb
+    container_name: estpro-mongodb
     restart: unless-stopped
     environment:
       MONGO_INITDB_DATABASE: cost_analyzer
@@ -17,38 +15,44 @@ services:
     ports:
       - "27017:27017"
     networks:
-      - estipro-network
+      - estpro-network
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-      interval: 30s
+      interval: 10s
       timeout: 10s
-      retries: 5
-      start_period: 40s
+      retries: 10
+      start_period: 30s
 
   # FastAPI Backend
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: estipro-backend
+    container_name: estpro-backend
     restart: unless-stopped
     environment:
       - MONGO_URL=mongodb://mongodb:27017
       - DB_NAME=cost_analyzer
       - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - SMTP_HOST=${SMTP_HOST:-smtp.office365.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-YASH EstPro}
     depends_on:
       mongodb:
         condition: service_healthy
     ports:
       - "8001:8001"
     networks:
-      - estipro-network
+      - estpro-network
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
-      retries: 3
-      start_period: 10s
+      retries: 10
+      start_period: 30s
 
   # React Frontend with Nginx
   frontend:
@@ -57,7 +61,7 @@ services:
       dockerfile: Dockerfile
       args:
         - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL:-http://localhost}
-    container_name: estipro-frontend
+    container_name: estpro-frontend
     restart: unless-stopped
     depends_on:
       backend:
@@ -65,10 +69,10 @@ services:
     ports:
       - "80:80"
     networks:
-      - estipro-network
+      - estpro-network
 
 networks:
-  estipro-network:
+  estpro-network:
     driver: bridge
 
 volumes:
