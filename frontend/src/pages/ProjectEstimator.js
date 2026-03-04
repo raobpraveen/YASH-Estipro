@@ -1311,6 +1311,7 @@ const ProjectEstimator = () => {
     summaryData.push([]);
     summaryData.push(["Project Number", projectNumber || "Not Saved"]);
     summaryData.push(["Version", projectVersion]);
+    summaryData.push(["Status", projectStatus || "Draft"]);
     summaryData.push(["Customer Name", selectedCustomer?.name || ""]);
     summaryData.push(["Project Name", projectName]);
     summaryData.push(["Project Location(s)", projectLocations.map(code => COUNTRIES.find(c => c.code === code)?.name || code).join(", ") || "—"]);
@@ -1319,6 +1320,7 @@ const ProjectEstimator = () => {
     summaryData.push(["Sales Manager", salesManagers.find(m => m.id === salesManagerId)?.name || "—"]);
     summaryData.push(["Description", projectDescription]);
     summaryData.push(["Profit Margin %", `${profitMarginPercentage}%`]);
+    if (versionNotes) summaryData.push(["Version Notes", versionNotes]);
     summaryData.push([]);
 
     waves.forEach(wave => {
@@ -1408,6 +1410,13 @@ const ProjectEstimator = () => {
         ];
         waveData.push(row);
       });
+
+      // Wave summary footer
+      const waveSummary = calculateWaveSummary(wave);
+      waveData.push([]);
+      waveData.push(["Nego Buffer %", `${wave.nego_buffer_percentage || 0}%`]);
+      waveData.push(["Wave Selling Price", `$${waveSummary.sellingPrice.toFixed(2)}`]);
+      waveData.push(["Wave Final Price (incl. buffer)", `$${waveSummary.finalPrice.toFixed(2)}`]);
 
       const waveWs = XLSX.utils.aoa_to_sheet(waveData);
       XLSX.utils.book_append_sheet(wb, waveWs, wave.name.substring(0, 30));

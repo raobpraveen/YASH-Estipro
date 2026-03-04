@@ -177,15 +177,15 @@ const Layout = ({ user, onLogout }) => {
 
   const NavSection = ({ title, items }) => (
     <>
-      {showExpanded && items.length > 0 && (
-        <div className="px-3 py-2 mt-4 first:mt-0">
-          <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">{title}</p>
+      {showExpanded && items.length > 0 && title && (
+        <div className="px-3 pt-5 pb-1.5">
+          <p className="text-[10px] font-bold text-cyan-300/60 uppercase tracking-[0.18em]">{title}</p>
         </div>
       )}
-      {!showExpanded && items.length > 0 && (
+      {!showExpanded && items.length > 0 && title && (
         <div className="h-px bg-white/10 mx-2 my-3" />
       )}
-      <ul className="space-y-1">
+      <ul className="space-y-0.5">
         {items.map((item) => (
           <li key={item.path}>
             <NavItem item={item} />
@@ -208,10 +208,11 @@ const Layout = ({ user, onLogout }) => {
             <img 
               src="/estipro-logo-new.png" 
               alt="EstiPro" 
-              className="h-8 w-8 object-contain"
+              className="h-8 w-8 object-contain cursor-pointer"
+              onClick={() => navigate('/dashboard')}
             />
           ) : (
-            <>
+            <div className="cursor-pointer" onClick={() => navigate('/dashboard')}>
               <div className="flex items-center gap-2 mb-2">
                 <img 
                   src="/yash-logo-new.png" 
@@ -225,7 +226,7 @@ const Layout = ({ user, onLogout }) => {
                 />
               </div>
               <p className="text-xs text-white/60">Project Cost Estimator</p>
-            </>
+            </div>
           )}
         </div>
 

@@ -714,9 +714,12 @@ const Projects = () => {
   return (
     <div data-testid="projects">
       <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-[#0F172A] tracking-tight">Saved Projects</h1>
-          <p className="text-base text-gray-600 mt-2">View and manage your project estimates</p>
+        <div className="flex items-center gap-4">
+          <img src="/yash-logo-new.png" alt="YASH" className="h-12 object-contain" />
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-[#0F172A] tracking-tight">Saved Projects</h1>
+            <p className="text-base text-gray-600 mt-2">View and manage your project estimates</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button
