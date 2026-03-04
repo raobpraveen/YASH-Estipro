@@ -42,6 +42,8 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with comprehensi
 - Footer with YASH tagline "More than what you think." in brand gold
 - Templates for: Review Request, Approval, Rejection (with reviewer comments)
 - APP_BASE_URL configurable via backend `.env`
+- Branding updated to "YASH EstiPro" throughout (emails, browser tab, subjects)
+- Clickable notification bell items — navigate directly to project summary page
 
 ### Projects List (Feb 26, 2026 - Complete)
 - Filters: Customer, Description, Created By, Date Range, **Sales Manager, Project Type, Technology**

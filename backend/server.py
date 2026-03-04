@@ -34,7 +34,7 @@ SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
 SMTP_USER = os.environ.get('SMTP_USER', '')
 SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
 SMTP_FROM_EMAIL = os.environ.get('SMTP_FROM_EMAIL', '')
-SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'YASH EstPro')
+SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'YASH EstiPro')
 
 security = HTTPBearer(auto_error=False)
 
@@ -788,7 +788,7 @@ def _email_wrapper(content_html: str, preheader: str = "") -> str:
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YASH EstPro</title>
+<title>YASH EstiPro</title>
 </head>
 <body style="margin:0;padding:0;background-color:{YASH_DARK_BG};font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
 <span style="display:none!important;max-height:0;overflow:hidden;mso-hide:all;">{preheader}</span>
@@ -804,7 +804,7 @@ def _email_wrapper(content_html: str, preheader: str = "") -> str:
             <img src="cid:yash_logo" alt="YASH Technologies" width="50" height="50" style="display:block;" />
           </td>
           <td style="padding-left:12px;">
-            <span style="color:{YASH_TEXT_PRIMARY};font-size:22px;font-weight:700;letter-spacing:0.5px;">YASH EstPro</span><br/>
+            <span style="color:{YASH_TEXT_PRIMARY};font-size:22px;font-weight:700;letter-spacing:0.5px;">YASH EstiPro</span><br/>
             <span style="color:{YASH_TEXT_MUTED};font-size:11px;text-transform:uppercase;letter-spacing:1.5px;">Project Estimation Platform</span>
           </td>
         </tr>
@@ -825,7 +825,7 @@ def _email_wrapper(content_html: str, preheader: str = "") -> str:
           <td style="color:{YASH_TEXT_MUTED};font-size:11px;line-height:1.6;">
             <p style="margin:0 0 4px 0;"><strong style="color:{YASH_TEXT_SECONDARY};">YASH Technologies</strong></p>
             <p style="margin:0 0 4px 0;color:{YASH_BRAND_GOLD};font-style:italic;">More than what you think.</p>
-            <p style="margin:12px 0 0 0;color:{YASH_TEXT_MUTED};">This is an automated notification from YASH EstPro. Please do not reply to this email.</p>
+            <p style="margin:12px 0 0 0;color:{YASH_TEXT_MUTED};">This is an automated notification from YASH EstiPro. Please do not reply to this email.</p>
           </td>
           <td align="right" valign="top">
             <a href="https://www.yash.com" style="color:{YASH_BRAND_BLUE};font-size:11px;text-decoration:none;">www.yash.com</a>
@@ -842,7 +842,7 @@ def _email_wrapper(content_html: str, preheader: str = "") -> str:
 
 
 def get_review_request_email(project_number: str, project_name: str, submitter_name: str, submitter_email: str, project_id: str = ""):
-    subject = f"[YASH EstPro] Review Request: {project_number} - {project_name}"
+    subject = f"[YASH EstiPro] Review Request: {project_number} - {project_name}"
     project_url = f"{APP_BASE_URL}/projects/{project_id}" if project_id else APP_BASE_URL
     content = f"""
       <h2 style="margin:0 0 8px 0;color:{YASH_BRAND_RED};font-size:20px;font-weight:700;">Review Request</h2>
@@ -896,7 +896,7 @@ def get_approval_email(project_number: str, project_name: str, status: str, appr
     status_bg = "#1A3A2A" if is_approved else "#3A1A1A"
     status_icon = "&#10003;" if is_approved else "&#10007;"
     project_url = f"{APP_BASE_URL}/projects/{project_id}" if project_id else APP_BASE_URL
-    subject = f"[YASH EstPro] Project {status_text}: {project_number} - {project_name}"
+    subject = f"[YASH EstiPro] Project {status_text}: {project_number} - {project_name}"
 
     comments_html = ""
     if comments:

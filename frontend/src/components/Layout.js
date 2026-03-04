@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Outlet, NavLink } from "react-router-dom";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { 
   LayoutDashboard,
@@ -38,6 +38,7 @@ import {
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const Layout = ({ user, onLogout }) => {
+  const navigate = useNavigate();
   // Load saved preference from localStorage
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
@@ -340,7 +341,13 @@ const Layout = ({ user, onLogout }) => {
                   notifications.map((notif) => (
                     <div
                       key={notif.id}
-                      className={`p-3 border-b last:border-b-0 hover:bg-gray-50 ${!notif.is_read ? 'bg-blue-50' : ''}`}
+                      onClick={() => {
+                        if (notif.project_id) {
+                          navigate(`/projects/${notif.project_id}/summary`);
+                        }
+                      }}
+                      className={`p-3 border-b last:border-b-0 hover:bg-gray-50 ${!notif.is_read ? 'bg-blue-50' : ''} ${notif.project_id ? 'cursor-pointer' : ''}`}
+                      data-testid={`notification-item-${notif.id}`}
                     >
                       <div className="flex items-start gap-2">
                         <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
