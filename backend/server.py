@@ -724,21 +724,35 @@ def detect_changes(old_data: dict, new_data: dict, fields_to_track: List[str]) -
 
 # Email Helper Function
 async def send_email(to_email: str, subject: str, html_body: str, text_body: str = None):
-    """Send email via SMTP"""
+    """Send email via SMTP with inline YASH logo"""
     if not SMTP_HOST or not SMTP_USER:
         logging.warning("SMTP not configured, skipping email notification")
         return False
     
     try:
-        msg = MIMEMultipart('alternative')
+        from email.mime.image import MIMEImage
+        
+        # Use 'related' as outer type to support inline images
+        msg = MIMEMultipart('related')
         msg['Subject'] = subject
         msg['From'] = f"{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>"
         msg['To'] = to_email
         
-        # Add plain text and HTML parts
+        # Create alternative part for text/html
+        msg_alternative = MIMEMultipart('alternative')
+        msg.attach(msg_alternative)
+        
         if text_body:
-            msg.attach(MIMEText(text_body, 'plain'))
-        msg.attach(MIMEText(html_body, 'html'))
+            msg_alternative.attach(MIMEText(text_body, 'plain'))
+        msg_alternative.attach(MIMEText(html_body, 'html'))
+        
+        # Attach the YASH logo as inline image
+        if os.path.exists(YASH_LOGO_PATH):
+            with open(YASH_LOGO_PATH, 'rb') as img_file:
+                logo = MIMEImage(img_file.read(), _subtype='png')
+                logo.add_header('Content-ID', '<yash_logo>')
+                logo.add_header('Content-Disposition', 'inline', filename='yash_logo.png')
+                msg.attach(logo)
         
         # Connect and send
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
@@ -753,41 +767,45 @@ async def send_email(to_email: str, subject: str, html_body: str, text_body: str
         return False
 
 
-# Email templates - YASH Technologies branded
-YASH_LOGO_URL = "https://www.yash.com/wp-content/themes/html5blank-stable/images/home/yash_swoosh_white_outline.svg"
-YASH_BRAND_PRIMARY = "#002B5C"
-YASH_BRAND_ACCENT = "#0077C8"
-YASH_BRAND_DARK = "#001A3A"
+# Email templates - YASH Technologies branded (Dark Theme)
+APP_BASE_URL = os.environ.get('APP_BASE_URL', 'http://192.168.3.42')
+YASH_LOGO_PATH = os.path.join(os.path.dirname(__file__), "yash_logo.png")
+YASH_BRAND_RED = "#E31E24"
+YASH_BRAND_BLUE = "#1A73C7"
+YASH_BRAND_GOLD = "#C5A646"
+YASH_DARK_BG = "#0A0A0A"
+YASH_CARD_BG = "#1A1A1A"
+YASH_BORDER = "#2A2A2A"
+YASH_TEXT_PRIMARY = "#FFFFFF"
+YASH_TEXT_SECONDARY = "#A0A0A0"
+YASH_TEXT_MUTED = "#6B6B6B"
+
 
 def _email_wrapper(content_html: str, preheader: str = "") -> str:
-    """Wrap email content in YASH branded template."""
+    """Wrap email content in YASH dark-themed branded template."""
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>YASH EstPro</title>
-<style>
-  body {{ margin: 0; padding: 0; background-color: #F1F5F9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }}
-  .preheader {{ display: none !important; max-height: 0; overflow: hidden; mso-hide: all; }}
-</style>
 </head>
-<body style="margin:0;padding:0;background-color:#F1F5F9;">
-<span class="preheader">{preheader}</span>
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#F1F5F9;">
+<body style="margin:0;padding:0;background-color:{YASH_DARK_BG};font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+<span style="display:none!important;max-height:0;overflow:hidden;mso-hide:all;">{preheader}</span>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:{YASH_DARK_BG};">
 <tr><td align="center" style="padding:30px 20px;">
 <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;width:100%;">
-  <!-- Header -->
+  <!-- Header with Logo -->
   <tr>
-    <td style="background: linear-gradient(135deg, {YASH_BRAND_PRIMARY} 0%, {YASH_BRAND_DARK} 100%); padding: 28px 32px; border-radius: 12px 12px 0 0;">
+    <td style="background-color:{YASH_CARD_BG};padding:24px 32px;border-radius:12px 12px 0 0;border-bottom:2px solid {YASH_BRAND_RED};">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
         <tr>
-          <td>
-            <img src="{YASH_LOGO_URL}" alt="YASH" width="40" height="40" style="display:inline-block;vertical-align:middle;margin-right:12px;" />
-            <span style="color:#FFFFFF;font-size:22px;font-weight:700;vertical-align:middle;letter-spacing:0.5px;">YASH EstPro</span>
+          <td style="width:60px;">
+            <img src="cid:yash_logo" alt="YASH Technologies" width="50" height="50" style="display:block;" />
           </td>
-          <td align="right">
-            <span style="color:rgba(255,255,255,0.6);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Project Estimation Platform</span>
+          <td style="padding-left:12px;">
+            <span style="color:{YASH_TEXT_PRIMARY};font-size:22px;font-weight:700;letter-spacing:0.5px;">YASH EstPro</span><br/>
+            <span style="color:{YASH_TEXT_MUTED};font-size:11px;text-transform:uppercase;letter-spacing:1.5px;">Project Estimation Platform</span>
           </td>
         </tr>
       </table>
@@ -795,22 +813,22 @@ def _email_wrapper(content_html: str, preheader: str = "") -> str:
   </tr>
   <!-- Body -->
   <tr>
-    <td style="background-color:#FFFFFF;padding:36px 32px;">
+    <td style="background-color:{YASH_CARD_BG};padding:36px 32px;">
       {content_html}
     </td>
   </tr>
   <!-- Footer -->
   <tr>
-    <td style="background-color:#F8FAFC;padding:24px 32px;border-radius:0 0 12px 12px;border-top:1px solid #E2E8F0;">
+    <td style="background-color:#111111;padding:24px 32px;border-radius:0 0 12px 12px;border-top:1px solid {YASH_BORDER};">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
         <tr>
-          <td style="color:#94A3B8;font-size:11px;line-height:1.6;">
-            <p style="margin:0 0 4px 0;"><strong style="color:#64748B;">YASH Technologies</strong></p>
-            <p style="margin:0 0 4px 0;">Right Sized Technology Partner of Choice</p>
-            <p style="margin:12px 0 0 0;color:#CBD5E1;">This is an automated notification from YASH EstPro. Please do not reply to this email.</p>
+          <td style="color:{YASH_TEXT_MUTED};font-size:11px;line-height:1.6;">
+            <p style="margin:0 0 4px 0;"><strong style="color:{YASH_TEXT_SECONDARY};">YASH Technologies</strong></p>
+            <p style="margin:0 0 4px 0;color:{YASH_BRAND_GOLD};font-style:italic;">More than what you think.</p>
+            <p style="margin:12px 0 0 0;color:{YASH_TEXT_MUTED};">This is an automated notification from YASH EstPro. Please do not reply to this email.</p>
           </td>
           <td align="right" valign="top">
-            <a href="https://www.yash.com" style="color:{YASH_BRAND_ACCENT};font-size:11px;text-decoration:none;">www.yash.com</a>
+            <a href="https://www.yash.com" style="color:{YASH_BRAND_BLUE};font-size:11px;text-decoration:none;">www.yash.com</a>
           </td>
         </tr>
       </table>
@@ -823,62 +841,69 @@ def _email_wrapper(content_html: str, preheader: str = "") -> str:
 </html>"""
 
 
-def get_review_request_email(project_number: str, project_name: str, submitter_name: str, submitter_email: str):
+def get_review_request_email(project_number: str, project_name: str, submitter_name: str, submitter_email: str, project_id: str = ""):
     subject = f"[YASH EstPro] Review Request: {project_number} - {project_name}"
+    project_url = f"{APP_BASE_URL}/projects/{project_id}" if project_id else APP_BASE_URL
     content = f"""
-      <h2 style="margin:0 0 8px 0;color:{YASH_BRAND_PRIMARY};font-size:20px;font-weight:700;">Review Request</h2>
-      <p style="margin:0 0 24px 0;color:#64748B;font-size:14px;">A project estimation has been submitted for your approval.</p>
+      <h2 style="margin:0 0 8px 0;color:{YASH_BRAND_RED};font-size:20px;font-weight:700;">Review Request</h2>
+      <p style="margin:0 0 24px 0;color:{YASH_TEXT_SECONDARY};font-size:14px;">A project estimation has been submitted for your approval.</p>
 
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#F8FAFC;border-radius:8px;border-left:4px solid {YASH_BRAND_ACCENT};margin-bottom:24px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#222222;border-radius:8px;border-left:4px solid {YASH_BRAND_BLUE};margin-bottom:24px;">
         <tr><td style="padding:20px 24px;">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
             <tr>
-              <td style="padding:6px 0;color:#94A3B8;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;width:110px;">Project No.</td>
-              <td style="padding:6px 0;color:{YASH_BRAND_PRIMARY};font-size:15px;font-weight:600;">{project_number}</td>
+              <td style="padding:6px 0;color:{YASH_TEXT_MUTED};font-size:12px;text-transform:uppercase;letter-spacing:0.5px;width:110px;">Project No.</td>
+              <td style="padding:6px 0;color:{YASH_BRAND_BLUE};font-size:15px;font-weight:600;">{project_number}</td>
             </tr>
             <tr>
-              <td style="padding:6px 0;color:#94A3B8;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Project Name</td>
-              <td style="padding:6px 0;color:#0F172A;font-size:15px;">{project_name}</td>
+              <td style="padding:6px 0;color:{YASH_TEXT_MUTED};font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Project Name</td>
+              <td style="padding:6px 0;color:{YASH_TEXT_PRIMARY};font-size:15px;">{project_name}</td>
             </tr>
             <tr>
-              <td style="padding:6px 0;color:#94A3B8;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Submitted By</td>
-              <td style="padding:6px 0;color:#0F172A;font-size:15px;">{submitter_name} <span style="color:#94A3B8;">({submitter_email})</span></td>
+              <td style="padding:6px 0;color:{YASH_TEXT_MUTED};font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Submitted By</td>
+              <td style="padding:6px 0;color:{YASH_TEXT_PRIMARY};font-size:15px;">{submitter_name} <span style="color:{YASH_TEXT_MUTED};">({submitter_email})</span></td>
             </tr>
           </table>
         </td></tr>
       </table>
 
-      <p style="margin:0 0 24px 0;color:#475569;font-size:14px;line-height:1.7;">
-        Please log in to <strong>YASH EstPro</strong> to review the estimation details and provide your approval or feedback.
+      <p style="margin:0 0 24px 0;color:{YASH_TEXT_SECONDARY};font-size:14px;line-height:1.7;">
+        Please review the estimation details and provide your approval or feedback.
       </p>
 
-      <table role="presentation" cellspacing="0" cellpadding="0">
+      <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom:20px;">
         <tr>
-          <td style="background:{YASH_BRAND_ACCENT};border-radius:6px;">
-            <span style="display:inline-block;padding:12px 28px;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;letter-spacing:0.3px;">Review Project</span>
+          <td style="background:{YASH_BRAND_RED};border-radius:6px;">
+            <a href="{project_url}" target="_blank" style="display:inline-block;padding:14px 32px;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;letter-spacing:0.3px;">Review Project</a>
           </td>
         </tr>
       </table>
+
+      <p style="margin:0;color:{YASH_TEXT_MUTED};font-size:12px;line-height:1.6;">
+        Or copy and paste this link in your browser:<br/>
+        <a href="{project_url}" style="color:{YASH_BRAND_BLUE};text-decoration:underline;word-break:break-all;">{project_url}</a>
+      </p>
     """
     html_body = _email_wrapper(content, f"Review requested for {project_number} - {project_name}")
-    text_body = f"Review Request\n\nProject: {project_number}\nName: {project_name}\nSubmitted by: {submitter_name} ({submitter_email})\n\nPlease log in to YASH EstPro to review."
+    text_body = f"Review Request\n\nProject: {project_number}\nName: {project_name}\nSubmitted by: {submitter_name} ({submitter_email})\n\nPlease review the estimation at: {project_url}"
     return subject, html_body, text_body
 
 
-def get_approval_email(project_number: str, project_name: str, status: str, approver_name: str, comments: str = ""):
+def get_approval_email(project_number: str, project_name: str, status: str, approver_name: str, comments: str = "", project_id: str = ""):
     is_approved = status == "approved"
     status_text = "Approved" if is_approved else "Rejected"
     status_color = "#10B981" if is_approved else "#EF4444"
-    status_bg = "#F0FDF4" if is_approved else "#FEF2F2"
+    status_bg = "#1A3A2A" if is_approved else "#3A1A1A"
     status_icon = "&#10003;" if is_approved else "&#10007;"
+    project_url = f"{APP_BASE_URL}/projects/{project_id}" if project_id else APP_BASE_URL
     subject = f"[YASH EstPro] Project {status_text}: {project_number} - {project_name}"
 
     comments_html = ""
     if comments:
         comments_html = f"""
-      <div style="background:#F8FAFC;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
-        <p style="margin:0 0 6px 0;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Reviewer Comments</p>
-        <p style="margin:0;color:#334155;font-size:14px;line-height:1.6;font-style:italic;">"{comments}"</p>
+      <div style="background:#222222;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+        <p style="margin:0 0 6px 0;color:{YASH_TEXT_MUTED};font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Reviewer Comments</p>
+        <p style="margin:0;color:{YASH_TEXT_SECONDARY};font-size:14px;line-height:1.6;font-style:italic;">"{comments}"</p>
       </div>"""
 
     content = f"""
@@ -887,24 +912,24 @@ def get_approval_email(project_number: str, project_name: str, status: str, appr
       </div>
 
       <h2 style="margin:0 0 8px 0;color:{status_color};font-size:20px;font-weight:700;text-align:center;">Project {status_text}</h2>
-      <p style="margin:0 0 28px 0;color:#64748B;font-size:14px;text-align:center;">
+      <p style="margin:0 0 28px 0;color:{YASH_TEXT_SECONDARY};font-size:14px;text-align:center;">
         Your estimation has been <strong style="color:{status_color};">{status_text.lower()}</strong> by the reviewer.
       </p>
 
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#F8FAFC;border-radius:8px;border-left:4px solid {status_color};margin-bottom:24px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#222222;border-radius:8px;border-left:4px solid {status_color};margin-bottom:24px;">
         <tr><td style="padding:20px 24px;">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
             <tr>
-              <td style="padding:6px 0;color:#94A3B8;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;width:110px;">Project No.</td>
-              <td style="padding:6px 0;color:{YASH_BRAND_PRIMARY};font-size:15px;font-weight:600;">{project_number}</td>
+              <td style="padding:6px 0;color:{YASH_TEXT_MUTED};font-size:12px;text-transform:uppercase;letter-spacing:0.5px;width:110px;">Project No.</td>
+              <td style="padding:6px 0;color:{YASH_BRAND_BLUE};font-size:15px;font-weight:600;">{project_number}</td>
             </tr>
             <tr>
-              <td style="padding:6px 0;color:#94A3B8;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Project Name</td>
-              <td style="padding:6px 0;color:#0F172A;font-size:15px;">{project_name}</td>
+              <td style="padding:6px 0;color:{YASH_TEXT_MUTED};font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Project Name</td>
+              <td style="padding:6px 0;color:{YASH_TEXT_PRIMARY};font-size:15px;">{project_name}</td>
             </tr>
             <tr>
-              <td style="padding:6px 0;color:#94A3B8;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Reviewed By</td>
-              <td style="padding:6px 0;color:#0F172A;font-size:15px;">{approver_name}</td>
+              <td style="padding:6px 0;color:{YASH_TEXT_MUTED};font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Reviewed By</td>
+              <td style="padding:6px 0;color:{YASH_TEXT_PRIMARY};font-size:15px;">{approver_name}</td>
             </tr>
           </table>
         </td></tr>
@@ -912,20 +937,25 @@ def get_approval_email(project_number: str, project_name: str, status: str, appr
 
       {comments_html}
 
-      <p style="margin:0 0 24px 0;color:#475569;font-size:14px;line-height:1.7;">
+      <p style="margin:0 0 24px 0;color:{YASH_TEXT_SECONDARY};font-size:14px;line-height:1.7;">
         {"You can now proceed with the project execution." if is_approved else "Please review the feedback and make necessary changes before resubmitting."}
       </p>
 
-      <table role="presentation" cellspacing="0" cellpadding="0">
+      <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom:20px;">
         <tr>
-          <td style="background:{YASH_BRAND_ACCENT};border-radius:6px;">
-            <span style="display:inline-block;padding:12px 28px;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;letter-spacing:0.3px;">View Project</span>
+          <td style="background:{YASH_BRAND_RED};border-radius:6px;">
+            <a href="{project_url}" target="_blank" style="display:inline-block;padding:14px 32px;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;letter-spacing:0.3px;">View Project</a>
           </td>
         </tr>
       </table>
+
+      <p style="margin:0;color:{YASH_TEXT_MUTED};font-size:12px;line-height:1.6;">
+        Or copy and paste this link in your browser:<br/>
+        <a href="{project_url}" style="color:{YASH_BRAND_BLUE};text-decoration:underline;word-break:break-all;">{project_url}</a>
+      </p>
     """
     html_body = _email_wrapper(content, f"Project {project_number} has been {status_text.lower()}")
-    text_body = f"Project {status_text}\n\nProject: {project_number}\nName: {project_name}\nReviewed by: {approver_name}\n{f'Comments: {comments}' if comments else ''}"
+    text_body = f"Project {status_text}\n\nProject: {project_number}\nName: {project_name}\nReviewed by: {approver_name}\n{f'Comments: {comments}' if comments else ''}\n\nView project at: {project_url}"
     return subject, html_body, text_body
 
 
@@ -1759,7 +1789,8 @@ async def submit_for_review(project_id: str, approver_email: str, user: dict = D
             project.get("project_number", ""),
             project.get("name", ""),
             current_user.get("name", ""),
-            current_user.get("email", "")
+            current_user.get("email", ""),
+            project_id
         )
         await send_email(approver_email, subject, html_body, text_body)
     
@@ -1820,7 +1851,8 @@ async def approve_project(project_id: str, comments: str = "", user: dict = Depe
             project.get("name", ""),
             "approved",
             current_user.get("name", ""),
-            comments
+            comments,
+            project_id
         )
         await send_email(creator_email, subject, html_body, text_body)
     
@@ -1880,7 +1912,8 @@ async def reject_project(project_id: str, comments: str = "", user: dict = Depen
             project.get("name", ""),
             "rejected",
             current_user.get("name", ""),
-            comments
+            comments,
+            project_id
         )
         await send_email(creator_email, subject, html_body, text_body)
     

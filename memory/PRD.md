@@ -32,7 +32,16 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with comprehensi
 - Color-coded by type (approved/rejected/review)
 - Mark all read functionality
 - 30-second polling
-- Email notifications backend ready (SMTP not configured)
+- Email notifications via Office 365 SMTP (configured and working)
+
+### Email Notifications (Mar 4, 2026 - Complete)
+- Dark-themed email templates matching YASH branding (black/dark gray)
+- YASH logo embedded as inline CID attachment (reliable in Outlook)
+- Clickable "Review Project" / "View Project" buttons linking to `http://192.168.3.42/projects/{id}`
+- Plain text project URL shown below button for easy copy-paste
+- Footer with YASH tagline "More than what you think." in brand gold
+- Templates for: Review Request, Approval, Rejection (with reviewer comments)
+- APP_BASE_URL configurable via backend `.env`
 
 ### Projects List (Feb 26, 2026 - Complete)
 - Filters: Customer, Description, Created By, Date Range, **Sales Manager, Project Type, Technology**
@@ -51,12 +60,16 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with comprehensi
 
 ## Prioritized Backlog
 
+### P1 - Verification Pending
+- [ ] Verify collapsible sidebar hover-to-expand behavior
+- [ ] Verify Excel export includes Sales Manager field
+
 ### P2 - Low Priority
 - [ ] User Profile - Custom Theme (upload background image)
 - [ ] Export to PDF
 - [ ] Multi-currency support
-- [ ] SMTP configuration for email notifications
 - [ ] Refactor ProjectEstimator.js local calc functions to use shared utility
+- [ ] Actuals Tracking & Profitability Module (spec in /app/memory/ACTUALS_MODULE_SPEC.md)
 
 ## Test Coverage
 - Iteration 13: Sales Manager CRUD, Dashboard KPIs, Notification Bell (100%)
