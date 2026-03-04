@@ -63,7 +63,7 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with comprehensi
 ## Prioritized Backlog
 
 ### P1 - Verification Pending
-- [ ] Verify collapsible sidebar hover-to-expand behavior
+- [x] Verify collapsible sidebar hover-to-expand behavior
 - [ ] Verify Excel export includes Sales Manager field
 
 ### P2 - Low Priority
@@ -77,3 +77,4 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with comprehensi
 - Iteration 13: Sales Manager CRUD, Dashboard KPIs, Notification Bell (100%)
 - Iteration 14: Value by Status, Leaderboard, Multi-select filters, Excel exports (100%)
 - Iteration 15: KPI tooltips, clickable bars, combination grouping, comparison mode, Projects filters (100%)
+- Iteration 16: YASH logo on Dashboard & Estimator, sidebar theme, mandatory fields, Skills field order, Dashboard dedup, Customer edit + industry verticals (100%)

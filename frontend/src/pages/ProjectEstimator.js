@@ -906,6 +906,16 @@ const ProjectEstimator = () => {
       return;
     }
 
+    if (technologyIds.length === 0) {
+      toast.error("Please select at least one Technology");
+      return;
+    }
+
+    if (projectTypeIds.length === 0) {
+      toast.error("Please select at least one Project Type");
+      return;
+    }
+
     if (waves.length === 0) {
       toast.error("Please add at least one wave");
       return;
@@ -1427,6 +1437,7 @@ const ProjectEstimator = () => {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
+            <img src="/yash-logo-new.png" alt="YASH" className="h-10 object-contain" />
             <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0F172A] tracking-tight">Project Estimator</h1>
             {projectNumber && (
               <Badge variant="outline" className="text-sm font-mono" data-testid="project-number-badge">
@@ -1726,7 +1737,7 @@ const ProjectEstimator = () => {
               </div>
             </div>
             <div>
-              <Label>Technology(s)</Label>
+              <Label>Technology(s) *</Label>
               <div className="flex flex-wrap gap-1 min-h-[40px] p-2 border rounded-md bg-white">
                 {technologyIds.map(id => {
                   const tech = technologies.find(t => t.id === id);
@@ -1768,7 +1779,7 @@ const ProjectEstimator = () => {
               </div>
             </div>
             <div>
-              <Label>Project Type(s)</Label>
+              <Label>Project Type(s) *</Label>
               <div className="flex flex-wrap gap-1 min-h-[40px] p-2 border rounded-md bg-white">
                 {projectTypeIds.map(id => {
                   const type = projectTypes.find(t => t.id === id);

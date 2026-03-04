@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Filter, Search, X } from "lucide-react";
+import { Plus, Trash2, Filter, Search, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { COUNTRIES, INDUSTRY_VERTICALS } from "@/utils/constants";
 
@@ -18,6 +18,7 @@ const Customers = () => {
   const [customers, setCustomers] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     name: "",
@@ -31,6 +32,7 @@ const Customers = () => {
     industry_vertical: "",
     sub_industry_vertical: "",
   });
+  const [editCustomer, setEditCustomer] = useState(null);
 
   useEffect(() => {
     fetchCustomers();
@@ -108,6 +110,35 @@ const Customers = () => {
       fetchCustomers();
     } catch (error) {
       toast.error("Failed to delete customer");
+    }
+  };
+
+  const handleEditCustomer = (customer) => {
+    setEditCustomer({ ...customer });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateCustomer = async () => {
+    if (!editCustomer?.name || !editCustomer?.location) {
+      toast.error("Please fill required fields (Name, Location)");
+      return;
+    }
+    const selectedCountry = COUNTRIES.find(c => c.code === editCustomer.location);
+    try {
+      await axios.put(`${API}/customers/${editCustomer.id}`, {
+        name: editCustomer.name,
+        location: editCustomer.location,
+        location_name: selectedCountry?.name || "",
+        city: editCustomer.city || "",
+        industry_vertical: editCustomer.industry_vertical || "",
+        sub_industry_vertical: editCustomer.sub_industry_vertical || "",
+      });
+      toast.success("Customer updated successfully");
+      setEditDialogOpen(false);
+      setEditCustomer(null);
+      fetchCustomers();
+    } catch (error) {
+      toast.error("Failed to update customer");
     }
   };
 
@@ -316,15 +347,26 @@ const Customers = () => {
                       <TableCell>{customer.industry_vertical || "—"}</TableCell>
                       <TableCell>{customer.sub_industry_vertical || "—"}</TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteCustomer(customer.id)}
-                          className="text-[#EF4444] hover:text-[#EF4444] hover:bg-[#EF4444]/10"
-                          data-testid={`delete-customer-${customer.id}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditCustomer(customer)}
+                            className="text-[#0EA5E9] hover:text-[#0EA5E9] hover:bg-[#0EA5E9]/10"
+                            data-testid={`edit-customer-${customer.id}`}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteCustomer(customer.id)}
+                            className="text-[#EF4444] hover:text-[#EF4444] hover:bg-[#EF4444]/10"
+                            data-testid={`delete-customer-${customer.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -334,6 +376,82 @@ const Customers = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Customer Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-[#0F172A]">Edit Customer</DialogTitle>
+          </DialogHeader>
+          {editCustomer && (
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-customer-name">Customer Name *</Label>
+                  <Input
+                    id="edit-customer-name"
+                    value={editCustomer.name}
+                    onChange={(e) => setEditCustomer({ ...editCustomer, name: e.target.value })}
+                    data-testid="edit-customer-name-input"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-customer-location">Location (Country) *</Label>
+                  <Select value={editCustomer.location} onValueChange={(value) => setEditCustomer({ ...editCustomer, location: value })}>
+                    <SelectTrigger id="edit-customer-location" data-testid="edit-customer-location-select">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRIES.map((country) => (
+                        <SelectItem key={country.code} value={country.code}>
+                          {country.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="edit-customer-city">City</Label>
+                  <Input
+                    id="edit-customer-city"
+                    value={editCustomer.city || ""}
+                    onChange={(e) => setEditCustomer({ ...editCustomer, city: e.target.value })}
+                    data-testid="edit-customer-city-input"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-industry-vertical">Industry Vertical</Label>
+                  <Select value={editCustomer.industry_vertical || "none"} onValueChange={(value) => setEditCustomer({ ...editCustomer, industry_vertical: value === "none" ? "" : value })}>
+                    <SelectTrigger id="edit-industry-vertical" data-testid="edit-industry-vertical-select">
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {INDUSTRY_VERTICALS.map((industry) => (
+                        <SelectItem key={industry} value={industry}>
+                          {industry}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="edit-sub-industry">Sub Industry Vertical</Label>
+                  <Input
+                    id="edit-sub-industry"
+                    value={editCustomer.sub_industry_vertical || ""}
+                    onChange={(e) => setEditCustomer({ ...editCustomer, sub_industry_vertical: e.target.value })}
+                    data-testid="edit-sub-industry-input"
+                  />
+                </div>
+              </div>
+              <Button onClick={handleUpdateCustomer} className="w-full bg-[#0F172A] hover:bg-[#0F172A]/90" data-testid="update-customer-button">
+                Update Customer
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

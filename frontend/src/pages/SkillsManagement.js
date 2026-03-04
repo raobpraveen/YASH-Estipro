@@ -228,16 +228,6 @@ const SkillsManagement = () => {
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <div>
-                <Label htmlFor="skill-name">Skill Name</Label>
-                <Input
-                  id="skill-name"
-                  placeholder="e.g., React Developer"
-                  value={newSkill.name}
-                  onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })}
-                  data-testid="skill-name-input"
-                />
-              </div>
-              <div>
                 <Label htmlFor="technology">Technology</Label>
                 <Select value={newSkill.technology_id} onValueChange={(value) => setNewSkill({ ...newSkill, technology_id: value })}>
                   <SelectTrigger id="technology" data-testid="technology-select">
@@ -251,6 +241,16 @@ const SkillsManagement = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <Label htmlFor="skill-name">Skill Name</Label>
+                <Input
+                  id="skill-name"
+                  placeholder="e.g., React Developer"
+                  value={newSkill.name}
+                  onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })}
+                  data-testid="skill-name-input"
+                />
               </div>
               <Button onClick={handleAddSkill} className="w-full bg-[#0F172A] hover:bg-[#0F172A]/90" data-testid="submit-skill-button">
                 Add Skill

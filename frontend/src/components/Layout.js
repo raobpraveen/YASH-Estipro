@@ -156,8 +156,8 @@ const Layout = ({ user, onLogout }) => {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-lg ${
                 isActive
-                  ? "bg-[#0EA5E9] text-white shadow-lg"
-                  : "text-white/70 hover:text-white hover:bg-white/5"
+                  ? "bg-white/20 text-white shadow-lg backdrop-blur-sm"
+                  : "text-white/70 hover:text-white hover:bg-white/10"
               } ${!showExpanded ? 'justify-center' : ''}`
             }
             data-testid={`nav-${item.label.toLowerCase().replace(/ /g, '-')}`}
@@ -198,7 +198,7 @@ const Layout = ({ user, onLogout }) => {
   return (
     <div className="flex min-h-screen">
       <aside 
-        className={`${showExpanded ? 'w-64' : 'w-16'} bg-[#0F172A] sidebar-texture flex flex-col transition-all duration-300 ease-in-out`}
+        className={`${showExpanded ? 'w-64' : 'w-16'} bg-gradient-to-b from-[#0C4A6E] via-[#155E75] to-[#134E4A] flex flex-col transition-all duration-300 ease-in-out`}
         onMouseEnter={() => isCollapsed && setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >

@@ -1012,6 +1012,29 @@ async def delete_customer(customer_id: str):
     return {"message": "Customer deleted successfully"}
 
 
+class CustomerUpdate(BaseModel):
+    name: Optional[str] = None
+    location: Optional[str] = None
+    location_name: Optional[str] = None
+    city: Optional[str] = None
+    industry_vertical: Optional[str] = None
+    sub_industry_vertical: Optional[str] = None
+
+
+@api_router.put("/customers/{customer_id}")
+async def update_customer(customer_id: str, update: CustomerUpdate):
+    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    result = await db.customers.update_one({"id": customer_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    updated = await db.customers.find_one({"id": customer_id}, {"_id": 0})
+    if isinstance(updated.get('created_at'), str):
+        updated['created_at'] = datetime.fromisoformat(updated['created_at'])
+    return updated
+
+
 # Technologies Routes
 @api_router.post("/technologies", response_model=Technology)
 async def create_technology(input: TechnologyCreate):
@@ -2104,6 +2127,19 @@ async def get_dashboard_analytics(
     # Get filtered projects
     projects = await db.projects.find(query, {"_id": 0}).to_list(1000)
     
+    # Deduplicate: Group by project_number and keep only the latest version
+    project_groups = {}
+    for project in projects:
+        pn = project.get("project_number", "")
+        if not pn:
+            continue
+        version = project.get("version", 1)
+        if pn not in project_groups or version > project_groups[pn].get("version", 0):
+            project_groups[pn] = project
+    
+    # Use only latest version projects for all metrics
+    projects = list(project_groups.values())
+    
     # Calculate metrics
     total_projects = len(projects)
     total_revenue = 0
@@ -2375,7 +2411,19 @@ async def compare_periods(
     """Compare two date periods for quarterly performance reviews."""
     async def calc_period(date_from, date_to):
         query = {"created_at": {"$gte": f"{date_from}T00:00:00", "$lte": f"{date_to}T23:59:59"}}
-        projects = await db.projects.find(query, {"_id": 0}).to_list(1000)
+        all_projects = await db.projects.find(query, {"_id": 0}).to_list(1000)
+        
+        # Deduplicate: Group by project_number and keep only the latest version
+        project_groups = {}
+        for project in all_projects:
+            pn = project.get("project_number", "")
+            if not pn:
+                continue
+            version = project.get("version", 1)
+            if pn not in project_groups or version > project_groups[pn].get("version", 0):
+                project_groups[pn] = project
+        projects = list(project_groups.values())
+        
         total_projects = len(projects)
         total_value = 0
         approved = 0

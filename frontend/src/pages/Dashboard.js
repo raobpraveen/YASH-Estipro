@@ -192,9 +192,12 @@ const Dashboard = () => {
     <div data-testid="dashboard" className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-[#0F172A] tracking-tight">Dashboard</h1>
-          <p className="text-base text-gray-600 mt-2">Project estimation analytics and overview</p>
+        <div className="flex items-center gap-4">
+          <img src="/yash-logo-new.png" alt="YASH" className="h-12 object-contain" />
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-[#0F172A] tracking-tight">Dashboard</h1>
+            <p className="text-base text-gray-600 mt-2">Project estimation analytics and overview</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowComparison(!showComparison)} className={showComparison ? "bg-purple-50 border-purple-300" : ""} data-testid="toggle-comparison-button">

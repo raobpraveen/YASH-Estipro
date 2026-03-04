@@ -59,6 +59,8 @@ export const INDUSTRY_VERTICALS = [
   "Real Estate",
   "Insurance",
   "Hospitality & Travel",
+  "Food & Beverages",
+  "Professional Services",
   "Other",
 ];
 
