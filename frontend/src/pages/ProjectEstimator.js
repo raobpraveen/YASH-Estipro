@@ -1636,6 +1636,15 @@ const ProjectEstimator = () => {
               {projectStatus === "in_review" && isDesignatedApprover && (
                 <>
                   <Button 
+                    onClick={() => setApproverSaveDialogOpen(true)}
+                    size="sm"
+                    className="bg-[#10B981] hover:bg-[#10B981]/90 text-white"
+                    data-testid="approver-save-button"
+                  >
+                    <Save className="w-4 h-4 mr-1" />
+                    Save & Approve
+                  </Button>
+                  <Button 
                     onClick={() => { setApprovalAction("reject"); setApprovalActionDialog(true); }}
                     variant="outline"
                     size="sm"
@@ -1660,12 +1669,6 @@ const ProjectEstimator = () => {
           <Button onClick={handleSaveProject} size="sm" className="bg-[#10B981] hover:bg-[#10B981]/90 text-white" data-testid="save-project-button">
             <Save className="w-4 h-4 mr-1" />
             Save
-          </Button>
-          )}
-          {isDesignatedApprover && projectStatus === "in_review" && !isViewOnly && (
-          <Button onClick={() => setApproverSaveDialogOpen(true)} size="sm" className="bg-[#8B5CF6] hover:bg-[#8B5CF6]/90 text-white" data-testid="approver-save-button">
-            <Save className="w-4 h-4 mr-1" />
-            Save &amp; Approve
           </Button>
           )}
         </div>
@@ -2336,17 +2339,6 @@ const ProjectEstimator = () => {
                         >
                           <Settings className="w-4 h-4 mr-2" />
                           Logistics Config
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          className="border-[#F59E0B] text-[#F59E0B]"
-                          onClick={() => handleOpenBatchLogistics(wave.id)}
-                          data-testid={`batch-logistics-${wave.id}`}
-                          disabled={isReadOnly}
-                        >
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Batch Update
                         </Button>
                         {!isReadOnly && (
                         <Dialog open={addResourceDialogOpen && activeWaveId === wave.id} onOpenChange={setAddResourceDialogOpen}>
