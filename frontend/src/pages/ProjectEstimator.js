@@ -3789,6 +3789,8 @@ const ProjectEstimator = () => {
               </div>
               <hr className="my-2" />
               <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                <span className="text-gray-500">Profit Margin ({quickEstimate.profitMargin}%)</span>
+                <span className="font-mono text-right">${(quickEstimateResult.sellingPrice - quickEstimateResult.totalCost).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 <span className="text-gray-600 font-medium">Selling Price</span>
                 <span className="font-mono font-bold text-right text-[#10B981]">${quickEstimateResult.sellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 <span className="text-gray-500">SP per Man-Month</span>
