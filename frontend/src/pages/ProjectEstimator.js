@@ -1667,9 +1667,12 @@ const ProjectEstimator = () => {
     const finalFont = { bold: true, color: { argb: "FFFFFFFF" }, size: 14 };
     const thinBorder = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
     // Row colors by Onsite/Travel combo
-    const onsiteTravelFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFDE68A" } };   // ON + Travel YES = warm yellow
+    const onsiteTravelFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFCA5A5" } };   // ON + Travel YES = soft red/coral
     const onsiteNoTravelFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } }; // ON + Travel NO  = light amber
     const offshoreFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFECFDF5" } };       // OFF + no travel = light green/mint
+    const logisticsFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3E8FF" } };      // Logistics = light purple
+    const logisticsHeaderFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF7C3AED" } }; // Logistics header = violet
+    const logisticsHeaderFont = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
 
     // === Summary Sheet ===
     const ws = wb.addWorksheet("Summary");
@@ -1812,6 +1815,28 @@ const ProjectEstimator = () => {
 
       dws.addRow([]);
       const waveSummary = calculateWaveSummary(wave);
+      const lg = waveSummary.logistics;
+
+      // Logistics section
+      const lgTitle = dws.addRow(["", "LOGISTICS BREAKDOWN"]);
+      lgTitle.eachCell(c => { c.fill = logisticsHeaderFill; c.font = logisticsHeaderFont; c.border = thinBorder; });
+      const lgHeaders = dws.addRow(["", "Item", "Formula", "Amount"]);
+      lgHeaders.eachCell(c => { c.fill = logisticsFill; c.font = { bold: true }; c.border = thinBorder; });
+      [
+        ["Per-diem", `${waveSummary.onsiteMM.toFixed(1)} MM x $${lg.config.per_diem_daily} x ${lg.config.per_diem_days} days`, lg.perDiemCost],
+        ["Accommodation", `${waveSummary.onsiteMM.toFixed(1)} MM x $${lg.config.accommodation_daily} x ${lg.config.accommodation_days} days`, lg.accommodationCost],
+        ["Local Conveyance", `${waveSummary.onsiteMM.toFixed(1)} MM x $${lg.config.local_conveyance_daily} x ${lg.config.local_conveyance_days} days`, lg.conveyanceCost],
+        ["Air Fare", `${waveSummary.onsiteResourceCount} res x $${lg.config.flight_cost_per_trip} x ${lg.config.num_trips} trips`, lg.flightCost],
+        ["Visa & Medical", `${waveSummary.onsiteResourceCount} res x $${lg.config.visa_medical_per_trip} x ${lg.config.num_trips} trips`, lg.visaMedicalCost],
+        ["Contingency", `${lg.config.contingency_percentage}% of subtotal`, lg.contingencyCost],
+      ].forEach(([item, formula, amount]) => {
+        const r = dws.addRow(["", item, formula, parseFloat(amount.toFixed(2))]);
+        r.eachCell(c => { c.fill = logisticsFill; c.border = thinBorder; });
+      });
+      const lgTotalRow = dws.addRow(["", "TOTAL LOGISTICS", "", parseFloat(lg.totalLogistics.toFixed(2))]);
+      lgTotalRow.eachCell(c => { c.fill = logisticsFill; c.font = { bold: true }; c.border = thinBorder; });
+      dws.addRow([]);
+
       [
         ["Nego Buffer %", `${negoBufferPercentage}%`],
         ["Wave Selling Price", `$${waveSummary.sellingPrice.toFixed(2)}`],
