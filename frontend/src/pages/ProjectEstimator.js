@@ -13,7 +13,10 @@ import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Trash2, Plane, Save, FileDown, X, Settings, Copy, History, RefreshCw, Send, CheckCircle, XCircle, Clock, Calculator, Upload, FileSpreadsheet, Minus, MessageSquare } from "lucide-react";
+import { Plus, Trash2, Plane, Save, FileDown, X, Settings, Copy, History, RefreshCw, Send, CheckCircle, XCircle, Clock, Calculator, Upload, FileSpreadsheet, Minus, MessageSquare, ArrowUp, ArrowDown, Download } from "lucide-react";
+import { SearchableSelect } from "@/components/SearchableSelect";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { COUNTRIES, LOGISTICS_DEFAULTS } from "@/utils/constants";
@@ -58,6 +61,7 @@ const ProjectEstimator = () => {
   const [projectTypeIds, setProjectTypeIds] = useState([]); // Multiple project types
   const [projectDescription, setProjectDescription] = useState("");
   const [profitMarginPercentage, setProfitMarginPercentage] = useState(35);
+  const [negoBufferPercentage, setNegoBufferPercentage] = useState(0);
   const [versionNotes, setVersionNotes] = useState("");
   const [isLatestVersion, setIsLatestVersion] = useState(true);
   
@@ -186,6 +190,7 @@ const ProjectEstimator = () => {
       }
       setProjectDescription(project.description || "");
       setProfitMarginPercentage(project.profit_margin_percentage || 35);
+      setNegoBufferPercentage(project.nego_buffer_percentage || 0);
       setVersionNotes(project.version_notes || "");
       setProjectStatus(project.status || "draft");
       setApproverEmail(project.approver_email || "");
@@ -209,12 +214,12 @@ const ProjectEstimator = () => {
         type_ids: [...(project.project_type_ids || (project.project_type_id ? [project.project_type_id] : []))].sort(),
         description: project.description || "",
         margin: project.profit_margin_percentage || 35,
+        nego: project.nego_buffer_percentage || 0,
         sales_mgr: project.sales_manager_id || "",
         waves: loadedWaves.map(w => ({
           name: w.name,
           months: w.duration_months,
           phases: w.phase_names,
-          nego: w.nego_buffer_percentage || 0,
           allocs: (w.grid_allocations || []).map(a => ({
             skill: a.skill_id,
             level: a.proficiency_level,
@@ -377,21 +382,28 @@ const ProjectEstimator = () => {
     ));
   };
 
+  const getLogisticsConfig = (wave) => {
+    const raw = (wave.logistics_config && Object.keys(wave.logistics_config).length > 0)
+      ? wave.logistics_config
+      : wave.logistics_defaults || {};
+    return {
+      per_diem_daily: raw.per_diem_daily ?? 50,
+      per_diem_days: raw.per_diem_days ?? 30,
+      accommodation_daily: raw.accommodation_daily ?? 80,
+      accommodation_days: raw.accommodation_days ?? 30,
+      local_conveyance_daily: raw.local_conveyance_daily ?? 15,
+      local_conveyance_days: raw.local_conveyance_days ?? 21,
+      flight_cost_per_trip: raw.flight_cost_per_trip ?? 450,
+      visa_medical_per_trip: raw.visa_medical_per_trip ?? raw.visa_insurance_per_trip ?? 400,
+      num_trips: raw.num_trips ?? 6,
+      contingency_percentage: raw.contingency_percentage ?? 5,
+    };
+  };
+
   const handleOpenLogisticsEditor = (waveId) => {
     const wave = waves.find(w => w.id === waveId);
     if (wave) {
-      setWaveLogistics(wave.logistics_config || {
-        per_diem_daily: 50,
-        per_diem_days: 30,
-        accommodation_daily: 80,
-        accommodation_days: 30,
-        local_conveyance_daily: 15,
-        local_conveyance_days: 21,
-        flight_cost_per_trip: 450,
-        visa_medical_per_trip: 400,
-        num_trips: 6,
-        contingency_percentage: 5,
-      });
+      setWaveLogistics(getLogisticsConfig(wave));
       setEditingWaveId(waveId);
       setEditLogisticsDialogOpen(true);
     }
@@ -410,18 +422,7 @@ const ProjectEstimator = () => {
   const handleOpenBatchLogistics = (waveId) => {
     const wave = waves.find(w => w.id === waveId);
     if (wave) {
-      setWaveLogistics(wave.logistics_config || {
-        per_diem_daily: 50,
-        per_diem_days: 30,
-        accommodation_daily: 80,
-        accommodation_days: 30,
-        local_conveyance_daily: 15,
-        local_conveyance_days: 21,
-        flight_cost_per_trip: 450,
-        visa_medical_per_trip: 400,
-        num_trips: 6,
-        contingency_percentage: 5,
-      });
+      setWaveLogistics(getLogisticsConfig(wave));
       setEditingWaveId(waveId);
       setBatchLogisticsDialogOpen(true);
     }
@@ -633,6 +634,57 @@ const ProjectEstimator = () => {
     ));
   };
 
+  // Move a resource row up or down within a wave
+  const handleMoveRow = (waveId, allocationId, direction) => {
+    setWaves(waves.map(w => {
+      if (w.id !== waveId) return w;
+      const idx = w.grid_allocations.findIndex(a => a.id === allocationId);
+      if (idx < 0) return w;
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= w.grid_allocations.length) return w;
+      const arr = [...w.grid_allocations];
+      [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+      return { ...w, grid_allocations: arr };
+    }));
+  };
+
+  // Download current wave grid data (not template)
+  const handleDownloadWaveData = () => {
+    const wave = waves.find(w => w.id === activeWaveId);
+    if (!wave || wave.grid_allocations.length === 0) {
+      toast.error("No data to download");
+      return;
+    }
+    const wb = XLSX.utils.book_new();
+    const headers = [
+      "Skill Name", "Proficiency Level", "Base Location", "Monthly Salary",
+      "Overhead %", "Is Onsite", "Travel Required",
+      ...wave.phase_names.map(p => `${p} (MM)`),
+      "Total MM", "Salary Cost", "Selling Price", "Comments"
+    ];
+    const data = [headers];
+    wave.grid_allocations.forEach(a => {
+      const totalMM = Object.values(a.phase_allocations || {}).reduce((s, v) => s + v, 0);
+      const salary = a.avg_monthly_salary * totalMM;
+      const overhead = salary * (a.overhead_percentage / 100);
+      const sp = (salary + overhead) / (1 - profitMarginPercentage / 100);
+      data.push([
+        a.skill_name, a.proficiency_level, a.base_location_name,
+        a.avg_monthly_salary, a.overhead_percentage,
+        a.is_onsite ? "TRUE" : "FALSE",
+        a.travel_required ? "TRUE" : "FALSE",
+        ...wave.phase_names.map((_, i) => a.phase_allocations[i] || 0),
+        totalMM.toFixed(2), salary.toFixed(2), sp.toFixed(2),
+        a.comments || ""
+      ]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws["!cols"] = headers.map(() => ({ wch: 16 }));
+    XLSX.utils.book_append_sheet(wb, ws, wave.name.substring(0, 30));
+    XLSX.writeFile(wb, `${projectNumber || projectName || "Wave"}_${wave.name.replace(/\s+/g, '_')}_Data.xlsx`);
+    toast.success("Wave grid data downloaded");
+  };
+
   // Apply a value to all months for a resource
   const handleApplyToAllMonths = (waveId, allocationId, value) => {
     const wave = waves.find(w => w.id === waveId);
@@ -681,17 +733,21 @@ const ProjectEstimator = () => {
   // Flights/Visa: Num Traveling Resources × Rate × Trips
   // Only resources with travel_required=true are counted for logistics
   const calculateWaveLogistics = (wave) => {
-    const config = wave.logistics_config || {
-      per_diem_daily: 50,
-      per_diem_days: 30,
-      accommodation_daily: 80,
-      accommodation_days: 30,
-      local_conveyance_daily: 15,
-      local_conveyance_days: 21,
-      flight_cost_per_trip: 450,
-      visa_medical_per_trip: 400,
-      num_trips: 6,
-      contingency_percentage: 5,
+    // Prefer logistics_config if it has keys, otherwise fall back to logistics_defaults or hardcoded defaults
+    const rawConfig = (wave.logistics_config && Object.keys(wave.logistics_config).length > 0) 
+      ? wave.logistics_config 
+      : wave.logistics_defaults || {};
+    const config = {
+      per_diem_daily: rawConfig.per_diem_daily ?? 50,
+      per_diem_days: rawConfig.per_diem_days ?? 30,
+      accommodation_daily: rawConfig.accommodation_daily ?? 80,
+      accommodation_days: rawConfig.accommodation_days ?? 30,
+      local_conveyance_daily: rawConfig.local_conveyance_daily ?? 15,
+      local_conveyance_days: rawConfig.local_conveyance_days ?? 21,
+      flight_cost_per_trip: rawConfig.flight_cost_per_trip ?? 450,
+      visa_medical_per_trip: rawConfig.visa_medical_per_trip ?? rawConfig.visa_insurance_per_trip ?? 400,
+      num_trips: rawConfig.num_trips ?? 6,
+      contingency_percentage: rawConfig.contingency_percentage ?? 5,
     };
 
     // Calculate total traveling MM and count of traveling resources
@@ -797,9 +853,9 @@ const ProjectEstimator = () => {
     // Cost to Company = Salary + Overhead only (excludes logistics)
     const costToCompany = totalBaseSalaryCost + totalOverheadCost;
     
-    // Calculate nego buffer (on wave selling price)
-    const negoBufferPercentage = wave.nego_buffer_percentage || 0;
-    const negoBufferAmount = waveSellingPrice * (negoBufferPercentage / 100);
+    // Calculate nego buffer (on wave selling price) — uses project-level buffer
+    const negoBufferPct = negoBufferPercentage || 0;
+    const negoBufferAmount = waveSellingPrice * (negoBufferPct / 100);
     const finalPrice = waveSellingPrice + negoBufferAmount;
 
     return {
@@ -815,7 +871,7 @@ const ProjectEstimator = () => {
       totalCost,
       totalCostToCompany: costToCompany,  // Salary + Overhead only (excludes logistics)
       sellingPrice: waveSellingPrice,  // Resources Price + Logistics
-      negoBufferPercentage,
+      negoBufferPercentage: negoBufferPct,
       negoBufferAmount,
       finalPrice,
       onsiteResourceCount: logistics.onsiteResourceCount,
@@ -919,6 +975,7 @@ const ProjectEstimator = () => {
       project_type_name: selectedTypeNames[0] || "",
       description: projectDescription,
       profit_margin_percentage: profitMarginPercentage,
+      nego_buffer_percentage: negoBufferPercentage,
       waves: waves.map(w => ({
         id: w.id,
         name: w.name,
@@ -1087,12 +1144,12 @@ const ProjectEstimator = () => {
       type_ids: [...projectTypeIds].sort(),
       description: projectDescription,
       margin: profitMarginPercentage,
+      nego: negoBufferPercentage,
       sales_mgr: salesManagerId,
       waves: waves.map(w => ({
         name: w.name,
         months: w.duration_months,
         phases: w.phase_names,
-        nego: w.nego_buffer_percentage || 0,
         allocs: w.grid_allocations.map(a => ({
           skill: a.skill_id,
           level: a.proficiency_level,
@@ -1207,6 +1264,7 @@ const ProjectEstimator = () => {
     setProjectTypeIds([]);
     setProjectDescription("");
     setProfitMarginPercentage(35);
+    setNegoBufferPercentage(0);
     setVersionNotes("");
     setProjectStatus("draft");
     setApproverEmail("");
@@ -1498,135 +1556,166 @@ const ProjectEstimator = () => {
     event.target.value = '';
   };
 
-  const handleExportToExcel = () => {
+  const handleExportToExcel = async () => {
     if (waves.length === 0) {
       toast.error("No data to export");
       return;
     }
 
-    const wb = XLSX.utils.book_new();
     const selectedCustomer = customers.find(c => c.id === customerId);
-    
-    // Summary sheet
-    const summaryData = [];
-    summaryData.push(["YASH Technologies - EstiPro"]);
-    summaryData.push(["PROJECT ESTIMATE SUMMARY"]);
-    summaryData.push([]);
-    summaryData.push(["Project Number", projectNumber || "Not Saved"]);
-    summaryData.push(["Version", projectVersion]);
-    summaryData.push(["Status", projectStatus || "Draft"]);
-    summaryData.push(["Customer Name", selectedCustomer?.name || ""]);
-    summaryData.push(["Project Name", projectName]);
-    summaryData.push(["Project Location(s)", projectLocations.map(code => COUNTRIES.find(c => c.code === code)?.name || code).join(", ") || "—"]);
-    summaryData.push(["Technology", technologyIds.map(id => technologies.find(t => t.id === id)?.name).filter(Boolean).join(", ") || ""]);
-    summaryData.push(["Project Type", projectTypeIds.map(id => projectTypes.find(t => t.id === id)?.name).filter(Boolean).join(", ") || ""]);
-    summaryData.push(["Sales Manager", salesManagers.find(m => m.id === salesManagerId)?.name || "—"]);
-    summaryData.push(["Description", projectDescription]);
-    summaryData.push(["Profit Margin %", `${profitMarginPercentage}%`]);
-    if (versionNotes) summaryData.push(["Version Notes", versionNotes]);
-    summaryData.push([]);
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "YASH EstiPro";
+
+    const headerFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F172A" } };
+    const headerFont = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+    const subHeaderFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0F2FE" } };
+    const greenFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD1FAE5" } };
+    const amberFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
+    const purpleFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDE9FE" } };
+    const blueFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDBEAFE" } };
+    const finalFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF059669" } };
+    const finalFont = { bold: true, color: { argb: "FFFFFFFF" }, size: 14 };
+    const thinBorder = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+
+    // === Summary Sheet ===
+    const ws = wb.addWorksheet("Summary");
+    ws.columns = [{ width: 28 }, { width: 50 }, { width: 22 }];
+
+    const titleRow = ws.addRow(["YASH Technologies - EstiPro"]);
+    titleRow.font = { bold: true, size: 16, color: { argb: "FF0F172A" } };
+    ws.addRow(["PROJECT ESTIMATE SUMMARY"]).font = { bold: true, size: 12, color: { argb: "FF6B7280" } };
+    ws.addRow([]);
+
+    const infoFields = [
+      ["Project Number", projectNumber || "Not Saved"],
+      ["Version", `v${projectVersion}`],
+      ["Status", projectStatus || "Draft"],
+      ["Customer Name", selectedCustomer?.name || ""],
+      ["Project Name", projectName],
+      ["Project Location(s)", projectLocations.map(code => COUNTRIES.find(c => c.code === code)?.name || code).join(", ") || "—"],
+      ["Technology", technologyIds.map(id => technologies.find(t => t.id === id)?.name).filter(Boolean).join(", ") || ""],
+      ["Project Type", projectTypeIds.map(id => projectTypes.find(t => t.id === id)?.name).filter(Boolean).join(", ") || ""],
+      ["Sales Manager", salesManagers.find(m => m.id === salesManagerId)?.name || "—"],
+      ["Description", projectDescription],
+      ["Profit Margin %", `${profitMarginPercentage}%`],
+      ["Nego Buffer %", `${negoBufferPercentage}%`],
+    ];
+    if (versionNotes) infoFields.push(["Version Notes", versionNotes]);
+
+    infoFields.forEach(([label, val]) => {
+      const r = ws.addRow([label, val]);
+      r.getCell(1).font = { bold: true, color: { argb: "FF374151" } };
+    });
+    ws.addRow([]);
 
     waves.forEach(wave => {
       const summary = calculateWaveSummary(wave);
-      const logistics = summary.logistics;
-      
-      summaryData.push([`WAVE: ${wave.name}`, `Duration: ${wave.duration_months} months`]);
-      summaryData.push(["Total Man-Months", summary.totalMM.toFixed(2)]);
-      summaryData.push(["Onsite Man-Months", summary.onsiteMM.toFixed(2)]);
-      summaryData.push(["Onsite Resources", summary.onsiteResourceCount]);
-      summaryData.push(["Offshore Man-Months", summary.offshoreMM.toFixed(2)]);
-      summaryData.push([]);
-      summaryData.push(["LOGISTICS BREAKDOWN"]);
-      summaryData.push(["Per-diem", `${summary.onsiteMM.toFixed(2)} MM × $${logistics.config.per_diem_daily} × ${logistics.config.per_diem_days} days`, `$${logistics.perDiemCost.toFixed(2)}`]);
-      summaryData.push(["Accommodation", `${summary.onsiteMM.toFixed(2)} MM × $${logistics.config.accommodation_daily} × ${logistics.config.accommodation_days} days`, `$${logistics.accommodationCost.toFixed(2)}`]);
-      summaryData.push(["Conveyance", `${summary.onsiteMM.toFixed(2)} MM × $${logistics.config.local_conveyance_daily} × ${logistics.config.local_conveyance_days} days`, `$${logistics.conveyanceCost.toFixed(2)}`]);
-      summaryData.push(["Air Fare", `${summary.onsiteResourceCount} resources × $${logistics.config.flight_cost_per_trip} × ${logistics.config.num_trips} trips`, `$${logistics.flightCost.toFixed(2)}`]);
-      summaryData.push(["Visa & Medical", `${summary.onsiteResourceCount} resources × $${logistics.config.visa_medical_per_trip} × ${logistics.config.num_trips} trips`, `$${logistics.visaMedicalCost.toFixed(2)}`]);
-      summaryData.push(["Contingency", `${logistics.config.contingency_percentage}%`, `$${logistics.contingencyCost.toFixed(2)}`]);
-      summaryData.push(["Total Logistics", "", `$${logistics.totalLogistics.toFixed(2)}`]);
-      summaryData.push([]);
-      summaryData.push(["Cost to Company", `$${summary.totalCostToCompany.toFixed(2)}`]);
-      summaryData.push(["Resources Price", `$${summary.totalRowsSellingPrice.toFixed(2)}`]);
-      summaryData.push(["Onsite Selling Price", `$${summary.onsiteSellingPrice.toFixed(2)}`]);
-      summaryData.push(["Offshore Selling Price", `$${summary.offshoreSellingPrice.toFixed(2)}`]);
-      summaryData.push(["Profit", `$${((summary.onsiteSellingPrice + summary.offshoreSellingPrice) - summary.totalCostToCompany).toFixed(2)}`]);
-      summaryData.push(["Wave Selling Price", `$${summary.sellingPrice.toFixed(2)}`]);
-      summaryData.push(["Nego Buffer %", `${summary.negoBufferPercentage}%`]);
-      summaryData.push(["Nego Buffer Amount", `$${summary.negoBufferAmount.toFixed(2)}`]);
-      summaryData.push(["Wave Final Price (incl. buffer)", `$${summary.finalPrice.toFixed(2)}`]);
-      summaryData.push([]);
+      const lg = summary.logistics;
+      const wHdr = ws.addRow([`WAVE: ${wave.name}`, `Duration: ${wave.duration_months} months`]);
+      wHdr.font = { bold: true, size: 12 };
+      wHdr.eachCell(c => { c.fill = subHeaderFill; });
+
+      [
+        ["Total Man-Months", summary.totalMM.toFixed(2)],
+        ["Onsite Man-Months", summary.onsiteMM.toFixed(2)],
+        ["Offshore Man-Months", summary.offshoreMM.toFixed(2)],
+      ].forEach(r => ws.addRow(r));
+      ws.addRow([]);
+
+      const lgHdr = ws.addRow(["LOGISTICS BREAKDOWN"]);
+      lgHdr.font = { bold: true }; lgHdr.eachCell(c => { c.fill = purpleFill; });
+      [
+        ["Per-diem", `${summary.onsiteMM.toFixed(2)} MM x $${lg.config.per_diem_daily} x ${lg.config.per_diem_days} days`, `$${lg.perDiemCost.toFixed(2)}`],
+        ["Accommodation", `${summary.onsiteMM.toFixed(2)} MM x $${lg.config.accommodation_daily} x ${lg.config.accommodation_days} days`, `$${lg.accommodationCost.toFixed(2)}`],
+        ["Conveyance", `${summary.onsiteMM.toFixed(2)} MM x $${lg.config.local_conveyance_daily} x ${lg.config.local_conveyance_days} days`, `$${lg.conveyanceCost.toFixed(2)}`],
+        ["Air Fare", `${summary.onsiteResourceCount} res x $${lg.config.flight_cost_per_trip} x ${lg.config.num_trips} trips`, `$${lg.flightCost.toFixed(2)}`],
+        ["Visa & Medical", `${summary.onsiteResourceCount} res x $${lg.config.visa_medical_per_trip} x ${lg.config.num_trips} trips`, `$${lg.visaMedicalCost.toFixed(2)}`],
+        ["Contingency", `${lg.config.contingency_percentage}%`, `$${lg.contingencyCost.toFixed(2)}`],
+        ["Total Logistics", "", `$${lg.totalLogistics.toFixed(2)}`],
+      ].forEach(r => { const row = ws.addRow(r); if (r[0] === "Total Logistics") row.font = { bold: true }; });
+      ws.addRow([]);
+
+      [
+        ["Cost to Company", `$${summary.totalCostToCompany.toFixed(2)}`],
+        ["Resources Price", `$${summary.totalRowsSellingPrice.toFixed(2)}`],
+        ["Wave Selling Price", `$${summary.sellingPrice.toFixed(2)}`],
+        ["Nego Buffer", `${negoBufferPercentage}% = $${summary.negoBufferAmount.toFixed(2)}`],
+        ["Wave Final Price", `$${summary.finalPrice.toFixed(2)}`],
+      ].forEach(([l, v]) => {
+        const r = ws.addRow([l, v]);
+        if (l === "Wave Final Price") { r.font = { bold: true }; r.eachCell(c => { c.fill = greenFill; }); }
+      });
+      ws.addRow([]);
     });
 
     const overall = calculateOverallSummary();
-    summaryData.push(["OVERALL PROJECT"]);
-    summaryData.push(["Total Man-Months", overall.totalMM.toFixed(2)]);
-    summaryData.push(["Total Onsite MM", overall.onsiteMM.toFixed(2)]);
-    summaryData.push(["Total Offshore MM", overall.offshoreMM.toFixed(2)]);
-    summaryData.push(["Total Logistics", `$${overall.totalLogisticsCost.toFixed(2)}`]);
-    summaryData.push(["Total Cost to Company", `$${overall.totalCostToCompany.toFixed(2)}`]);
-    summaryData.push(["Total Resources Price", `$${overall.totalRowsSellingPrice.toFixed(2)}`]);
-    summaryData.push(["Profit Margin %", `${profitMarginPercentage}%`]);
-    summaryData.push([]);
-    summaryData.push(["PRICE BREAKDOWN"]);
-    summaryData.push(["Onsite Selling Price", `$${overall.onsiteSellingPrice.toFixed(2)}`]);
-    summaryData.push(["Offshore Selling Price", `$${overall.offshoreSellingPrice.toFixed(2)}`]);
-    summaryData.push(["Total Profit", `$${((overall.onsiteSellingPrice + overall.offshoreSellingPrice) - overall.totalCostToCompany).toFixed(2)}`]);
-    summaryData.push(["Onsite Avg. $/MM", overall.onsiteMM > 0 ? `$${(overall.onsiteSellingPrice / overall.onsiteMM).toFixed(2)}` : "$0"]);
-    summaryData.push(["Offshore Avg. $/MM", overall.offshoreMM > 0 ? `$${(overall.offshoreSellingPrice / overall.offshoreMM).toFixed(2)}` : "$0"]);
-    summaryData.push([]);
-    summaryData.push(["Total Selling Price", `$${overall.sellingPrice.toFixed(2)}`]);
-    summaryData.push(["Total Nego Buffer", `$${overall.negoBuffer.toFixed(2)}`]);
-    summaryData.push(["GRAND TOTAL (Final Price)", `$${overall.finalPrice.toFixed(2)}`]);
+    const oHdr = ws.addRow(["OVERALL PROJECT"]);
+    oHdr.font = { bold: true, size: 13 }; oHdr.eachCell(c => { c.fill = headerFill; c.font = headerFont; });
+    [
+      ["Total Man-Months", overall.totalMM.toFixed(2)],
+      ["Total Onsite MM", overall.onsiteMM.toFixed(2)],
+      ["Total Offshore MM", overall.offshoreMM.toFixed(2)],
+      ["Total Logistics", `$${overall.totalLogisticsCost.toFixed(2)}`],
+      ["Total Cost to Company", `$${overall.totalCostToCompany.toFixed(2)}`],
+      ["Total Resources Price", `$${overall.totalRowsSellingPrice.toFixed(2)}`],
+      ["Total Selling Price", `$${overall.sellingPrice.toFixed(2)}`],
+      ["Total Nego Buffer", `$${overall.negoBuffer.toFixed(2)}`],
+    ].forEach(r => ws.addRow(r));
+    const grandRow = ws.addRow(["GRAND TOTAL (Final Price)", `$${overall.finalPrice.toFixed(2)}`]);
+    grandRow.eachCell(c => { c.fill = finalFill; c.font = finalFont; c.border = thinBorder; });
 
-    const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
-    summaryWs['!cols'] = [{ wch: 25 }, { wch: 50 }, { wch: 20 }];
-    XLSX.utils.book_append_sheet(wb, summaryWs, "Summary");
-
-    // Detail sheets for each wave
+    // === Detail sheets per wave ===
     waves.forEach(wave => {
-      const waveData = [];
-      waveData.push([`${wave.name} - ${wave.duration_months} months`]);
-      waveData.push([]);
-      
-      const header = ["Skill", "Level", "Location", "$/Month", "Onsite", "Travel", ...wave.phase_names, "Total MM", "Salary Cost", "Overhead", "Overhead %", "Total Cost", "Selling Price", "Comments"];
-      waveData.push(header);
+      const dws = wb.addWorksheet(wave.name.substring(0, 30));
+      const titleR = dws.addRow([`${wave.name} — ${wave.duration_months} months`]);
+      titleR.font = { bold: true, size: 13 };
+      dws.addRow([]);
 
-      wave.grid_allocations.forEach(alloc => {
+      const headers = ["#", "Skill", "Level", "Location", "$/Month", "Onsite", "Travel",
+        ...wave.phase_names, "Total MM", "Salary Cost", "Overhead", "OH%", "Total Cost",
+        "Selling Price", "SP/MM", "Hourly", "Comments"];
+      const hRow = dws.addRow(headers);
+      hRow.eachCell((c, i) => { c.fill = headerFill; c.font = headerFont; c.border = thinBorder; });
+      dws.columns = headers.map((h, i) => ({
+        width: i === 0 ? 4 : ["Skill", "Location", "Comments"].includes(h) ? 18 : h.length > 8 ? 14 : 10
+      }));
+
+      wave.grid_allocations.forEach((alloc, idx) => {
         const { totalManMonths, baseSalaryCost } = calculateResourceBaseCost(alloc);
         const overheadCost = baseSalaryCost * (alloc.overhead_percentage / 100);
         const totalCost = baseSalaryCost + overheadCost;
-        const resourceSellingPrice = totalCost / (1 - profitMarginPercentage / 100);
-        const row = [
-          alloc.skill_name,
-          alloc.proficiency_level,
-          alloc.base_location_name,
-          alloc.avg_monthly_salary,
-          alloc.is_onsite ? "ON" : "OFF",
-          alloc.travel_required ? "YES" : "NO",
+        const sp = totalCost / (1 - profitMarginPercentage / 100);
+        const spPerMM = totalManMonths > 0 ? sp / totalManMonths : 0;
+        const hourly = spPerMM / 176;
+
+        const r = dws.addRow([
+          idx + 1, alloc.skill_name, alloc.proficiency_level, alloc.base_location_name,
+          alloc.avg_monthly_salary, alloc.is_onsite ? "ON" : "OFF", alloc.travel_required ? "YES" : "NO",
           ...wave.phase_names.map((_, i) => alloc.phase_allocations[i] || 0),
-          totalManMonths.toFixed(2),
-          baseSalaryCost.toFixed(2),
-          overheadCost.toFixed(2),
-          `${alloc.overhead_percentage}%`,
-          totalCost.toFixed(2),
-          resourceSellingPrice.toFixed(2),
-          alloc.comments || "",
-        ];
-        waveData.push(row);
+          parseFloat(totalManMonths.toFixed(2)), parseFloat(baseSalaryCost.toFixed(2)),
+          parseFloat(overheadCost.toFixed(2)), `${alloc.overhead_percentage}%`,
+          parseFloat(totalCost.toFixed(2)), parseFloat(sp.toFixed(2)),
+          parseFloat(spPerMM.toFixed(2)), parseFloat(hourly.toFixed(2)),
+          alloc.comments || ""
+        ]);
+        r.eachCell(c => { c.border = thinBorder; });
+        if (alloc.is_onsite) r.eachCell(c => { c.fill = amberFill; });
       });
 
-      // Wave summary footer
+      dws.addRow([]);
       const waveSummary = calculateWaveSummary(wave);
-      waveData.push([]);
-      waveData.push(["Nego Buffer %", `${wave.nego_buffer_percentage || 0}%`]);
-      waveData.push(["Wave Selling Price", `$${waveSummary.sellingPrice.toFixed(2)}`]);
-      waveData.push(["Wave Final Price (incl. buffer)", `$${waveSummary.finalPrice.toFixed(2)}`]);
-
-      const waveWs = XLSX.utils.aoa_to_sheet(waveData);
-      XLSX.utils.book_append_sheet(wb, waveWs, wave.name.substring(0, 30));
+      [
+        ["Nego Buffer %", `${negoBufferPercentage}%`],
+        ["Wave Selling Price", `$${waveSummary.sellingPrice.toFixed(2)}`],
+        ["Wave Final Price (incl. buffer)", `$${waveSummary.finalPrice.toFixed(2)}`],
+      ].forEach(([l, v]) => {
+        const r = dws.addRow(["", l, v]);
+        if (l.includes("Final")) { r.font = { bold: true }; r.eachCell(c => { c.fill = greenFill; }); }
+      });
     });
 
-    XLSX.writeFile(wb, `${projectNumber || projectName || "Project"}_v${projectVersion}_Estimate.xlsx`);
+    const buffer = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `${projectNumber || projectName || "Project"}_v${projectVersion}_Estimate.xlsx`);
     toast.success("Exported to Excel successfully");
   };
 
@@ -2068,6 +2157,28 @@ const ProjectEstimator = () => {
                 data-testid="profit-margin-slider"
               />
             </div>
+            <div>
+              <div className="flex justify-between mb-2">
+                <Label>Nego Buffer %</Label>
+                <span className="font-mono font-semibold text-blue-600" data-testid="nego-buffer-display">
+                  {negoBufferPercentage}%
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  value={negoBufferPercentage}
+                  onChange={(e) => setNegoBufferPercentage(parseFloat(e.target.value) || 0)}
+                  className="w-24 text-right"
+                  disabled={isReadOnly}
+                  data-testid="nego-buffer-input"
+                />
+                <span className="text-sm text-gray-500">% of selling price</span>
+              </div>
+            </div>
             <div className="md:col-span-2 lg:col-span-3">
               <Label htmlFor="project-description">Description</Label>
               <Textarea
@@ -2395,30 +2506,6 @@ const ProjectEstimator = () => {
                         <span className="text-sm text-gray-600">Resources: {wave.grid_allocations.length}</span>
                         <span className="text-sm text-[#F59E0B]">Onsite: {waveSummary.onsiteResourceCount}</span>
                         <span className="text-sm text-purple-600">Traveling: {waveSummary.travelingResourceCount}</span>
-                        {/* Nego Buffer Input */}
-                        <div className="flex items-center gap-2 ml-4 px-3 py-1 bg-blue-50 rounded-lg border border-blue-200">
-                          <Label className="text-xs text-blue-700 whitespace-nowrap">Nego Buffer:</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.5"
-                            value={wave.nego_buffer_percentage || 0}
-                            onChange={(e) => {
-                              const value = parseFloat(e.target.value) || 0;
-                              setWaves(waves.map(w => w.id === wave.id ? { ...w, nego_buffer_percentage: value } : w));
-                            }}
-                            className="w-16 h-7 text-xs text-right"
-                            disabled={isReadOnly}
-                            data-testid={`nego-buffer-${wave.id}`}
-                          />
-                          <span className="text-xs text-blue-700">%</span>
-                          {waveSummary.negoBufferAmount > 0 && (
-                            <span className="text-xs text-blue-700 font-mono">
-                              (${waveSummary.negoBufferAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })})
-                            </span>
-                          )}
-                        </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <Button 
@@ -2470,6 +2557,16 @@ const ProjectEstimator = () => {
                               >
                                 <FileSpreadsheet className="w-4 h-4 mr-2" />
                                 Download Template
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={handleDownloadWaveData}
+                                className="border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+                                data-testid="download-data-button"
+                              >
+                                <Download className="w-4 h-4 mr-2" />
+                                Download Data
                               </Button>
                               <div className="relative">
                                 <input
@@ -2609,6 +2706,7 @@ const ProjectEstimator = () => {
                         <table className="w-full border-collapse">
                           <thead>
                             <tr className="border-b-2 border-[#E2E8F0] bg-[#F8FAFC]">
+                              <th className="text-center p-2 font-semibold text-xs w-8">#</th>
                               <th className="text-left p-3 font-semibold text-sm">Skill</th>
                               <th className="text-left p-3 font-semibold text-sm">Level</th>
                               <th className="text-left p-3 font-semibold text-sm">Location</th>
@@ -2631,74 +2729,67 @@ const ProjectEstimator = () => {
                               <th className="text-right p-3 font-semibold text-sm">Overhead</th>
                               <th className="text-right p-3 font-semibold text-sm bg-gray-100">Total Cost</th>
                               <th className="text-right p-3 font-semibold text-sm bg-green-50">Selling Price</th>
+                              <th className="text-right p-3 font-semibold text-sm bg-blue-50">SP/MM</th>
+                              <th className="text-right p-3 font-semibold text-sm bg-blue-50">Hourly</th>
                               <th className="text-left p-3 font-semibold text-sm">Comments</th>
                               <th className="text-center p-3 font-semibold text-sm">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {wave.grid_allocations.map((allocation) => {
+                            {wave.grid_allocations.map((allocation, rowIdx) => {
                               const { totalManMonths, baseSalaryCost } = calculateResourceBaseCost(allocation);
+                              const overheadCost = baseSalaryCost * (allocation.overhead_percentage / 100);
+                              const totalCost = baseSalaryCost + overheadCost;
+                              const sellingPrice = totalCost / (1 - profitMarginPercentage / 100);
+                              const spPerMM = totalManMonths > 0 ? sellingPrice / totalManMonths : 0;
+                              const hourlyPrice = spPerMM / 176;
                               return (
                                 <tr
                                   key={allocation.id}
                                   className={`border-b border-[#E2E8F0] ${allocation.is_onsite ? "bg-amber-50/30" : ""}`}
                                   data-testid={`allocation-row-${allocation.id}`}
                                 >
+                                  <td className="p-2 text-center text-xs text-gray-400 font-mono">{rowIdx + 1}</td>
                                   <td className="p-2">
                                     {isReadOnly ? (
                                       <span className="font-medium text-sm">{allocation.skill_name}</span>
                                     ) : (
-                                      <Select 
-                                        value={allocation.skill_id} 
+                                      <SearchableSelect
+                                        value={allocation.skill_id}
                                         onValueChange={(value) => handleGridFieldChange(wave.id, allocation.id, 'skill_id', value)}
-                                      >
-                                        <SelectTrigger className="h-8 text-xs w-[120px]">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {skills.map(s => (
-                                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                        options={skills.map(s => ({ value: s.id, label: s.name }))}
+                                        placeholder="Skill..."
+                                        searchPlaceholder="Search skills..."
+                                        triggerClassName="w-[130px]"
+                                      />
                                     )}
                                   </td>
                                   <td className="p-2">
                                     {isReadOnly ? (
                                       <span className="text-sm">{allocation.proficiency_level}</span>
                                     ) : (
-                                      <Select 
-                                        value={allocation.proficiency_level} 
+                                      <SearchableSelect
+                                        value={allocation.proficiency_level}
                                         onValueChange={(value) => handleGridFieldChange(wave.id, allocation.id, 'proficiency_level', value)}
-                                      >
-                                        <SelectTrigger className="h-8 text-xs w-[100px]">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {PROFICIENCY_LEVELS.map(level => (
-                                            <SelectItem key={level} value={level}>{level}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                        options={PROFICIENCY_LEVELS.map(l => ({ value: l, label: l }))}
+                                        placeholder="Level..."
+                                        searchPlaceholder="Search levels..."
+                                        triggerClassName="w-[110px]"
+                                      />
                                     )}
                                   </td>
                                   <td className="p-2">
                                     {isReadOnly ? (
                                       <span className="text-sm">{allocation.base_location_name}</span>
                                     ) : (
-                                      <Select 
-                                        value={allocation.base_location_id} 
+                                      <SearchableSelect
+                                        value={allocation.base_location_id}
                                         onValueChange={(value) => handleGridFieldChange(wave.id, allocation.id, 'base_location_id', value)}
-                                      >
-                                        <SelectTrigger className="h-8 text-xs w-[100px]">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {locations.map(loc => (
-                                            <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                        options={locations.map(l => ({ value: l.id, label: l.name }))}
+                                        placeholder="Location..."
+                                        searchPlaceholder="Search locations..."
+                                        triggerClassName="w-[120px]"
+                                      />
                                     )}
                                   </td>
                                   <td className="p-3 text-right">
@@ -2783,14 +2874,20 @@ const ProjectEstimator = () => {
                                     ${baseSalaryCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                   </td>
                                   <td className="p-3 text-right font-mono tabular-nums text-sm text-gray-500">
-                                    ${(baseSalaryCost * (allocation.overhead_percentage / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    ${overheadCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                     <span className="text-xs ml-1">({allocation.overhead_percentage}%)</span>
                                   </td>
                                   <td className="p-3 text-right font-mono tabular-nums text-sm font-semibold bg-gray-50">
-                                    ${(baseSalaryCost + baseSalaryCost * (allocation.overhead_percentage / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    ${totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                   </td>
                                   <td className="p-3 text-right font-mono tabular-nums text-sm font-semibold text-[#10B981] bg-green-50/50">
-                                    ${((baseSalaryCost + baseSalaryCost * (allocation.overhead_percentage / 100)) / (1 - profitMarginPercentage / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    ${sellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                  </td>
+                                  <td className="p-3 text-right font-mono tabular-nums text-sm text-blue-600 bg-blue-50/30">
+                                    ${spPerMM.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                  </td>
+                                  <td className="p-3 text-right font-mono tabular-nums text-sm text-blue-600 bg-blue-50/30">
+                                    ${hourlyPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                   </td>
                                   <td className="p-2">
                                     <Textarea
@@ -2803,40 +2900,64 @@ const ProjectEstimator = () => {
                                     />
                                   </td>
                                   <td className="p-3 text-center">
-                                    <div className="flex items-center justify-center gap-1">
+                                    <div className="flex items-center justify-center gap-0.5">
                                       {!isReadOnly && (
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => {
-                                                const value = prompt(`Enter MM value to apply to all ${wave.phase_names.length} months:`, "1");
-                                                if (value !== null) {
-                                                  handleApplyToAllMonths(wave.id, allocation.id, value);
-                                                }
-                                              }}
-                                              className="text-[#8B5CF6] hover:text-[#8B5CF6] hover:bg-[#8B5CF6]/10"
-                                              data-testid={`apply-all-${allocation.id}`}
-                                            >
-                                              <Calculator className="w-4 h-4" />
-                                            </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>Apply same value to all months</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      )}
-                                      {!isReadOnly && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => handleDeleteAllocation(wave.id, allocation.id)}
-                                          className="text-[#EF4444] hover:text-[#EF4444] hover:bg-[#EF4444]/10"
-                                          data-testid={`delete-allocation-${allocation.id}`}
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                        </Button>
+                                        <>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost" size="icon"
+                                                className="h-7 w-7 text-gray-400 hover:text-gray-700"
+                                                onClick={() => handleMoveRow(wave.id, allocation.id, -1)}
+                                                disabled={rowIdx === 0}
+                                                data-testid={`move-up-${allocation.id}`}
+                                              >
+                                                <ArrowUp className="w-3.5 h-3.5" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>Move up</p></TooltipContent>
+                                          </Tooltip>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost" size="icon"
+                                                className="h-7 w-7 text-gray-400 hover:text-gray-700"
+                                                onClick={() => handleMoveRow(wave.id, allocation.id, 1)}
+                                                disabled={rowIdx === wave.grid_allocations.length - 1}
+                                                data-testid={`move-down-${allocation.id}`}
+                                              >
+                                                <ArrowDown className="w-3.5 h-3.5" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>Move down</p></TooltipContent>
+                                          </Tooltip>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                variant="ghost" size="icon"
+                                                className="h-7 w-7 text-[#8B5CF6] hover:text-[#8B5CF6] hover:bg-[#8B5CF6]/10"
+                                                onClick={() => {
+                                                  const value = prompt(`Enter MM value to apply to all ${wave.phase_names.length} months:`, "1");
+                                                  if (value !== null) {
+                                                    handleApplyToAllMonths(wave.id, allocation.id, value);
+                                                  }
+                                                }}
+                                                data-testid={`apply-all-${allocation.id}`}
+                                              >
+                                                <Calculator className="w-3.5 h-3.5" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>Apply same value to all months</p></TooltipContent>
+                                          </Tooltip>
+                                          <Button
+                                            variant="ghost" size="icon"
+                                            className="h-7 w-7 text-[#EF4444] hover:text-[#EF4444] hover:bg-[#EF4444]/10"
+                                            onClick={() => handleDeleteAllocation(wave.id, allocation.id)}
+                                            data-testid={`delete-allocation-${allocation.id}`}
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </Button>
+                                        </>
                                       )}
                                     </div>
                                   </td>

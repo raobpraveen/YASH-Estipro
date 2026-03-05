@@ -1,95 +1,68 @@
-# IT/Software Project Estimator - PRD
+# YASH EstPro - Project Requirements Document
 
 ## Original Problem Statement
-Build an IT/Software Project estimator tool named "YASH EstPro" with comprehensive project estimation, cost calculation, workflow approval, and dashboard analytics.
+Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based estimation, cost calculations, project management, approval workflows, and analytics.
 
-## What's Been Implemented
+## Core Features
+- **Wave-based Estimation Grid**: Dynamic monthly phases, editable resource definitions (Skill, Level, Location) with automatic salary lookups
+- **Cost Calculation**: Base Cost, Overheads, Profit Margin, Selling Price, Logistics
+- **Project & Version Management**: Versioning, cloning, mandatory version comments, read-only states
+- **Workflow**: Approval workflow (Draft, In Review, Approved, Rejected, Superseded)
+- **Dashboard**: Analytics with filtering
+- **Master Data CRUD**: Skills, Technologies, Customers, Locations, Project Types, Proficiency Rates, Sales Managers
+- **Authentication**: JWT-based with role-based access (admin, approver, user)
+- **Excel Import/Export**: Upload skills, rates, wave grid data; export styled estimates
 
-### Core Features (Complete)
-- JWT authentication + RBAC (Admin/Approver/User)
-- Master data CRUD: Customers, Technologies, Project Types, Base Locations, Skills, Proficiency Rates, Sales Managers
-- Wave-based project estimator with inline grid editing, logistics, profit margins
-- Version management (PRJ-0001 v1/v2/v3), cloning, templates, archiving
-- Review workflow: Draft -> In Review -> Approved/Rejected
-- Audit log system
-- Excel import/export with Sales Manager field
-- Dockerization for on-premise deployment
+## Tech Stack
+- **Frontend**: React.js, Shadcn UI, Recharts, ExcelJS, Axios
+- **Backend**: FastAPI, Pydantic, JWT (SHA256), smtplib
+- **Database**: MongoDB
+- **Deployment**: Docker, Nginx
 
-### Dashboard (Feb 26, 2026 - Complete)
-- Total Projects, Total Value of Estimations, Approved, In Review KPIs
-- **Value by Status breakdown** (Draft/In Review/Approved/Rejected values)
-- **Multi-select filters**: Date, Customer, Project Type, Location, Sales Manager
-- **Combination-grouped KPI charts**: Technology, Project Type, Location, Sales Manager — grouped by exact multi-select combinations (e.g., "UAE, KSA" as one bar)
-- **Project numbers on hover tooltip** for all KPI bars
-- **Clickable KPI bars** — navigate to Projects list with filter pre-applied
-- **Sales Manager Leaderboard** with approval rates
-- **Period Comparison Mode** — compare two date ranges side-by-side with delta indicators
-- Projects by Status pie chart, Estimation Value Trend, Top Customers
+## What's Been Implemented (100%)
+- Full JWT auth with role-based access
+- Project CRUD with versioning, cloning, archiving
+- Wave-based estimation grid with all cost calculations
+- Dashboard analytics with deduplication
+- Master data CRUD for all entities
+- Approval workflow with Superseded status
+- Email & in-app notifications
+- Collapsible sidebar with flyout menus
+- Version comparison screen
+- Excel import for skills, rates, wave data
+- Per-row comments in wave grid
+- Dynamic add/delete month columns
 
-### Notifications (Complete)
-- In-app notification bell with unread count badge
-- Shows ALL notifications (read + unread, up to 20)
-- Color-coded by type (approved/rejected/review)
-- Mark all read functionality
-- 30-second polling
-- Email notifications via Office 365 SMTP (configured and working)
+## Implemented Feb 2026 (This Session)
 
-### Email Notifications (Mar 4, 2026 - Complete)
-- Dark-themed email templates matching YASH branding (black/dark gray)
-- YASH logo embedded as inline CID attachment (reliable in Outlook)
-- Clickable "Review Project" / "View Project" buttons linking to `http://192.168.3.42/projects/{id}`
-- Plain text project URL shown below button for easy copy-paste
-- Footer with YASH tagline "More than what you think." in brand gold
-- Templates for: Review Request, Approval, Rejection (with reviewer comments)
-- APP_BASE_URL configurable via backend `.env`
-- Branding updated to "YASH EstiPro" throughout (emails, browser tab, subjects)
-- Clickable notification bell items — navigate directly to project summary page
+### P0 Bug Fixes
+- [x] Fixed "Mark all read" notifications (POST → PUT method mismatch)
+- [x] Fixed Excel export (was already wired up; enhanced with ExcelJS styled output)
+- [x] Fixed NaN in logistics calculation (empty logistics_config object fallback)
 
-### Projects List (Feb 26, 2026 - Complete)
-- Filters: Customer, Description, Created By, Date Range, **Sales Manager, Project Type, Technology**
-- Supports URL query params for dashboard drill-down navigation
-- Expandable version history, Templates, Archive/Unarchive
+### P1 Features
+- [x] **Wave Grid - Row Reordering**: Up/down arrow buttons to move resource rows
+- [x] **Wave Grid - SP/MM & Hourly Columns**: New calculated columns showing Selling Price per Man-Month and Hourly Price
+- [x] **Wave Grid - Searchable Comboboxes**: Type-to-search dropdowns for Skill, Level, Location using Command+Popover
+- [x] **Wave Grid - Download Data**: New "Download Data" button to export current wave grid data (alongside template download)
+- [x] **Wave Grid - Row Numbers**: Added # column for row numbering
+- [x] **Nego Buffer at Project Level**: Moved from wave-level to project info section with input field
+- [x] **Sidebar Light Silver Theme**: Changed from dark navy to light silver (#F1F5F9) with dark text
+- [x] **Enhanced Excel Export**: Styled with ExcelJS (colored headers, cell borders, summary sheet + per-wave detail sheets)
 
-### Estimator Enhancements (Complete)
-- Sales Manager dropdown in project info
-- **Sales Manager shown in View Summary dialog**
-- Sales Manager in ProjectSummary page + Excel exports
+## Remaining Backlog
 
-### Mar 4-5, 2026 Updates (Complete)
-- **Dashboard KPIs deduplication**: Unique projects only (by project_number, latest version)
-- **Sidebar redesigned**: Dark theme (#0B1120), right-edge blue accent on active items, white YASH logo, clickable logo→Dashboard
-- **Wave grid**: Add Month / Remove Month buttons, Comments column per skill row (max 100 words)
-- **Approver edit flow**: Only designated approver can edit in_review projects → new version with prompt (Keep In Review / Approve & Save). Standalone Approve button removed — approver must use "Save & Approve" to ensure changes are versioned. Creator and all other users see read-only when in_review.
-- **Superseded status**: Previous version automatically marked "Superseded" when new version is created
-- **Customer edit**: Full edit dialog with PUT endpoint, + "Food & Beverages" and "Professional Services" industry verticals
-- **Skills popup**: Technology field moved to 1st position
-- **Mandatory fields**: Technology & Project Type required on save
-- **Branding**: "YASH EstiPro" throughout, "Made with Emergent" hidden, YASH logo on Dashboard/Estimator/Projects
-- **Excel export**: Status, Version Notes, Comments column in wave detail, Nego Buffer footer
-- **Email templates**: Dark-themed, CID logo, clickable buttons, plain text URL
-
-## Technical Architecture
-- **Backend**: FastAPI + MongoDB (motor), JWT auth
-- **Frontend**: React, Shadcn UI, Tailwind CSS, recharts
-- **Shared Utils**: `/frontend/src/utils/calculations.js` — centralized financial calculations
-
-## Prioritized Backlog
-
-### P1 - Verification Pending
-- [x] Verify collapsible sidebar hover-to-expand behavior
-- [ ] Verify Excel export includes Sales Manager field
-
-### P2 - Low Priority
+### P1
 - [ ] User Profile - Custom Theme (upload background image)
-- [ ] Export to PDF
-- [ ] Multi-currency support
-- [ ] Refactor ProjectEstimator.js local calc functions to use shared utility
-- [ ] Actuals Tracking & Profitability Module (spec in /app/memory/ACTUALS_MODULE_SPEC.md)
 
-## Test Coverage
-- Iteration 13: Sales Manager CRUD, Dashboard KPIs, Notification Bell (100%)
-- Iteration 14: Value by Status, Leaderboard, Multi-select filters, Excel exports (100%)
-- Iteration 15: KPI tooltips, clickable bars, combination grouping, comparison mode, Projects filters (100%)
-- Iteration 16: YASH logo on Dashboard & Estimator, sidebar theme, mandatory fields, Skills field order, Dashboard dedup, Customer edit + industry verticals (100%)
-- Iteration 17: Logo replacement, Saved Projects logo, badge hidden, sidebar grouping, logo navigation, Excel fields, wave template (100%)
-- Iteration 18: Wave Add/Remove Month, Comments column, sidebar dark redesign with collapsible sections, approver save flow, white YASH logo + EstiPro logo, flex-wrap wave toolbar (100%)
+### P2
+- [ ] Actuals Tracking & Profitability Module (spec in /app/memory/ACTUALS_MODULE_SPEC.md)
+- [ ] Data import validation improvements
+- [ ] Project templates functionality
+
+## Key Files
+- `/app/frontend/src/pages/ProjectEstimator.js` - Main estimator page
+- `/app/frontend/src/components/Layout.js` - Sidebar and layout
+- `/app/frontend/src/components/SearchableSelect.js` - Reusable searchable combobox
+- `/app/frontend/src/utils/calculations.js` - Shared calculation utilities
+- `/app/backend/server.py` - FastAPI backend

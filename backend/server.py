@@ -565,6 +565,7 @@ class Project(BaseModel):
     project_type_names: List[str] = []
     description: Optional[str] = ""
     profit_margin_percentage: float = 35.0
+    nego_buffer_percentage: float = 0.0
     waves: List[ProjectWave] = []
     is_latest_version: bool = True  # Flag to identify latest version
     parent_project_id: str = ""  # For version tracking - links to original project
@@ -608,6 +609,7 @@ class ProjectCreate(BaseModel):
     project_type_names: List[str] = []
     description: Optional[str] = ""
     profit_margin_percentage: float = 35.0
+    nego_buffer_percentage: float = 0.0
     waves: Optional[List[Dict]] = None
     version_notes: str = ""
     status: str = "draft"
@@ -633,6 +635,7 @@ class ProjectUpdate(BaseModel):
     project_type_names: Optional[List[str]] = None
     description: Optional[str] = None
     profit_margin_percentage: Optional[float] = None
+    nego_buffer_percentage: Optional[float] = None
     waves: Optional[List[Dict]] = None
     version_notes: Optional[str] = None
     status: Optional[str] = None

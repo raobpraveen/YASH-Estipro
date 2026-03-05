@@ -84,7 +84,7 @@ const Layout = ({ user, onLogout }) => {
   const markAllAsRead = async () => {
     try {
       const token = localStorage.getItem("token");
-      await axios.post(`${API}/notifications/mark-all-read`, {}, {
+      await axios.put(`${API}/notifications/mark-all-read`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchNotifications();
@@ -138,9 +138,9 @@ const Layout = ({ user, onLogout }) => {
 
   const getRoleBadge = (role) => {
     const config = {
-      admin: { label: "Admin", color: "bg-red-500/20 text-red-300" },
-      approver: { label: "Approver", color: "bg-amber-500/20 text-amber-300" },
-      user: { label: "User", color: "bg-blue-500/20 text-blue-300" },
+      admin: { label: "Admin", color: "bg-red-100 text-red-700" },
+      approver: { label: "Approver", color: "bg-amber-100 text-amber-700" },
+      user: { label: "User", color: "bg-blue-100 text-blue-700" },
     };
     return config[role] || config.user;
   };
@@ -160,8 +160,8 @@ const Layout = ({ user, onLogout }) => {
       className={({ isActive }) =>
         `flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all duration-150 rounded-md ${
           isActive
-            ? "bg-white/10 text-white"
-            : "text-white/50 hover:text-white/80 hover:bg-white/5"
+            ? "bg-[#0F172A] text-white"
+            : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
         }`
       }
       data-testid={`nav-${item.label.toLowerCase().replace(/ /g, '-')}`}
@@ -181,8 +181,8 @@ const Layout = ({ user, onLogout }) => {
             className={({ isActive }) =>
               `flex items-center justify-center p-2.5 rounded-md transition-all duration-150 ${
                 isActive
-                  ? "bg-white/10 text-white"
-                  : "text-white/40 hover:text-white/70 hover:bg-white/5"
+                  ? "bg-[#0F172A] text-white"
+                  : "text-gray-400 hover:text-gray-700 hover:bg-gray-200"
               }`
             }
             data-testid={`nav-${item.label.toLowerCase().replace(/ /g, '-')}`}
@@ -214,7 +214,7 @@ const Layout = ({ user, onLogout }) => {
         <button
           onClick={() => setFlyoutSection(flyoutSection === section.key ? null : section.key)}
           className={`w-full flex flex-col items-center gap-0.5 py-2.5 px-1 rounded-md transition-colors ${
-            flyoutSection === section.key ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/60 hover:bg-white/5'
+            flyoutSection === section.key ? 'bg-gray-200 text-gray-900' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
           }`}
           data-testid={`collapsed-section-${section.key}`}
         >
@@ -234,11 +234,11 @@ const Layout = ({ user, onLogout }) => {
     return (
       <div
         ref={flyoutRef}
-        className="fixed left-16 top-0 h-full w-56 bg-[#111827] border-l border-white/5 shadow-xl z-50 flex flex-col"
+        className="fixed left-16 top-0 h-full w-56 bg-[#F8FAFC] border-l border-gray-200 shadow-xl z-50 flex flex-col"
         style={{ top: 0 }}
       >
-        <div className="p-4 border-b border-white/5">
-          <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">{section.title}</p>
+        <div className="p-4 border-b border-gray-200">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{section.title}</p>
         </div>
         <nav className="flex-1 p-2 overflow-y-auto">
           <ul className="space-y-0.5">
@@ -263,7 +263,7 @@ const Layout = ({ user, onLogout }) => {
         {section.title ? (
           <button
             onClick={() => setExpandedSections(prev => ({ ...prev, [section.key]: !prev[section.key] }))}
-            className="w-full flex items-center justify-between px-3 py-2 mt-2 text-white/40 hover:text-white/60 transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 mt-2 text-gray-400 hover:text-gray-600 transition-colors"
             data-testid={`section-toggle-${section.key}`}
           >
             <div className="flex items-center gap-2">
@@ -289,13 +289,13 @@ const Layout = ({ user, onLogout }) => {
   return (
     <div className="flex min-h-screen">
       <aside 
-        className={`${isCollapsed ? 'w-16' : 'w-64'} bg-[#0B1120] flex flex-col transition-all duration-300 ease-in-out flex-shrink-0`}
+        className={`${isCollapsed ? 'w-16' : 'w-64'} bg-[#F1F5F9] flex flex-col transition-all duration-300 ease-in-out flex-shrink-0 border-r border-gray-200`}
       >
         {/* Header with logos */}
-        <div className={`p-3 border-b border-white/5 ${isCollapsed ? 'flex justify-center' : ''}`}>
+        <div className={`p-3 border-b border-gray-200 ${isCollapsed ? 'flex justify-center' : ''}`}>
           {isCollapsed ? (
             <img 
-              src="/yash-logo-white.jpg" 
+              src="/yash-logo-new.png" 
               alt="YASH" 
               className="h-8 w-8 object-contain rounded cursor-pointer"
               onClick={() => navigate('/dashboard')}
@@ -303,10 +303,10 @@ const Layout = ({ user, onLogout }) => {
           ) : (
             <div className="cursor-pointer" onClick={() => navigate('/dashboard')}>
               <div className="flex items-center gap-3">
-                <img src="/yash-logo-white.jpg" alt="YASH Technologies" className="h-9 object-contain rounded" />
+                <img src="/yash-logo-new.png" alt="YASH Technologies" className="h-9 object-contain rounded" />
                 <img src="/estipro-logo-new.png" alt="EstiPro" className="h-9 object-contain" />
               </div>
-              <p className="text-[9px] text-white/30 mt-1.5 tracking-wider uppercase">Project Cost Estimator</p>
+              <p className="text-[9px] text-gray-400 mt-1.5 tracking-wider uppercase">Project Cost Estimator</p>
             </div>
           )}
         </div>
@@ -314,13 +314,13 @@ const Layout = ({ user, onLogout }) => {
         {/* Toggle button */}
         <button
           onClick={toggleSidebar}
-          className="mx-auto my-2 p-1.5 rounded-md hover:bg-white/10 transition-colors"
+          className="mx-auto my-2 p-1.5 rounded-md hover:bg-gray-200 transition-colors"
           data-testid="toggle-sidebar"
         >
           {isCollapsed ? (
-            <ChevronRight className="w-4 h-4 text-white/50" />
+            <ChevronRight className="w-4 h-4 text-gray-500" />
           ) : (
-            <ChevronLeft className="w-4 h-4 text-white/50" />
+            <ChevronLeft className="w-4 h-4 text-gray-500" />
           )}
         </button>
 
@@ -341,16 +341,16 @@ const Layout = ({ user, onLogout }) => {
 
         {/* User info */}
         {user && (
-          <div className={`p-3 border-t border-white/5 ${isCollapsed ? 'flex flex-col items-center' : ''}`}>
+          <div className={`p-3 border-t border-gray-200 ${isCollapsed ? 'flex flex-col items-center' : ''}`}>
             {!isCollapsed && (
               <>
                 <div className="flex items-center gap-3 mb-2 px-1">
-                  <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center">
-                    <User className="w-3.5 h-3.5 text-white/50" />
+                  <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center">
+                    <User className="w-3.5 h-3.5 text-gray-500" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-white/80 truncate">{user.name}</p>
-                    <p className="text-[10px] text-white/30 truncate">{user.email}</p>
+                    <p className="text-xs font-medium text-gray-700 truncate">{user.name}</p>
+                    <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
                   </div>
                 </div>
                 <Badge className={`${getRoleBadge(user.role).color} text-[10px] mb-2 ml-1`}>
@@ -365,7 +365,7 @@ const Layout = ({ user, onLogout }) => {
                     variant="ghost" 
                     size="sm" 
                     onClick={onLogout}
-                    className={`text-white/30 hover:text-white/60 hover:bg-white/5 ${isCollapsed ? 'w-10 h-10 p-0' : 'w-full'}`}
+                    className={`text-gray-400 hover:text-gray-600 hover:bg-gray-200 ${isCollapsed ? 'w-10 h-10 p-0' : 'w-full'}`}
                     data-testid="logout-button"
                   >
                     <LogOut className="w-4 h-4" />
@@ -385,7 +385,7 @@ const Layout = ({ user, onLogout }) => {
         {/* Footer */}
         {!isCollapsed && (
           <div className="px-4 pb-3">
-            <p className="text-[9px] text-white/15">© 2026 YASH Technologies</p>
+            <p className="text-[9px] text-gray-300">© 2026 YASH Technologies</p>
           </div>
         )}
       </aside>
