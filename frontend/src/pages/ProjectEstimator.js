@@ -1651,6 +1651,7 @@ const ProjectEstimator = () => {
       return;
     }
 
+    try {
     const selectedCustomer = customers.find(c => c.id === customerId);
     const wb = new ExcelJS.Workbook();
     wb.creator = "YASH EstiPro";
@@ -1758,8 +1759,15 @@ const ProjectEstimator = () => {
     grandRow.eachCell(c => { c.fill = finalFill; c.font = finalFont; c.border = thinBorder; });
 
     // === Detail sheets per wave ===
+    const usedNames = new Set(["Summary"]);
     waves.forEach(wave => {
-      const dws = wb.addWorksheet(wave.name.substring(0, 30));
+      let sheetName = wave.name.replace(/[\\/*?\[\]:]/g, "").substring(0, 28);
+      if (!sheetName) sheetName = "Wave";
+      let finalName = sheetName;
+      let counter = 2;
+      while (usedNames.has(finalName)) { finalName = `${sheetName.substring(0, 26)}_${counter++}`; }
+      usedNames.add(finalName);
+      const dws = wb.addWorksheet(finalName);
       const titleR = dws.addRow([`${wave.name} — ${wave.duration_months} months`]);
       titleR.font = { bold: true, size: 13 };
       dws.addRow([]);
@@ -1817,6 +1825,10 @@ const ProjectEstimator = () => {
     const buffer = await wb.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `${projectNumber || projectName || "Project"}_v${projectVersion}_Estimate.xlsx`);
     toast.success("Exported to Excel successfully");
+    } catch (err) {
+      console.error("Excel export error:", err);
+      toast.error("Export failed: " + (err.message || "Unknown error"));
+    }
   };
 
   const activeWave = waves.find(w => w.id === activeWaveId);
@@ -2601,13 +2613,15 @@ const ProjectEstimator = () => {
             </div>
           ) : (
             <Tabs value={activeWaveId} onValueChange={setActiveWaveId}>
-              <TabsList className="mb-4">
-                {waves.map((wave) => (
-                  <TabsTrigger key={wave.id} value={wave.id} data-testid={`wave-tab-${wave.id}`}>
-                    {wave.name} ({wave.duration_months}m)
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+              <div className="overflow-x-auto pb-1 mb-3">
+                <TabsList className="inline-flex w-max">
+                  {waves.map((wave) => (
+                    <TabsTrigger key={wave.id} value={wave.id} data-testid={`wave-tab-${wave.id}`}>
+                      {wave.name} ({wave.duration_months}m)
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
               {waves.map((wave) => {
                 const waveSummary = calculateWaveSummary(wave);
                 return (
