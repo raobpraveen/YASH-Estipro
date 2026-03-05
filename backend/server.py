@@ -1494,10 +1494,10 @@ async def create_new_version(project_id: str, input: ProjectUpdate, user: dict =
     if not existing:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    # Mark current as not latest
+    # Mark current as not latest and set status to superseded
     await db.projects.update_one(
         {"id": project_id},
-        {"$set": {"is_latest_version": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {"is_latest_version": False, "status": "superseded", "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
     
     # Get current max version for this project number

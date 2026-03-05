@@ -14,7 +14,7 @@ import {
   Trash2, Edit2, Copy, FileText, GitCompare, 
   ChevronDown, ChevronRight, Clock, CheckCircle, XCircle, FileEdit,
   Bookmark, BookmarkCheck, Plus, Filter, Search, X, User, Calendar,
-  Eye, Archive, ArchiveRestore, FolderKanban
+  Eye, Archive, ArchiveRestore, FolderKanban, History
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,6 +24,7 @@ const API = `${BACKEND_URL}/api`;
 const STATUS_CONFIG = {
   draft: { label: "Draft", color: "bg-gray-100 text-gray-700", icon: FileEdit },
   in_review: { label: "In Review", color: "bg-amber-100 text-amber-700", icon: Clock },
+  superseded: { label: "Superseded", color: "bg-gray-100 text-gray-500", icon: History },
   approved: { label: "Approved", color: "bg-green-100 text-green-700", icon: CheckCircle },
   rejected: { label: "Rejected", color: "bg-red-100 text-red-700", icon: XCircle },
 };

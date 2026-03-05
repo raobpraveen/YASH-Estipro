@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { 
@@ -22,30 +22,20 @@ import {
   Bell,
   UserCircle
 } from "lucide-react";
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./ui/tooltip";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "./ui/popover";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 const Layout = ({ user, onLogout }) => {
   const navigate = useNavigate();
-  // Load saved preference from localStorage
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
     return saved === 'true';
   });
-  const [isHovering, setIsHovering] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [expandedSections, setExpandedSections] = useState({
@@ -53,75 +43,79 @@ const Layout = ({ user, onLogout }) => {
     master: true,
     admin: true,
   });
+  const [flyoutSection, setFlyoutSection] = useState(null);
+  const flyoutRef = useRef(null);
 
-  // Save preference to localStorage when changed
   useEffect(() => {
     localStorage.setItem('sidebar-collapsed', isCollapsed.toString());
   }, [isCollapsed]);
 
-  // Fetch notifications
-  useEffect(() => {
-    if (user?.email) {
-      fetchNotifications();
-      // Poll for new notifications every 30 seconds
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [user?.email]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/api/notifications?user_email=${user?.email}`, {
+      if (!token) return;
+      const response = await axios.get(`${API}/notifications`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setNotifications(response.data.slice(0, 20));
-      setUnreadCount(response.data.filter(n => !n.is_read).length);
+      setNotifications(response.data || []);
+      setUnreadCount((response.data || []).filter(n => !n.is_read).length);
     } catch (error) {
-      console.error("Failed to fetch notifications", error);
+      console.error("Failed to fetch notifications");
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  // Close flyout when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (flyoutRef.current && !flyoutRef.current.contains(e.target)) {
+        setFlyoutSection(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const markAllAsRead = async () => {
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`${API}/api/notifications/mark-all-read?user_email=${user?.email}`, {}, {
+      await axios.post(`${API}/notifications/mark-all-read`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setNotifications(notifications.map(n => ({ ...n, is_read: true })));
-      setUnreadCount(0);
+      fetchNotifications();
     } catch (error) {
-      console.error("Failed to mark notifications as read", error);
+      console.error("Failed to mark notifications as read");
     }
   };
 
-  // Keyboard shortcut: Ctrl+B to toggle sidebar
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
+    setFlyoutSection(null);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
         e.preventDefault();
-        setIsCollapsed(prev => !prev);
+        toggleSidebar();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  });
 
-  const toggleSidebar = useCallback(() => {
-    setIsCollapsed(prev => !prev);
-  }, []);
-
-  // Determine if sidebar should show expanded state (collapsed but hovering)
-  const showExpanded = !isCollapsed || isHovering;
-
-  // Main navigation items
+  // Nav items
   const mainNavItems = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/estimator", icon: Calculator, label: "Estimator" },
     { path: "/projects", icon: FolderKanban, label: "Projects" },
   ];
 
-  // Master Data items
   const masterDataItems = [
     { path: "/customers", icon: Users, label: "Customers" },
     { path: "/technologies", icon: Cpu, label: "Technologies" },
@@ -132,14 +126,12 @@ const Layout = ({ user, onLogout }) => {
     { path: "/sales-managers", icon: UserCircle, label: "Sales Managers" },
   ];
 
-  // Admin items
   const adminItems = [];
   if (user?.role === "admin") {
     adminItems.push({ path: "/users", icon: UserCog, label: "User Management" });
     adminItems.push({ path: "/audit-logs", icon: History, label: "Audit Logs" });
   }
 
-  // Settings
   const settingsItems = [
     { path: "/settings", icon: Settings, label: "Settings" },
   ];
@@ -153,62 +145,137 @@ const Layout = ({ user, onLogout }) => {
     return config[role] || config.user;
   };
 
-  const NavItem = ({ item }) => (
+  // Sections config for collapsed flyout
+  const sections = [
+    { key: "main", title: "Main", icon: LayoutDashboard, items: mainNavItems },
+    { key: "master", title: "Master Data", icon: Layers, items: masterDataItems },
+    ...(adminItems.length > 0 ? [{ key: "admin", title: "Admin", icon: UserCog, items: adminItems }] : []),
+    { key: "settings", title: "", icon: null, items: settingsItems },
+  ];
+
+  const NavItem = ({ item, onClick }) => (
+    <NavLink
+      to={item.path}
+      onClick={onClick}
+      className={({ isActive }) =>
+        `flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all duration-150 rounded-md ${
+          isActive
+            ? "bg-white/10 text-white"
+            : "text-white/50 hover:text-white/80 hover:bg-white/5"
+        }`
+      }
+      data-testid={`nav-${item.label.toLowerCase().replace(/ /g, '-')}`}
+    >
+      <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
+      <span className="whitespace-nowrap">{item.label}</span>
+    </NavLink>
+  );
+
+  // Collapsed icon-only nav item
+  const CollapsedNavItem = ({ item }) => (
     <TooltipProvider delayDuration={0}>
       <Tooltip>
         <TooltipTrigger asChild>
           <NavLink
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-md relative ${
+              `flex items-center justify-center p-2.5 rounded-md transition-all duration-150 ${
                 isActive
-                  ? "bg-white/8 text-white border-r-[3px] border-r-[#3B82F6] rounded-r-none"
-                  : "text-white/50 hover:text-white/80 hover:bg-white/5"
-              } ${!showExpanded ? 'justify-center' : ''}`
+                  ? "bg-white/10 text-white"
+                  : "text-white/40 hover:text-white/70 hover:bg-white/5"
+              }`
             }
             data-testid={`nav-${item.label.toLowerCase().replace(/ /g, '-')}`}
           >
-            <item.icon className="w-5 h-5 flex-shrink-0" />
-            {showExpanded && <span className="whitespace-nowrap">{item.label}</span>}
+            <item.icon className="w-[18px] h-[18px]" />
           </NavLink>
         </TooltipTrigger>
-        {!showExpanded && (
-          <TooltipContent side="right" className="bg-[#1E293B] text-white border-white/10">
-            {item.label}
-          </TooltipContent>
-        )}
+        <TooltipContent side="right" className="bg-[#1E293B] text-white border-white/10">
+          {item.label}
+        </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
 
-  const toggleSection = (sectionKey) => {
-    setExpandedSections(prev => ({ ...prev, [sectionKey]: !prev[sectionKey] }));
+  // Collapsed section header that opens flyout
+  const CollapsedSectionHeader = ({ section }) => {
+    if (!section.title) {
+      return (
+        <div className="space-y-1 px-1.5">
+          {section.items.map(item => (
+            <CollapsedNavItem key={item.path} item={item} />
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setFlyoutSection(flyoutSection === section.key ? null : section.key)}
+          className={`w-full flex flex-col items-center gap-0.5 py-2.5 px-1 rounded-md transition-colors ${
+            flyoutSection === section.key ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/60 hover:bg-white/5'
+          }`}
+          data-testid={`collapsed-section-${section.key}`}
+        >
+          <section.icon className="w-[18px] h-[18px]" />
+          <span className="text-[8px] font-medium uppercase tracking-wide mt-0.5">{section.title.split(' ')[0]}</span>
+        </button>
+      </div>
+    );
   };
 
-  const NavSection = ({ title, sectionKey, items, icon: SectionIcon }) => {
-    if (items.length === 0) return null;
-    const isExpanded = expandedSections[sectionKey] !== false;
-    
+  // Flyout panel for collapsed mode
+  const renderFlyout = () => {
+    if (!flyoutSection || !isCollapsed) return null;
+    const section = sections.find(s => s.key === flyoutSection);
+    if (!section) return null;
+
+    return (
+      <div
+        ref={flyoutRef}
+        className="fixed left-16 top-0 h-full w-56 bg-[#111827] border-l border-white/5 shadow-xl z-50 flex flex-col"
+        style={{ top: 0 }}
+      >
+        <div className="p-4 border-b border-white/5">
+          <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">{section.title}</p>
+        </div>
+        <nav className="flex-1 p-2 overflow-y-auto">
+          <ul className="space-y-0.5">
+            {section.items.map(item => (
+              <li key={item.path}>
+                <NavItem item={item} onClick={() => setFlyoutSection(null)} />
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+    );
+  };
+
+  // Expanded section with collapsible toggle
+  const ExpandedSection = ({ section }) => {
+    if (section.items.length === 0) return null;
+    const isExpanded = expandedSections[section.key] !== false;
+
     return (
       <div className="mb-1">
-        {showExpanded && title ? (
+        {section.title ? (
           <button
-            onClick={() => toggleSection(sectionKey)}
+            onClick={() => setExpandedSections(prev => ({ ...prev, [section.key]: !prev[section.key] }))}
             className="w-full flex items-center justify-between px-3 py-2 mt-2 text-white/40 hover:text-white/60 transition-colors"
-            data-testid={`section-toggle-${sectionKey}`}
+            data-testid={`section-toggle-${section.key}`}
           >
             <div className="flex items-center gap-2">
-              {SectionIcon && <SectionIcon className="w-3.5 h-3.5" />}
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em]">{title}</span>
+              {section.icon && <section.icon className="w-3.5 h-3.5" />}
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em]">{section.title}</span>
             </div>
             <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} />
           </button>
-        ) : !showExpanded && title ? (
-          <div className="h-px bg-white/5 mx-3 my-3" />
         ) : null}
-        {(isExpanded || !showExpanded) && (
+        {isExpanded && (
           <ul className="space-y-0.5 px-2">
-            {items.map((item) => (
+            {section.items.map(item => (
               <li key={item.path}>
                 <NavItem item={item} />
               </li>
@@ -222,13 +289,11 @@ const Layout = ({ user, onLogout }) => {
   return (
     <div className="flex min-h-screen">
       <aside 
-        className={`${showExpanded ? 'w-64' : 'w-16'} bg-[#0B1120] flex flex-col transition-all duration-300 ease-in-out`}
-        onMouseEnter={() => isCollapsed && setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
+        className={`${isCollapsed ? 'w-16' : 'w-64'} bg-[#0B1120] flex flex-col transition-all duration-300 ease-in-out flex-shrink-0`}
       >
         {/* Header with logos */}
-        <div className={`p-4 border-b border-white/5 ${!showExpanded ? 'flex justify-center' : ''}`}>
-          {!showExpanded ? (
+        <div className={`p-3 border-b border-white/5 ${isCollapsed ? 'flex justify-center' : ''}`}>
+          {isCollapsed ? (
             <img 
               src="/yash-logo-white.jpg" 
               alt="YASH" 
@@ -238,67 +303,57 @@ const Layout = ({ user, onLogout }) => {
           ) : (
             <div className="cursor-pointer" onClick={() => navigate('/dashboard')}>
               <div className="flex items-center gap-3">
-                <img 
-                  src="/yash-logo-white.jpg" 
-                  alt="YASH Technologies" 
-                  className="h-10 object-contain rounded"
-                />
-                <img 
-                  src="/estipro-logo-new.png" 
-                  alt="EstiPro" 
-                  className="h-10 object-contain"
-                />
+                <img src="/yash-logo-white.jpg" alt="YASH Technologies" className="h-9 object-contain rounded" />
+                <img src="/estipro-logo-new.png" alt="EstiPro" className="h-9 object-contain" />
               </div>
-              <p className="text-[10px] text-white/40 mt-2 tracking-wider uppercase">Project Cost Estimator</p>
+              <p className="text-[9px] text-white/30 mt-1.5 tracking-wider uppercase">Project Cost Estimator</p>
             </div>
           )}
         </div>
 
         {/* Toggle button */}
-        <TooltipProvider delayDuration={0}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={toggleSidebar}
-                className="mx-auto my-2 p-2 rounded-lg hover:bg-white/10 transition-colors"
-                data-testid="toggle-sidebar"
-              >
-                {isCollapsed ? (
-                  <ChevronRight className="w-4 h-4 text-white/70" />
-                ) : (
-                  <ChevronLeft className="w-4 h-4 text-white/70" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="bg-[#1E293B] text-white border-white/10">
-              {isCollapsed ? "Expand sidebar (Ctrl+B)" : "Collapse sidebar (Ctrl+B)"}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <button
+          onClick={toggleSidebar}
+          className="mx-auto my-2 p-1.5 rounded-md hover:bg-white/10 transition-colors"
+          data-testid="toggle-sidebar"
+        >
+          {isCollapsed ? (
+            <ChevronRight className="w-4 h-4 text-white/50" />
+          ) : (
+            <ChevronLeft className="w-4 h-4 text-white/50" />
+          )}
+        </button>
 
         {/* Navigation */}
-        <nav className="flex-1 p-2 overflow-y-auto">
-          <NavSection title="Main" sectionKey="main" items={mainNavItems} icon={LayoutDashboard} />
-          <NavSection title="Master Data" sectionKey="master" items={masterDataItems} icon={Layers} />
-          {adminItems.length > 0 && <NavSection title="Admin" sectionKey="admin" items={adminItems} icon={UserCog} />}
-          <NavSection title="" sectionKey="settings" items={settingsItems} />
+        <nav className="flex-1 overflow-y-auto py-1">
+          {isCollapsed ? (
+            <div className="space-y-2 px-1.5">
+              {sections.map(section => (
+                <CollapsedSectionHeader key={section.key} section={section} />
+              ))}
+            </div>
+          ) : (
+            sections.map(section => (
+              <ExpandedSection key={section.key} section={section} />
+            ))
+          )}
         </nav>
 
         {/* User info */}
         {user && (
-          <div className={`p-3 border-t border-white/5 ${!showExpanded ? 'flex flex-col items-center' : ''}`}>
-            {showExpanded && (
+          <div className={`p-3 border-t border-white/5 ${isCollapsed ? 'flex flex-col items-center' : ''}`}>
+            {!isCollapsed && (
               <>
-                <div className="flex items-center gap-3 mb-3 px-2">
-                  <div className="w-8 h-8 rounded-full bg-[#3B82F6]/15 flex items-center justify-center">
-                    <User className="w-4 h-4 text-[#3B82F6]" />
+                <div className="flex items-center gap-3 mb-2 px-1">
+                  <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center">
+                    <User className="w-3.5 h-3.5 text-white/50" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{user.name}</p>
-                    <p className="text-xs text-white/30 truncate">{user.email}</p>
+                    <p className="text-xs font-medium text-white/80 truncate">{user.name}</p>
+                    <p className="text-[10px] text-white/30 truncate">{user.email}</p>
                   </div>
                 </div>
-                <Badge className={`${getRoleBadge(user.role).color} text-xs mb-3 ml-2`}>
+                <Badge className={`${getRoleBadge(user.role).color} text-[10px] mb-2 ml-1`}>
                   {getRoleBadge(user.role).label}
                 </Badge>
               </>
@@ -310,14 +365,14 @@ const Layout = ({ user, onLogout }) => {
                     variant="ghost" 
                     size="sm" 
                     onClick={onLogout}
-                    className={`text-white/40 hover:text-white/70 hover:bg-white/5 ${!showExpanded ? 'w-10 h-10 p-0' : 'w-full'}`}
+                    className={`text-white/30 hover:text-white/60 hover:bg-white/5 ${isCollapsed ? 'w-10 h-10 p-0' : 'w-full'}`}
                     data-testid="logout-button"
                   >
                     <LogOut className="w-4 h-4" />
-                    {showExpanded && <span className="ml-2">Sign Out</span>}
+                    {!isCollapsed && <span className="ml-2 text-xs">Sign Out</span>}
                   </Button>
                 </TooltipTrigger>
-                {!showExpanded && (
+                {isCollapsed && (
                   <TooltipContent side="right" className="bg-[#1E293B] text-white border-white/10">
                     Sign Out
                   </TooltipContent>
@@ -328,12 +383,16 @@ const Layout = ({ user, onLogout }) => {
         )}
 
         {/* Footer */}
-        {showExpanded && (
-          <div className="p-4 border-t border-white/5">
-            <p className="text-[10px] text-white/20">© 2026 YASH Technologies</p>
+        {!isCollapsed && (
+          <div className="px-4 pb-3">
+            <p className="text-[9px] text-white/15">© 2026 YASH Technologies</p>
           </div>
         )}
       </aside>
+
+      {/* Flyout panel for collapsed sections */}
+      {renderFlyout()}
+
       <main className="flex-1 overflow-auto">
         {/* Top Bar with Notifications */}
         <div className="sticky top-0 z-10 bg-white border-b px-8 py-3 flex justify-end items-center">
