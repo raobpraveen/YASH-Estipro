@@ -2664,78 +2664,6 @@ const ProjectEstimator = () => {
                               Add Resource
                             </Button>
                           </DialogTrigger>
-                          {!isReadOnly && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-gray-400 text-gray-600 hover:bg-gray-50"
-                          onClick={() => handleAddEmptyRow(wave.id)}
-                          data-testid={`add-row-${wave.id}`}
-                        >
-                          <Plus className="w-4 h-4 mr-1" />
-                          Add Row
-                        </Button>
-                          )}
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleAddPhaseColumn(wave.id)}
-                                className="border-teal-600 text-teal-600 hover:bg-teal-50"
-                                data-testid={`add-month-${wave.id}`}
-                              >
-                                <Plus className="w-4 h-4 mr-1" />
-                                Add Month
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleRemovePhaseColumn(wave.id)}
-                                className="border-orange-600 text-orange-600 hover:bg-orange-50"
-                                data-testid={`remove-month-${wave.id}`}
-                              >
-                                <Minus className="w-4 h-4 mr-1" />
-                                Remove Month
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={handleDownloadWaveTemplate}
-                                className="border-emerald-600 text-emerald-600 hover:bg-emerald-50"
-                                data-testid="download-template-button"
-                              >
-                                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                                Download Template
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={handleDownloadWaveData}
-                                className="border-indigo-600 text-indigo-600 hover:bg-indigo-50"
-                                data-testid="download-data-button"
-                              >
-                                <Download className="w-4 h-4 mr-2" />
-                                Download Data
-                              </Button>
-                              <div className="relative">
-                                <input
-                                  type="file"
-                                  accept=".xlsx,.xls"
-                                  onChange={handleUploadWaveGrid}
-                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                  data-testid="upload-grid-input"
-                                />
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  className="border-purple-600 text-purple-600 hover:bg-purple-50 pointer-events-none"
-                                >
-                                  <Upload className="w-4 h-4 mr-2" />
-                                  Upload Grid
-                                </Button>
-                              </div>
-                            </>
-                          )}
                           <DialogContent className="max-w-md">
                             <DialogHeader>
                               <DialogTitle className="text-2xl font-bold text-[#0F172A]">Add Resource to {wave.name}</DialogTitle>
@@ -2830,6 +2758,79 @@ const ProjectEstimator = () => {
                             </div>
                           </DialogContent>
                         </Dialog>
+                        )}
+                        {!isReadOnly && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-gray-400 text-gray-600 hover:bg-gray-50"
+                          onClick={() => handleAddEmptyRow(wave.id)}
+                          data-testid={`add-row-${wave.id}`}
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Add Row
+                        </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAddPhaseColumn(wave.id)}
+                          className="border-teal-600 text-teal-600 hover:bg-teal-50"
+                          data-testid={`add-month-${wave.id}`}
+                          disabled={isReadOnly}
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Add Month
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRemovePhaseColumn(wave.id)}
+                          className="border-orange-600 text-orange-600 hover:bg-orange-50"
+                          data-testid={`remove-month-${wave.id}`}
+                          disabled={isReadOnly}
+                        >
+                          <Minus className="w-4 h-4 mr-1" />
+                          Remove Month
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={handleDownloadWaveTemplate}
+                          className="border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                          data-testid="download-template-button"
+                        >
+                          <FileSpreadsheet className="w-4 h-4 mr-2" />
+                          Download Template
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={handleDownloadWaveData}
+                          className="border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+                          data-testid="download-data-button"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download Data
+                        </Button>
+                        {!isReadOnly && (
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept=".xlsx,.xls"
+                            onChange={handleUploadWaveGrid}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            data-testid="upload-grid-input"
+                          />
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="border-purple-600 text-purple-600 hover:bg-purple-50 pointer-events-none"
+                          >
+                            <Upload className="w-4 h-4 mr-2" />
+                            Upload Grid
+                          </Button>
+                        </div>
                         )}
                         {!isReadOnly && (
                         <Button 
