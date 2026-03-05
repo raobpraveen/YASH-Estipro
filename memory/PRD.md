@@ -55,6 +55,18 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with comprehensi
 - **Sales Manager shown in View Summary dialog**
 - Sales Manager in ProjectSummary page + Excel exports
 
+### Mar 4-5, 2026 Updates (Complete)
+- **Dashboard KPIs deduplication**: Unique projects only (by project_number, latest version)
+- **Sidebar redesigned**: Dark theme (#0B1120), right-edge blue accent on active items, white YASH logo, clickable logo→Dashboard
+- **Wave grid**: Add Month / Remove Month buttons, Comments column per skill row (max 100 words)
+- **Approver edit flow**: Approvers can edit in_review projects → new version with prompt (Keep In Review / Approve & Save)
+- **Customer edit**: Full edit dialog with PUT endpoint, + "Food & Beverages" and "Professional Services" industry verticals
+- **Skills popup**: Technology field moved to 1st position
+- **Mandatory fields**: Technology & Project Type required on save
+- **Branding**: "YASH EstiPro" throughout, "Made with Emergent" hidden, YASH logo on Dashboard/Estimator/Projects
+- **Excel export**: Status, Version Notes, Comments column in wave detail, Nego Buffer footer
+- **Email templates**: Dark-themed, CID logo, clickable buttons, plain text URL
+
 ## Technical Architecture
 - **Backend**: FastAPI + MongoDB (motor), JWT auth
 - **Frontend**: React, Shadcn UI, Tailwind CSS, recharts
@@ -78,3 +90,5 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with comprehensi
 - Iteration 14: Value by Status, Leaderboard, Multi-select filters, Excel exports (100%)
 - Iteration 15: KPI tooltips, clickable bars, combination grouping, comparison mode, Projects filters (100%)
 - Iteration 16: YASH logo on Dashboard & Estimator, sidebar theme, mandatory fields, Skills field order, Dashboard dedup, Customer edit + industry verticals (100%)
+- Iteration 17: Logo replacement, Saved Projects logo, badge hidden, sidebar grouping, logo navigation, Excel fields, wave template (100%)
+- Iteration 18: Wave Add/Remove Month, Comments column, sidebar dark redesign, approver save flow, white YASH logo (100%)
