@@ -199,16 +199,34 @@ const ProjectEstimator = () => {
       }
       
       // Capture snapshot for change detection (approver flow)
+      // Compute directly from project data (state may not be updated yet)
+      const loadedWaves = project.waves || [];
       setOriginalSnapshot(JSON.stringify({
-        name: project.name,
+        name: project.name || "",
         customer_id: project.customer_id || "",
-        project_locations: project.project_locations || (project.project_location ? [project.project_location] : []),
-        technology_ids: project.technology_ids || (project.technology_id ? [project.technology_id] : []),
-        project_type_ids: project.project_type_ids || (project.project_type_id ? [project.project_type_id] : []),
+        locations: [...(project.project_locations || (project.project_location ? [project.project_location] : []))].sort(),
+        tech_ids: [...(project.technology_ids || (project.technology_id ? [project.technology_id] : []))].sort(),
+        type_ids: [...(project.project_type_ids || (project.project_type_id ? [project.project_type_id] : []))].sort(),
         description: project.description || "",
-        profit_margin_percentage: project.profit_margin_percentage || 35,
-        sales_manager_id: project.sales_manager_id || "",
-        waves: project.waves || [],
+        margin: project.profit_margin_percentage || 35,
+        sales_mgr: project.sales_manager_id || "",
+        waves: loadedWaves.map(w => ({
+          name: w.name,
+          months: w.duration_months,
+          phases: w.phase_names,
+          nego: w.nego_buffer_percentage || 0,
+          allocs: (w.grid_allocations || []).map(a => ({
+            skill: a.skill_id,
+            level: a.proficiency_level,
+            loc: a.base_location_id,
+            salary: a.avg_monthly_salary,
+            overhead: a.overhead_percentage,
+            onsite: !!a.is_onsite,
+            travel: !!a.travel_required,
+            phases: Object.keys(a.phase_allocations || {}).sort((x, y) => Number(x) - Number(y)).map(k => a.phase_allocations[k] || 0),
+            comments: (a.comments || "").trim(),
+          })),
+        })),
       }));
       
       const versionInfo = `${project.project_number || "project"} v${project.version || 1}`;
@@ -1059,28 +1077,40 @@ const ProjectEstimator = () => {
     }
   };
 
-  const hasProjectChanges = () => {
-    if (!originalSnapshot) return false;
-    const currentSnapshot = JSON.stringify({
+  // Normalize wave data for comparison (strip computed/extra fields, normalize key types)
+  const normalizeForComparison = () => {
+    return JSON.stringify({
       name: projectName,
       customer_id: customerId,
-      project_locations: projectLocations,
-      technology_ids: technologyIds,
-      project_type_ids: projectTypeIds,
+      locations: [...projectLocations].sort(),
+      tech_ids: [...technologyIds].sort(),
+      type_ids: [...projectTypeIds].sort(),
       description: projectDescription,
-      profit_margin_percentage: profitMarginPercentage,
-      sales_manager_id: salesManagerId,
+      margin: profitMarginPercentage,
+      sales_mgr: salesManagerId,
       waves: waves.map(w => ({
-        id: w.id,
         name: w.name,
-        duration_months: w.duration_months,
-        phase_names: w.phase_names,
-        logistics_config: w.logistics_config,
-        nego_buffer_percentage: w.nego_buffer_percentage || 0,
-        grid_allocations: w.grid_allocations,
+        months: w.duration_months,
+        phases: w.phase_names,
+        nego: w.nego_buffer_percentage || 0,
+        allocs: w.grid_allocations.map(a => ({
+          skill: a.skill_id,
+          level: a.proficiency_level,
+          loc: a.base_location_id,
+          salary: a.avg_monthly_salary,
+          overhead: a.overhead_percentage,
+          onsite: !!a.is_onsite,
+          travel: !!a.travel_required,
+          phases: Object.keys(a.phase_allocations || {}).sort((x, y) => Number(x) - Number(y)).map(k => a.phase_allocations[k] || 0),
+          comments: (a.comments || "").trim(),
+        })),
       })),
     });
-    return currentSnapshot !== originalSnapshot;
+  };
+
+  const hasProjectChanges = () => {
+    if (!originalSnapshot) return false;
+    return normalizeForComparison() !== originalSnapshot;
   };
 
   const handleApproverSave = async (saveAsApproved) => {
@@ -1139,22 +1169,7 @@ const ProjectEstimator = () => {
         toast.success(`New version v${response.data.version} saved (still in review)`);
       }
       // Update snapshot to reflect new saved state
-      setOriginalSnapshot(JSON.stringify({
-        name: projectName,
-        customer_id: customerId,
-        project_locations: projectLocations,
-        technology_ids: technologyIds,
-        project_type_ids: projectTypeIds,
-        description: projectDescription,
-        profit_margin_percentage: profitMarginPercentage,
-        sales_manager_id: salesManagerId,
-        waves: waves.map(w => ({
-          id: w.id, name: w.name, duration_months: w.duration_months,
-          phase_names: w.phase_names, logistics_config: w.logistics_config,
-          nego_buffer_percentage: w.nego_buffer_percentage || 0,
-          grid_allocations: w.grid_allocations,
-        })),
-      }));
+      setTimeout(() => setOriginalSnapshot(normalizeForComparison()), 100);
       setApproverSaveDialogOpen(false);
     } catch (error) {
       toast.error("Failed to save project");
