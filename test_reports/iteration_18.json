@@ -1,0 +1,48 @@
+{
+  "summary": "Iteration 18 frontend testing complete. All 5 requested features tested and verified: 1) Wave grid Add/Remove Month buttons, 2) Comments column in wave grid, 3) Sidebar dark theme with white YASH logo and blue right-edge active nav border, 4) YASH logo click navigates to dashboard, 5) Approver Save Changes button for in_review projects, 6) Made with Emergent badge is hidden.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard", "issues": ["Console warnings about invalid HTML nesting (<tr>/<td>/<th> inside <span>) from dynamic array rendering. This is a React hydration warning that doesn't affect functionality but should be addressed for cleaner console output."]},
+      {"screen": "Dashboard KPI Charts", "issues": ["Console warnings: 'The width(-1) and height(-1) of chart should be greater than 0' - chart sizing issue during initial render but displays correctly after load."]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_18.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "HTML structure warning in Dashboard: <span> elements wrapping <tr> inside <tbody> causes React hydration warnings. Consider using React.Fragment instead of span for array iteration."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100%"},
+  "test_credentials": {"email": "admin@emergent.com", "password": "password"},
+  "seed_data_creation": "None - used existing test data",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 18 tested 5 features: 1) Add Month/Remove Month buttons in wave grid toolbar - working with toast feedback, 2) Comments column at end of wave grid with textareas for each resource row, 3) Sidebar dark theme (#0B1120) with white YASH logo (yash-logo-white.jpg), 4) Active nav item has border-r-[3px] border-r-[#3B82F6] for blue right accent, 5) Approver can see Save Changes purple button when editing in_review projects, 6) Made with Emergent badge is hidden (display: none !important). Test project PRJ-0004 (ID: 37482dc9-7743-4197-9e02-15dd76a04b3d) has 5 resources and 5 months in wave.",
+  "features_tested": {
+    "wave_grid_add_month_button": "PASS - Button visible with + icon, adds new month column",
+    "wave_grid_remove_month_button": "PASS - Button visible with - icon, removes last month column with toast feedback",
+    "wave_grid_comments_column": "PASS - Comments header visible in table, 5 textareas with data-testid='comment-{id}' for each resource row",
+    "sidebar_dark_background": "PASS - aside element has bg-[#0B1120] (rgb(11, 17, 32))",
+    "sidebar_white_yash_logo": "PASS - yash-logo-white.jpg displayed in sidebar header",
+    "sidebar_active_nav_border": "PASS - Active nav has className including 'border-r-[3px] border-r-[#3B82F6] rounded-r-none'",
+    "sidebar_logo_click_navigation": "PASS - Clicking YASH logo navigates to /dashboard",
+    "saved_projects_yash_logo": "PASS - yash-logo-new.png displayed next to 'Saved Projects' heading",
+    "approver_save_changes_button": "PASS - Purple 'Save Changes' button visible when admin user edits in_review project",
+    "made_with_emergent_hidden": "PASS - Badge has style 'display: none !important'"
+  },
+  "test_execution": {
+    "frontend_tests": {
+      "sidebar_tests": "4/4 passed",
+      "wave_grid_tests": "3/3 passed",
+      "approver_tests": "1/1 passed",
+      "badge_tests": "1/1 passed",
+      "projects_page_tests": "2/2 passed"
+    }
+  }
+}

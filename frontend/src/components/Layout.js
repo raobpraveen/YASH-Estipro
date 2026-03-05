@@ -154,10 +154,10 @@ const Layout = ({ user, onLogout }) => {
           <NavLink
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-lg ${
+              `flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-md relative ${
                 isActive
-                  ? "bg-white/20 text-white shadow-lg backdrop-blur-sm"
-                  : "text-white/70 hover:text-white hover:bg-white/10"
+                  ? "bg-white/8 text-white border-r-[3px] border-r-[#3B82F6] rounded-r-none"
+                  : "text-white/50 hover:text-white/80 hover:bg-white/5"
               } ${!showExpanded ? 'justify-center' : ''}`
             }
             data-testid={`nav-${item.label.toLowerCase().replace(/ /g, '-')}`}
@@ -178,14 +178,14 @@ const Layout = ({ user, onLogout }) => {
   const NavSection = ({ title, items }) => (
     <>
       {showExpanded && items.length > 0 && title && (
-        <div className="px-3 pt-5 pb-1.5">
-          <p className="text-[10px] font-bold text-cyan-300/60 uppercase tracking-[0.18em]">{title}</p>
+        <div className="px-3 pt-6 pb-1">
+          <p className="text-[10px] font-semibold text-white/25 uppercase tracking-[0.2em]">{title}</p>
         </div>
       )}
       {!showExpanded && items.length > 0 && title && (
-        <div className="h-px bg-white/10 mx-2 my-3" />
+        <div className="h-px bg-white/5 mx-3 my-3" />
       )}
-      <ul className="space-y-0.5">
+      <ul className="space-y-0.5 px-2">
         {items.map((item) => (
           <li key={item.path}>
             <NavItem item={item} />
@@ -198,34 +198,27 @@ const Layout = ({ user, onLogout }) => {
   return (
     <div className="flex min-h-screen">
       <aside 
-        className={`${showExpanded ? 'w-64' : 'w-16'} bg-gradient-to-b from-[#0C4A6E] via-[#155E75] to-[#134E4A] flex flex-col transition-all duration-300 ease-in-out`}
+        className={`${showExpanded ? 'w-64' : 'w-16'} bg-[#0B1120] flex flex-col transition-all duration-300 ease-in-out`}
         onMouseEnter={() => isCollapsed && setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
         {/* Header with logos */}
-        <div className={`p-4 border-b border-white/10 ${!showExpanded ? 'flex justify-center' : ''}`}>
+        <div className={`p-4 border-b border-white/5 ${!showExpanded ? 'flex justify-center' : ''}`}>
           {!showExpanded ? (
             <img 
-              src="/estipro-logo-new.png" 
-              alt="EstiPro" 
-              className="h-8 w-8 object-contain cursor-pointer"
+              src="/yash-logo-white.jpg" 
+              alt="YASH" 
+              className="h-8 w-8 object-contain rounded cursor-pointer"
               onClick={() => navigate('/dashboard')}
             />
           ) : (
             <div className="cursor-pointer" onClick={() => navigate('/dashboard')}>
-              <div className="flex items-center gap-2 mb-2">
-                <img 
-                  src="/yash-logo-new.png" 
-                  alt="YASH Technologies" 
-                  className="h-8"
-                />
-                <img 
-                  src="/estipro-logo-new.png" 
-                  alt="YASH EstiPro" 
-                  className="h-8"
-                />
-              </div>
-              <p className="text-xs text-white/60">Project Cost Estimator</p>
+              <img 
+                src="/yash-logo-white.jpg" 
+                alt="YASH Technologies" 
+                className="h-12 object-contain rounded"
+              />
+              <p className="text-[10px] text-white/40 mt-2 tracking-wider uppercase">Project Cost Estimator</p>
             </div>
           )}
         </div>
@@ -262,16 +255,16 @@ const Layout = ({ user, onLogout }) => {
 
         {/* User info */}
         {user && (
-          <div className={`p-3 border-t border-white/10 ${!showExpanded ? 'flex flex-col items-center' : ''}`}>
+          <div className={`p-3 border-t border-white/5 ${!showExpanded ? 'flex flex-col items-center' : ''}`}>
             {showExpanded && (
               <>
                 <div className="flex items-center gap-3 mb-3 px-2">
-                  <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center">
-                    <User className="w-4 h-4 text-cyan-400" />
+                  <div className="w-8 h-8 rounded-full bg-[#3B82F6]/15 flex items-center justify-center">
+                    <User className="w-4 h-4 text-[#3B82F6]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">{user.name}</p>
-                    <p className="text-xs text-white/50 truncate">{user.email}</p>
+                    <p className="text-xs text-white/30 truncate">{user.email}</p>
                   </div>
                 </div>
                 <Badge className={`${getRoleBadge(user.role).color} text-xs mb-3 ml-2`}>
@@ -286,7 +279,7 @@ const Layout = ({ user, onLogout }) => {
                     variant="ghost" 
                     size="sm" 
                     onClick={onLogout}
-                    className={`text-white/70 hover:text-white hover:bg-white/10 ${!showExpanded ? 'w-10 h-10 p-0' : 'w-full'}`}
+                    className={`text-white/40 hover:text-white/70 hover:bg-white/5 ${!showExpanded ? 'w-10 h-10 p-0' : 'w-full'}`}
                     data-testid="logout-button"
                   >
                     <LogOut className="w-4 h-4" />
@@ -305,8 +298,8 @@ const Layout = ({ user, onLogout }) => {
 
         {/* Footer */}
         {showExpanded && (
-          <div className="p-4 border-t border-white/10">
-            <p className="text-xs text-white/40">© 2026 YASH Technologies</p>
+          <div className="p-4 border-t border-white/5">
+            <p className="text-[10px] text-white/20">© 2026 YASH Technologies</p>
           </div>
         )}
       </aside>

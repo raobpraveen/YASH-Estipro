@@ -13,7 +13,7 @@ import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Trash2, Plane, Save, FileDown, X, Settings, Copy, History, RefreshCw, Send, CheckCircle, XCircle, Clock, Calculator, Upload, FileSpreadsheet } from "lucide-react";
+import { Plus, Trash2, Plane, Save, FileDown, X, Settings, Copy, History, RefreshCw, Send, CheckCircle, XCircle, Clock, Calculator, Upload, FileSpreadsheet, Minus, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { COUNTRIES, LOGISTICS_DEFAULTS } from "@/utils/constants";
@@ -92,9 +92,16 @@ const ProjectEstimator = () => {
     custom_salary: "",
     default_mm: "",  // Default effort to apply to all months
   });
+
+  const [approverSaveDialogOpen, setApproverSaveDialogOpen] = useState(false);
+
+  // Get current user role
+  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const isApprover = currentUser.role === "approver" || currentUser.role === "admin";
   
-  // Check if project is read-only (not latest version, approved, in_review, or view-only mode)
-  const isReadOnly = !isLatestVersion || projectStatus === "approved" || projectStatus === "in_review" || isViewOnly;
+  // Check if project is read-only (not latest version, approved, or view-only mode)
+  // Approvers CAN edit projects in "in_review" status
+  const isReadOnly = !isLatestVersion || projectStatus === "approved" || (!isApprover && projectStatus === "in_review") || isViewOnly;
   
   // Wave-level logistics (applied to all onsite resources based on formula)
   const [waveLogistics, setWaveLogistics] = useState({
@@ -288,6 +295,41 @@ const ProjectEstimator = () => {
     toast.success("Wave deleted");
   };
 
+  const handleAddPhaseColumn = (waveId) => {
+    setWaves(waves.map(w => {
+      if (w.id !== waveId) return w;
+      const newIndex = w.phase_names.length + 1;
+      return {
+        ...w,
+        duration_months: w.duration_months + 1,
+        phase_names: [...w.phase_names, `Month ${newIndex}`],
+      };
+    }));
+    toast.success("Month column added");
+  };
+
+  const handleRemovePhaseColumn = (waveId) => {
+    setWaves(waves.map(w => {
+      if (w.id !== waveId) return w;
+      if (w.phase_names.length <= 1) {
+        toast.error("Cannot remove the last month column");
+        return w;
+      }
+      const lastIndex = w.phase_names.length - 1;
+      return {
+        ...w,
+        duration_months: w.duration_months - 1,
+        phase_names: w.phase_names.slice(0, -1),
+        grid_allocations: w.grid_allocations.map(a => {
+          const newPhaseAllocations = { ...a.phase_allocations };
+          delete newPhaseAllocations[lastIndex];
+          return { ...a, phase_allocations: newPhaseAllocations };
+        }),
+      };
+    }));
+    toast.success("Last month column removed");
+  };
+
   const handleUpdatePhaseName = (waveId, phaseIndex, newName) => {
     setWaves(waves.map(w => 
       w.id === waveId 
@@ -444,6 +486,7 @@ const ProjectEstimator = () => {
       is_onsite: newAllocation.is_onsite,
       travel_required: newAllocation.travel_required,
       phase_allocations: {},
+      comments: "",
     };
 
     // If default_mm is provided, apply it to all months
@@ -515,6 +558,21 @@ const ProjectEstimator = () => {
               a.id === allocationId
                 ? { ...a, phase_allocations: { ...a.phase_allocations, [phaseIndex]: parseFloat(value) || 0 } }
                 : a
+            )
+          }
+        : w
+    ));
+  };
+
+  const handleAllocationCommentChange = (waveId, allocationId, comment) => {
+    const words = comment.split(/\s+/).filter(w => w.length > 0);
+    if (words.length > 100) return;
+    setWaves(waves.map(w =>
+      w.id === waveId
+        ? {
+            ...w,
+            grid_allocations: w.grid_allocations.map(a =>
+              a.id === allocationId ? { ...a, comments: comment } : a
             )
           }
         : w
@@ -980,6 +1038,47 @@ const ProjectEstimator = () => {
     }
   };
 
+  const handleApproverSave = async (saveAsApproved) => {
+    if (!projectId) return;
+    
+    if (!versionNotes.trim()) {
+      toast.error("Please enter version notes describing the changes");
+      setApproverSaveDialogOpen(false);
+      return;
+    }
+
+    const payload = getProjectPayload();
+    const token = localStorage.getItem("token");
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+
+    try {
+      // Create new version
+      const response = await axios.post(`${API}/projects/${projectId}/new-version`, payload, config);
+      const newProjectId = response.data.id;
+      setProjectId(newProjectId);
+      setProjectVersion(response.data.version);
+      setIsLatestVersion(true);
+
+      if (saveAsApproved) {
+        // Approve the new version
+        await axios.post(`${API}/projects/${newProjectId}/approve?comments=${encodeURIComponent("Approved with modifications by reviewer")}`, {}, config);
+        setProjectStatus("approved");
+        toast.success(`New version v${response.data.version} created and approved`);
+      } else {
+        setProjectStatus(response.data.status || "in_review");
+        // Re-submit for review to keep it in_review
+        const approverEmail = response.data.approver_email || currentUser.email;
+        await axios.post(`${API}/projects/${newProjectId}/submit-for-review?approver_email=${encodeURIComponent(approverEmail)}`, {}, config);
+        setProjectStatus("in_review");
+        toast.success(`New version v${response.data.version} saved (still in review)`);
+      }
+      setApproverSaveDialogOpen(false);
+    } catch (error) {
+      toast.error("Failed to save project");
+      console.error(error);
+    }
+  };
+
   const handleCloneProject = async () => {
     if (!projectId) {
       toast.error("Please save the project first");
@@ -1074,7 +1173,8 @@ const ProjectEstimator = () => {
       "Overhead %",
       "Is Onsite",
       "Travel Required",
-      ...phaseHeaders.map(p => `${p} (MM)`)
+      ...phaseHeaders.map(p => `${p} (MM)`),
+      "Comments"
     ];
     
     const resourceData = [headers];
@@ -1192,13 +1292,17 @@ const ProjectEstimator = () => {
         overhead: headers.findIndex(h => h.includes('overhead')),
         isOnsite: headers.findIndex(h => h.includes('onsite')),
         travelRequired: headers.findIndex(h => h.includes('travel')),
+        comments: headers.findIndex(h => h.includes('comment')),
       };
 
-      // Find phase columns (anything with MM or M1, M2, etc.)
+      // Find phase columns (anything with MM or M1, M2, etc.) - exclude Comments column
       const phaseStartIndex = Math.max(
         colIndexes.travelRequired + 1,
         headers.findIndex(h => h.includes('mm') || /^m\d+/.test(h))
       );
+      
+      // Phase columns end before Comments column (if present)
+      const phaseEndIndex = colIndexes.comments > phaseStartIndex ? colIndexes.comments : headers.length;
 
       const newAllocations = [];
       let successCount = 0;
@@ -1246,7 +1350,7 @@ const ProjectEstimator = () => {
 
         for (let p = 0; p < phaseNames.length; p++) {
           const colIdx = phaseStartIndex + p;
-          if (colIdx < row.length) {
+          if (colIdx < phaseEndIndex && colIdx < row.length) {
             const value = parseFloat(row[colIdx]) || 0;
             phaseAllocations[p] = value;
           }
@@ -1269,6 +1373,7 @@ const ProjectEstimator = () => {
           is_onsite: isOnsite,
           travel_required: travelRequired,
           phase_allocations: phaseAllocations,
+          comments: colIndexes.comments >= 0 ? (row[colIndexes.comments]?.toString().trim() || "") : "",
         };
 
         newAllocations.push(allocation);
@@ -1385,7 +1490,7 @@ const ProjectEstimator = () => {
       waveData.push([`${wave.name} - ${wave.duration_months} months`]);
       waveData.push([]);
       
-      const header = ["Skill", "Level", "Location", "$/Month", "Onsite", "Travel", ...wave.phase_names, "Total MM", "Salary Cost", "Overhead", "Overhead %", "Total Cost", "Selling Price"];
+      const header = ["Skill", "Level", "Location", "$/Month", "Onsite", "Travel", ...wave.phase_names, "Total MM", "Salary Cost", "Overhead", "Overhead %", "Total Cost", "Selling Price", "Comments"];
       waveData.push(header);
 
       wave.grid_allocations.forEach(alloc => {
@@ -1407,6 +1512,7 @@ const ProjectEstimator = () => {
           `${alloc.overhead_percentage}%`,
           totalCost.toFixed(2),
           resourceSellingPrice.toFixed(2),
+          alloc.comments || "",
         ];
         waveData.push(row);
       });
@@ -1556,6 +1662,12 @@ const ProjectEstimator = () => {
           <Button onClick={handleSaveProject} size="sm" className="bg-[#10B981] hover:bg-[#10B981]/90 text-white" data-testid="save-project-button">
             <Save className="w-4 h-4 mr-1" />
             Save
+          </Button>
+          )}
+          {isApprover && projectStatus === "in_review" && !isViewOnly && (
+          <Button onClick={() => setApproverSaveDialogOpen(true)} size="sm" className="bg-[#8B5CF6] hover:bg-[#8B5CF6]/90 text-white" data-testid="approver-save-button">
+            <Save className="w-4 h-4 mr-1" />
+            Save Changes
           </Button>
           )}
         </div>
@@ -2246,6 +2358,26 @@ const ProjectEstimator = () => {
                           </DialogTrigger>
                           {!isReadOnly && (
                             <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleAddPhaseColumn(wave.id)}
+                                className="border-teal-600 text-teal-600 hover:bg-teal-50"
+                                data-testid={`add-month-${wave.id}`}
+                              >
+                                <Plus className="w-4 h-4 mr-1" />
+                                Add Month
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRemovePhaseColumn(wave.id)}
+                                className="border-orange-600 text-orange-600 hover:bg-orange-50"
+                                data-testid={`remove-month-${wave.id}`}
+                              >
+                                <Minus className="w-4 h-4 mr-1" />
+                                Remove Month
+                              </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline"
@@ -2416,6 +2548,7 @@ const ProjectEstimator = () => {
                               <th className="text-right p-3 font-semibold text-sm">Overhead</th>
                               <th className="text-right p-3 font-semibold text-sm bg-gray-100">Total Cost</th>
                               <th className="text-right p-3 font-semibold text-sm bg-green-50">Selling Price</th>
+                              <th className="text-left p-3 font-semibold text-sm">Comments</th>
                               <th className="text-center p-3 font-semibold text-sm">Actions</th>
                             </tr>
                           </thead>
@@ -2575,6 +2708,16 @@ const ProjectEstimator = () => {
                                   </td>
                                   <td className="p-3 text-right font-mono tabular-nums text-sm font-semibold text-[#10B981] bg-green-50/50">
                                     ${((baseSalaryCost + baseSalaryCost * (allocation.overhead_percentage / 100)) / (1 - profitMarginPercentage / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                  </td>
+                                  <td className="p-2">
+                                    <Textarea
+                                      placeholder="Comments..."
+                                      className="w-32 h-8 text-xs resize-none min-h-[32px]"
+                                      value={allocation.comments || ""}
+                                      onChange={(e) => handleAllocationCommentChange(wave.id, allocation.id, e.target.value)}
+                                      disabled={isReadOnly}
+                                      data-testid={`comment-${allocation.id}`}
+                                    />
                                   </td>
                                   <td className="p-3 text-center">
                                     <div className="flex items-center justify-center gap-1">
@@ -2945,6 +3088,45 @@ const ProjectEstimator = () => {
               <History className="w-4 h-4 mr-2" />
               Create Version {projectVersion + 1}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Approver Save Dialog */}
+      <Dialog open={approverSaveDialogOpen} onOpenChange={setApproverSaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-[#0F172A]">Save Reviewer Changes</DialogTitle>
+            <DialogDescription>Your changes will be saved as a new version of {projectNumber}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label>Version Notes *</Label>
+              <Textarea
+                placeholder="Describe changes made during review..."
+                value={versionNotes}
+                onChange={(e) => setVersionNotes(e.target.value)}
+                rows={3}
+                data-testid="approver-version-notes"
+              />
+            </div>
+            <div className="bg-purple-50 p-3 rounded text-sm border border-purple-200">
+              <p className="font-semibold text-purple-800">Choose how to save:</p>
+              <ul className="list-disc list-inside text-gray-700 mt-1 space-y-1">
+                <li><strong>Keep In Review</strong> - Save changes as v{projectVersion + 1}, keep status as "In Review"</li>
+                <li><strong>Approve & Save</strong> - Save changes as v{projectVersion + 1} and set status to "Approved"</li>
+              </ul>
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={() => handleApproverSave(false)} variant="outline" className="flex-1 border-amber-500 text-amber-700 hover:bg-amber-50" data-testid="approver-save-review">
+                <Clock className="w-4 h-4 mr-2" />
+                Keep In Review
+              </Button>
+              <Button onClick={() => handleApproverSave(true)} className="flex-1 bg-[#10B981] hover:bg-[#10B981]/90 text-white" data-testid="approver-save-approve">
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Approve & Save
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
