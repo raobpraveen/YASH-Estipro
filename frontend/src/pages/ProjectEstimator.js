@@ -13,10 +13,11 @@ import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Trash2, Plane, Save, FileDown, X, Settings, Copy, History, RefreshCw, Send, CheckCircle, XCircle, Clock, Calculator, Upload, FileSpreadsheet, Minus, MessageSquare, ArrowUp, ArrowDown, Download } from "lucide-react";
+import { Plus, Trash2, Plane, Save, FileDown, X, Settings, Copy, History, RefreshCw, Send, CheckCircle, XCircle, Clock, Calculator, Upload, FileSpreadsheet, Minus, MessageSquare, GripVertical, Download, Zap } from "lucide-react";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { COUNTRIES, LOGISTICS_DEFAULTS } from "@/utils/constants";
@@ -316,6 +317,7 @@ const ProjectEstimator = () => {
     const wave = {
       id: Math.random().toString(36).substr(2, 9),
       name: newWave.name,
+      description: newWave.description || "",
       duration_months: parseFloat(newWave.duration_months),
       phase_names: phaseNames,
       logistics_config: { ...waveLogistics },
@@ -325,7 +327,7 @@ const ProjectEstimator = () => {
 
     setWaves([...waves, wave]);
     setActiveWaveId(wave.id);
-    setNewWave({ name: "", duration_months: "" });
+    setNewWave({ name: "", description: "", duration_months: "" });
     setAddWaveDialogOpen(false);
     toast.success("Wave added successfully");
   };
@@ -647,6 +649,72 @@ const ProjectEstimator = () => {
       return { ...w, grid_allocations: arr };
     }));
   };
+
+  // Drag-and-drop reorder handler
+  const handleDragEnd = (result, waveId) => {
+    if (!result.destination) return;
+    const srcIdx = result.source.index;
+    const destIdx = result.destination.index;
+    if (srcIdx === destIdx) return;
+    setWaves(waves.map(w => {
+      if (w.id !== waveId) return w;
+      const arr = [...w.grid_allocations];
+      const [moved] = arr.splice(srcIdx, 1);
+      arr.splice(destIdx, 0, moved);
+      return { ...w, grid_allocations: arr };
+    }));
+  };
+
+  // Add an empty row for quick data entry
+  const handleAddEmptyRow = (waveId) => {
+    const firstSkill = skills[0];
+    const firstLocation = locations[0];
+    const emptyAllocation = {
+      id: Math.random().toString(36).substr(2, 9),
+      skill_id: firstSkill?.id || "",
+      skill_name: firstSkill?.name || "",
+      proficiency_level: PROFICIENCY_LEVELS[0] || "Junior",
+      avg_monthly_salary: 0,
+      original_monthly_salary: 0,
+      base_location_id: firstLocation?.id || "",
+      base_location_name: firstLocation?.name || "",
+      overhead_percentage: firstLocation?.overhead_percentage || 0,
+      is_onsite: false,
+      travel_required: false,
+      phase_allocations: {},
+      comments: "",
+    };
+    setWaves(waves.map(w =>
+      w.id === waveId
+        ? { ...w, grid_allocations: [...w.grid_allocations, emptyAllocation] }
+        : w
+    ));
+  };
+
+  // Quick Estimate calculator state
+  const [quickEstimateOpen, setQuickEstimateOpen] = useState(false);
+  const [quickEstimate, setQuickEstimate] = useState({
+    resourceCount: 5,
+    durationMonths: 6,
+    avgMonthlySalary: 5000,
+    onsitePercentage: 30,
+    overheadPercentage: 30,
+  });
+
+  const quickEstimateResult = (() => {
+    const { resourceCount, durationMonths, avgMonthlySalary, onsitePercentage, overheadPercentage } = quickEstimate;
+    const totalMM = resourceCount * durationMonths;
+    const onsiteMM = totalMM * (onsitePercentage / 100);
+    const offshoreMM = totalMM - onsiteMM;
+    const baseCost = totalMM * avgMonthlySalary;
+    const overheadCost = baseCost * (overheadPercentage / 100);
+    const totalCost = baseCost + overheadCost;
+    const sp = totalCost / (1 - profitMarginPercentage / 100);
+    const spPerMM = totalMM > 0 ? sp / totalMM : 0;
+    const hourly = spPerMM / 176;
+    const nego = sp * (negoBufferPercentage / 100);
+    return { totalMM, onsiteMM, offshoreMM, baseCost, overheadCost, totalCost, sellingPrice: sp, spPerMM, hourly, finalPrice: sp + nego, negoBuffer: nego };
+  })();
 
   // Download current wave grid data (not template)
   const handleDownloadWaveData = () => {
@@ -979,6 +1047,7 @@ const ProjectEstimator = () => {
       waves: waves.map(w => ({
         id: w.id,
         name: w.name,
+        description: w.description || "",
         duration_months: w.duration_months,
         phase_names: w.phase_names,
         logistics_config: w.logistics_config,
@@ -1576,6 +1645,10 @@ const ProjectEstimator = () => {
     const finalFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF059669" } };
     const finalFont = { bold: true, color: { argb: "FFFFFFFF" }, size: 14 };
     const thinBorder = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+    // Row colors by Onsite/Travel combo
+    const onsiteTravelFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFDE68A" } };   // ON + Travel YES = warm yellow
+    const onsiteNoTravelFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } }; // ON + Travel NO  = light amber
+    const offshoreFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFECFDF5" } };       // OFF + no travel = light green/mint
 
     // === Summary Sheet ===
     const ws = wb.addWorksheet("Summary");
@@ -1699,7 +1772,14 @@ const ProjectEstimator = () => {
           alloc.comments || ""
         ]);
         r.eachCell(c => { c.border = thinBorder; });
-        if (alloc.is_onsite) r.eachCell(c => { c.fill = amberFill; });
+        // Color rows by Onsite/Travel combination
+        if (alloc.is_onsite && alloc.travel_required) {
+          r.eachCell(c => { c.fill = onsiteTravelFill; });
+        } else if (alloc.is_onsite) {
+          r.eachCell(c => { c.fill = onsiteNoTravelFill; });
+        } else {
+          r.eachCell(c => { c.fill = offshoreFill; });
+        }
       });
 
       dws.addRow([]);
@@ -1840,6 +1920,10 @@ const ProjectEstimator = () => {
           )}
           <Button onClick={() => setSummaryDialogOpen(true)} variant="outline" size="sm" className="border-[#0EA5E9] text-[#0EA5E9]" data-testid="view-summary-button">
             View Summary
+          </Button>
+          <Button onClick={() => setQuickEstimateOpen(true)} variant="outline" size="sm" className="border-amber-500 text-amber-600" data-testid="quick-estimate-button">
+            <Zap className="w-4 h-4 mr-1" />
+            Quick Estimate
           </Button>
           <Button onClick={handleExportToExcel} variant="outline" size="sm" className="border-[#10B981] text-[#10B981]" data-testid="export-excel-button">
             <FileDown className="w-4 h-4 mr-1" />
@@ -2405,6 +2489,16 @@ const ProjectEstimator = () => {
                       />
                     </div>
                   </div>
+                  <div>
+                    <Label htmlFor="wave-desc-new">Description</Label>
+                    <Input
+                      id="wave-desc-new"
+                      placeholder="Optional description..."
+                      value={newWave.description || ""}
+                      onChange={(e) => setNewWave({ ...newWave, description: e.target.value })}
+                      data-testid="wave-desc-input"
+                    />
+                  </div>
                   
                   <div className="border-t pt-4">
                     <Label className="text-base font-semibold">Logistics Configuration</Label>
@@ -2501,12 +2595,37 @@ const ProjectEstimator = () => {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-4 flex-wrap">
-                        <h3 className="text-lg font-semibold text-[#0F172A]">{wave.name}</h3>
+                        {isReadOnly ? (
+                          <h3 className="text-lg font-semibold text-[#0F172A]">{wave.name}</h3>
+                        ) : (
+                          <Input
+                            value={wave.name}
+                            onChange={(e) => setWaves(waves.map(w => w.id === wave.id ? { ...w, name: e.target.value } : w))}
+                            className="text-lg font-semibold text-[#0F172A] border-0 border-b border-dashed border-gray-300 rounded-none focus:border-[#0F172A] bg-transparent px-0 w-48 h-auto py-0"
+                            data-testid={`wave-name-${wave.id}`}
+                          />
+                        )}
                         <span className="text-sm text-gray-600">Duration: {wave.duration_months} months</span>
                         <span className="text-sm text-gray-600">Resources: {wave.grid_allocations.length}</span>
                         <span className="text-sm text-[#F59E0B]">Onsite: {waveSummary.onsiteResourceCount}</span>
                         <span className="text-sm text-purple-600">Traveling: {waveSummary.travelingResourceCount}</span>
                       </div>
+                    </div>
+                    {/* Wave Description */}
+                    <div>
+                      {isReadOnly ? (
+                        wave.description && <p className="text-sm text-gray-500 italic">{wave.description}</p>
+                      ) : (
+                        <Input
+                          value={wave.description || ""}
+                          onChange={(e) => setWaves(waves.map(w => w.id === wave.id ? { ...w, description: e.target.value } : w))}
+                          placeholder="Wave description (optional)..."
+                          className="text-sm text-gray-600 border-0 border-b border-dashed border-gray-200 rounded-none focus:border-gray-400 bg-transparent px-0"
+                          data-testid={`wave-desc-${wave.id}`}
+                        />
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex flex-wrap gap-2">
                         <Button 
                           size="sm" 
@@ -2527,6 +2646,17 @@ const ProjectEstimator = () => {
                             </Button>
                           </DialogTrigger>
                           {!isReadOnly && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-gray-400 text-gray-600 hover:bg-gray-50"
+                          onClick={() => handleAddEmptyRow(wave.id)}
+                          data-testid={`add-row-${wave.id}`}
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Add Row
+                        </Button>
+                          )}
                             <>
                               <Button
                                 size="sm"
@@ -2699,13 +2829,15 @@ const ProjectEstimator = () => {
 
                     {wave.grid_allocations.length === 0 ? (
                       <div className="text-center py-8 border border-dashed border-gray-300 rounded">
-                        <p className="text-gray-500">No resources in this wave. Click "Add Resource" to start.</p>
+                        <p className="text-gray-500">No resources in this wave. Click "Add Resource" or "Add Row" to start.</p>
                       </div>
                     ) : (
+                      <DragDropContext onDragEnd={(result) => handleDragEnd(result, wave.id)}>
                       <div className="overflow-x-auto border border-[#E2E8F0] rounded">
                         <table className="w-full border-collapse">
                           <thead>
                             <tr className="border-b-2 border-[#E2E8F0] bg-[#F8FAFC]">
+                              <th className="text-center p-2 font-semibold text-xs w-8"></th>
                               <th className="text-center p-2 font-semibold text-xs w-8">#</th>
                               <th className="text-left p-3 font-semibold text-sm">Skill</th>
                               <th className="text-left p-3 font-semibold text-sm">Level</th>
@@ -2735,7 +2867,9 @@ const ProjectEstimator = () => {
                               <th className="text-center p-3 font-semibold text-sm">Actions</th>
                             </tr>
                           </thead>
-                          <tbody>
+                          <Droppable droppableId={`wave-${wave.id}`}>
+                            {(provided) => (
+                          <tbody ref={provided.innerRef} {...provided.droppableProps}>
                             {wave.grid_allocations.map((allocation, rowIdx) => {
                               const { totalManMonths, baseSalaryCost } = calculateResourceBaseCost(allocation);
                               const overheadCost = baseSalaryCost * (allocation.overhead_percentage / 100);
@@ -2743,12 +2877,24 @@ const ProjectEstimator = () => {
                               const sellingPrice = totalCost / (1 - profitMarginPercentage / 100);
                               const spPerMM = totalManMonths > 0 ? sellingPrice / totalManMonths : 0;
                               const hourlyPrice = spPerMM / 176;
+                              // Row color by Onsite/Travel combo
+                              const rowBg = allocation.is_onsite && allocation.travel_required
+                                ? "bg-amber-100/60"
+                                : allocation.is_onsite
+                                ? "bg-amber-50/40"
+                                : "bg-white";
                               return (
+                                <Draggable key={allocation.id} draggableId={allocation.id} index={rowIdx} isDragDisabled={isReadOnly}>
+                                  {(dragProvided, snapshot) => (
                                 <tr
-                                  key={allocation.id}
-                                  className={`border-b border-[#E2E8F0] ${allocation.is_onsite ? "bg-amber-50/30" : ""}`}
+                                  ref={dragProvided.innerRef}
+                                  {...dragProvided.draggableProps}
+                                  className={`border-b border-[#E2E8F0] ${rowBg} ${snapshot.isDragging ? "shadow-lg opacity-90 bg-blue-50" : ""}`}
                                   data-testid={`allocation-row-${allocation.id}`}
                                 >
+                                  <td className="p-1 text-center" {...dragProvided.dragHandleProps}>
+                                    {!isReadOnly && <GripVertical className="w-4 h-4 text-gray-300 hover:text-gray-500 cursor-grab mx-auto" />}
+                                  </td>
                                   <td className="p-2 text-center text-xs text-gray-400 font-mono">{rowIdx + 1}</td>
                                   <td className="p-2">
                                     {isReadOnly ? (
@@ -2907,34 +3053,6 @@ const ProjectEstimator = () => {
                                             <TooltipTrigger asChild>
                                               <Button
                                                 variant="ghost" size="icon"
-                                                className="h-7 w-7 text-gray-400 hover:text-gray-700"
-                                                onClick={() => handleMoveRow(wave.id, allocation.id, -1)}
-                                                disabled={rowIdx === 0}
-                                                data-testid={`move-up-${allocation.id}`}
-                                              >
-                                                <ArrowUp className="w-3.5 h-3.5" />
-                                              </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent><p>Move up</p></TooltipContent>
-                                          </Tooltip>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <Button
-                                                variant="ghost" size="icon"
-                                                className="h-7 w-7 text-gray-400 hover:text-gray-700"
-                                                onClick={() => handleMoveRow(wave.id, allocation.id, 1)}
-                                                disabled={rowIdx === wave.grid_allocations.length - 1}
-                                                data-testid={`move-down-${allocation.id}`}
-                                              >
-                                                <ArrowDown className="w-3.5 h-3.5" />
-                                              </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent><p>Move down</p></TooltipContent>
-                                          </Tooltip>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <Button
-                                                variant="ghost" size="icon"
                                                 className="h-7 w-7 text-[#8B5CF6] hover:text-[#8B5CF6] hover:bg-[#8B5CF6]/10"
                                                 onClick={() => {
                                                   const value = prompt(`Enter MM value to apply to all ${wave.phase_names.length} months:`, "1");
@@ -2962,11 +3080,17 @@ const ProjectEstimator = () => {
                                     </div>
                                   </td>
                                 </tr>
+                                  )}
+                                </Draggable>
                               );
                             })}
+                            {provided.placeholder}
                           </tbody>
+                            )}
+                          </Droppable>
                         </table>
                       </div>
+                      </DragDropContext>
                     )}
 
                     {/* Logistics Breakdown */}
@@ -3554,6 +3678,95 @@ const ProjectEstimator = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Quick Estimate Calculator Dialog */}
+      <Dialog open={quickEstimateOpen} onOpenChange={setQuickEstimateOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-[#0F172A]">
+              <Zap className="w-5 h-5 text-amber-500" />
+              Quick Estimate Calculator
+            </DialogTitle>
+            <DialogDescription>Get a ballpark estimate in seconds — enter basic parameters below</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5 mt-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs font-semibold">No. of Resources</Label>
+                <Input type="number" min="1" value={quickEstimate.resourceCount}
+                  onChange={e => setQuickEstimate({ ...quickEstimate, resourceCount: parseInt(e.target.value) || 1 })}
+                  data-testid="qe-resource-count" />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">Duration (Months)</Label>
+                <Input type="number" min="1" value={quickEstimate.durationMonths}
+                  onChange={e => setQuickEstimate({ ...quickEstimate, durationMonths: parseInt(e.target.value) || 1 })}
+                  data-testid="qe-duration" />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">Avg Monthly Salary ($)</Label>
+                <Input type="number" min="0" value={quickEstimate.avgMonthlySalary}
+                  onChange={e => setQuickEstimate({ ...quickEstimate, avgMonthlySalary: parseFloat(e.target.value) || 0 })}
+                  data-testid="qe-salary" />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">Onsite %</Label>
+                <Input type="number" min="0" max="100" value={quickEstimate.onsitePercentage}
+                  onChange={e => setQuickEstimate({ ...quickEstimate, onsitePercentage: parseFloat(e.target.value) || 0 })}
+                  data-testid="qe-onsite-pct" />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">Overhead %</Label>
+                <Input type="number" min="0" max="100" value={quickEstimate.overheadPercentage}
+                  onChange={e => setQuickEstimate({ ...quickEstimate, overheadPercentage: parseFloat(e.target.value) || 0 })}
+                  data-testid="qe-overhead" />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold text-gray-400">Profit Margin %</Label>
+                <Input type="number" disabled value={profitMarginPercentage} className="bg-gray-50" />
+              </div>
+            </div>
+
+            <div className="bg-[#F8FAFC] rounded-lg p-4 border space-y-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Estimate Breakdown</p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                <span className="text-gray-500">Total Man-Months</span>
+                <span className="font-mono font-semibold text-right">{quickEstimateResult.totalMM}</span>
+                <span className="text-gray-500">Onsite MM</span>
+                <span className="font-mono text-right text-amber-600">{quickEstimateResult.onsiteMM.toFixed(1)}</span>
+                <span className="text-gray-500">Offshore MM</span>
+                <span className="font-mono text-right text-blue-600">{quickEstimateResult.offshoreMM.toFixed(1)}</span>
+                <span className="text-gray-500">Base Salary Cost</span>
+                <span className="font-mono text-right">${quickEstimateResult.baseCost.toLocaleString()}</span>
+                <span className="text-gray-500">Overhead ({quickEstimate.overheadPercentage}%)</span>
+                <span className="font-mono text-right">${quickEstimateResult.overheadCost.toLocaleString()}</span>
+                <span className="text-gray-600 font-medium">Total Cost</span>
+                <span className="font-mono font-semibold text-right">${quickEstimateResult.totalCost.toLocaleString()}</span>
+              </div>
+              <hr className="my-2" />
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                <span className="text-gray-600 font-medium">Selling Price</span>
+                <span className="font-mono font-bold text-right text-[#10B981]">${quickEstimateResult.sellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                <span className="text-gray-500">SP per Man-Month</span>
+                <span className="font-mono text-right text-blue-600">${quickEstimateResult.spPerMM.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                <span className="text-gray-500">Hourly Rate</span>
+                <span className="font-mono text-right text-blue-600">${quickEstimateResult.hourly.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                {negoBufferPercentage > 0 && (
+                  <>
+                    <span className="text-gray-500">Nego Buffer ({negoBufferPercentage}%)</span>
+                    <span className="font-mono text-right">${quickEstimateResult.negoBuffer.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  </>
+                )}
+              </div>
+              <div className="bg-emerald-600 text-white rounded-lg p-3 mt-3 text-center">
+                <p className="text-xs uppercase tracking-wider opacity-80">Estimated Final Price</p>
+                <p className="text-3xl font-extrabold font-mono mt-1">${quickEstimateResult.finalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
     </TooltipProvider>
   );

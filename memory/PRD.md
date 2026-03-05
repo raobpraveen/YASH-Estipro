@@ -14,12 +14,11 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - **Excel Import/Export**: Upload skills, rates, wave grid data; export styled estimates
 
 ## Tech Stack
-- **Frontend**: React.js, Shadcn UI, Recharts, ExcelJS, Axios
+- **Frontend**: React.js, Shadcn UI, Recharts, ExcelJS, @hello-pangea/dnd, Axios
 - **Backend**: FastAPI, Pydantic, JWT (SHA256), smtplib
 - **Database**: MongoDB
-- **Deployment**: Docker, Nginx
 
-## What's Been Implemented (100%)
+## Completed (Previous Sessions)
 - Full JWT auth with role-based access
 - Project CRUD with versioning, cloning, archiving
 - Wave-based estimation grid with all cost calculations
@@ -33,22 +32,20 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - Per-row comments in wave grid
 - Dynamic add/delete month columns
 
-## Implemented Feb 2026 (This Session)
+## Completed Feb 2026 Session 1
+- Fixed "Mark all read" notifications (POST->PUT)
+- Fixed NaN in logistics calculation (empty config fallback)
+- Wave Grid: Row reordering, SP/MM & Hourly columns, searchable comboboxes, download data, row numbers
+- Nego Buffer moved to project level
+- Sidebar changed to light silver theme
+- Enhanced Excel export with ExcelJS styling
 
-### P0 Bug Fixes
-- [x] Fixed "Mark all read" notifications (POST → PUT method mismatch)
-- [x] Fixed Excel export (was already wired up; enhanced with ExcelJS styled output)
-- [x] Fixed NaN in logistics calculation (empty logistics_config object fallback)
-
-### P1 Features
-- [x] **Wave Grid - Row Reordering**: Up/down arrow buttons to move resource rows
-- [x] **Wave Grid - SP/MM & Hourly Columns**: New calculated columns showing Selling Price per Man-Month and Hourly Price
-- [x] **Wave Grid - Searchable Comboboxes**: Type-to-search dropdowns for Skill, Level, Location using Command+Popover
-- [x] **Wave Grid - Download Data**: New "Download Data" button to export current wave grid data (alongside template download)
-- [x] **Wave Grid - Row Numbers**: Added # column for row numbering
-- [x] **Nego Buffer at Project Level**: Moved from wave-level to project info section with input field
-- [x] **Sidebar Light Silver Theme**: Changed from dark navy to light silver (#F1F5F9) with dark text
-- [x] **Enhanced Excel Export**: Styled with ExcelJS (colored headers, cell borders, summary sheet + per-wave detail sheets)
+## Completed Feb 2026 Session 2 (Current)
+- [x] **Excel Onsite/Travel row colors**: 3 distinct color combos (ON+Travel=warm yellow, ON+NoTravel=light amber, OFF=mint green)
+- [x] **Editable wave name & description**: Inline editing of wave name + new description field
+- [x] **Add Row button**: Quick empty row insertion alongside Add Resource dialog
+- [x] **Drag-and-drop row reordering**: Replaced up/down arrows with @hello-pangea/dnd drag handles
+- [x] **Quick Estimate Calculator**: Ballpark estimate dialog with resource count, duration, avg salary inputs
 
 ## Remaining Backlog
 
@@ -61,8 +58,11 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - [ ] Project templates functionality
 
 ## Key Files
-- `/app/frontend/src/pages/ProjectEstimator.js` - Main estimator page
+- `/app/frontend/src/pages/ProjectEstimator.js` - Main estimator page (~3700 lines)
 - `/app/frontend/src/components/Layout.js` - Sidebar and layout
 - `/app/frontend/src/components/SearchableSelect.js` - Reusable searchable combobox
 - `/app/frontend/src/utils/calculations.js` - Shared calculation utilities
 - `/app/backend/server.py` - FastAPI backend
+
+## Credentials
+- Email: admin@yash.com / Password: password
