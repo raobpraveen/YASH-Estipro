@@ -341,6 +341,25 @@ const ProjectEstimator = () => {
     toast.success("Wave deleted");
   };
 
+  const handleCloneWave = (waveId) => {
+    const source = waves.find(w => w.id === waveId);
+    if (!source) return;
+    const cloned = {
+      ...source,
+      id: Math.random().toString(36).substr(2, 9),
+      name: `${source.name} (Copy)`,
+      description: source.description || "",
+      grid_allocations: source.grid_allocations.map(a => ({
+        ...a,
+        id: Math.random().toString(36).substr(2, 9),
+        phase_allocations: { ...a.phase_allocations },
+      })),
+    };
+    setWaves([...waves, cloned]);
+    setActiveWaveId(cloned.id);
+    toast.success(`Cloned "${source.name}" → "${cloned.name}"`);
+  };
+
   const handleAddPhaseColumn = (waveId) => {
     setWaves(waves.map(w => {
       if (w.id !== waveId) return w;
@@ -2811,6 +2830,18 @@ const ProjectEstimator = () => {
                             </div>
                           </DialogContent>
                         </Dialog>
+                        )}
+                        {!isReadOnly && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="border-indigo-500 text-indigo-500 hover:bg-indigo-50"
+                          onClick={() => handleCloneWave(wave.id)}
+                          data-testid={`clone-wave-${wave.id}`}
+                        >
+                          <Copy className="w-4 h-4 mr-2" />
+                          Clone Wave
+                        </Button>
                         )}
                         {!isReadOnly && (
                         <Button 
