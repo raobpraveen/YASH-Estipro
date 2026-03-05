@@ -95,6 +95,7 @@ const ProjectEstimator = () => {
   });
 
   const [approverSaveDialogOpen, setApproverSaveDialogOpen] = useState(false);
+  const [originalSnapshot, setOriginalSnapshot] = useState("");
 
   // Get current user role
   const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
@@ -196,6 +197,19 @@ const ProjectEstimator = () => {
         setWaves(project.waves);
         setActiveWaveId(project.waves[0].id);
       }
+      
+      // Capture snapshot for change detection (approver flow)
+      setOriginalSnapshot(JSON.stringify({
+        name: project.name,
+        customer_id: project.customer_id || "",
+        project_locations: project.project_locations || (project.project_location ? [project.project_location] : []),
+        technology_ids: project.technology_ids || (project.technology_id ? [project.technology_id] : []),
+        project_type_ids: project.project_type_ids || (project.project_type_id ? [project.project_type_id] : []),
+        description: project.description || "",
+        profit_margin_percentage: project.profit_margin_percentage || 35,
+        sales_manager_id: project.sales_manager_id || "",
+        waves: project.waves || [],
+      }));
       
       const versionInfo = `${project.project_number || "project"} v${project.version || 1}`;
       if (!project.is_latest_version) {
@@ -1045,18 +1059,64 @@ const ProjectEstimator = () => {
     }
   };
 
+  const hasProjectChanges = () => {
+    if (!originalSnapshot) return false;
+    const currentSnapshot = JSON.stringify({
+      name: projectName,
+      customer_id: customerId,
+      project_locations: projectLocations,
+      technology_ids: technologyIds,
+      project_type_ids: projectTypeIds,
+      description: projectDescription,
+      profit_margin_percentage: profitMarginPercentage,
+      sales_manager_id: salesManagerId,
+      waves: waves.map(w => ({
+        id: w.id,
+        name: w.name,
+        duration_months: w.duration_months,
+        phase_names: w.phase_names,
+        logistics_config: w.logistics_config,
+        nego_buffer_percentage: w.nego_buffer_percentage || 0,
+        grid_allocations: w.grid_allocations,
+      })),
+    });
+    return currentSnapshot !== originalSnapshot;
+  };
+
   const handleApproverSave = async (saveAsApproved) => {
     if (!projectId) return;
     
-    if (!versionNotes.trim()) {
-      toast.error("Please enter version notes describing the changes");
+    const token = localStorage.getItem("token");
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    const changesDetected = hasProjectChanges();
+
+    if (saveAsApproved && !changesDetected) {
+      // No changes — approve the current version directly
+      try {
+        await axios.post(`${API}/projects/${projectId}/approve?comments=${encodeURIComponent(versionNotes || "Approved by reviewer")}`, {}, config);
+        setProjectStatus("approved");
+        toast.success(`v${projectVersion} approved (no changes)`);
+        setApproverSaveDialogOpen(false);
+      } catch (error) {
+        toast.error("Failed to approve project");
+        console.error(error);
+      }
+      return;
+    }
+
+    if (!changesDetected && !saveAsApproved) {
+      toast.info("No changes detected");
       setApproverSaveDialogOpen(false);
       return;
     }
 
+    // Changes detected — must create a new version
+    if (!versionNotes.trim()) {
+      toast.error("Please enter version notes describing the changes");
+      return;
+    }
+
     const payload = getProjectPayload();
-    const token = localStorage.getItem("token");
-    const config = { headers: { Authorization: `Bearer ${token}` } };
 
     try {
       // Create new version
@@ -1072,13 +1132,29 @@ const ProjectEstimator = () => {
         setProjectStatus("approved");
         toast.success(`New version v${response.data.version} created and approved`);
       } else {
-        setProjectStatus(response.data.status || "in_review");
         // Re-submit for review to keep it in_review
-        const approverEmail = response.data.approver_email || currentUser.email;
-        await axios.post(`${API}/projects/${newProjectId}/submit-for-review?approver_email=${encodeURIComponent(approverEmail)}`, {}, config);
+        const approver = response.data.approver_email || currentUser.email;
+        await axios.post(`${API}/projects/${newProjectId}/submit-for-review?approver_email=${encodeURIComponent(approver)}`, {}, config);
         setProjectStatus("in_review");
         toast.success(`New version v${response.data.version} saved (still in review)`);
       }
+      // Update snapshot to reflect new saved state
+      setOriginalSnapshot(JSON.stringify({
+        name: projectName,
+        customer_id: customerId,
+        project_locations: projectLocations,
+        technology_ids: technologyIds,
+        project_type_ids: projectTypeIds,
+        description: projectDescription,
+        profit_margin_percentage: profitMarginPercentage,
+        sales_manager_id: salesManagerId,
+        waves: waves.map(w => ({
+          id: w.id, name: w.name, duration_months: w.duration_months,
+          phase_names: w.phase_names, logistics_config: w.logistics_config,
+          nego_buffer_percentage: w.nego_buffer_percentage || 0,
+          grid_allocations: w.grid_allocations,
+        })),
+      }));
       setApproverSaveDialogOpen(false);
     } catch (error) {
       toast.error("Failed to save project");
@@ -3088,37 +3164,66 @@ const ProjectEstimator = () => {
       <Dialog open={approverSaveDialogOpen} onOpenChange={setApproverSaveDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-[#0F172A]">Save Reviewer Changes</DialogTitle>
-            <DialogDescription>Your changes will be saved as a new version of {projectNumber}</DialogDescription>
+            <DialogTitle className="text-2xl font-bold text-[#0F172A]">
+              {hasProjectChanges() ? "Save & Approve" : "Approve Project"}
+            </DialogTitle>
+            <DialogDescription>
+              {hasProjectChanges()
+                ? `Changes detected. A new version (v${projectVersion + 1}) of ${projectNumber} will be created.`
+                : `No changes detected. ${projectNumber} v${projectVersion} will be approved as-is.`}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
-            <div>
-              <Label>Version Notes *</Label>
-              <Textarea
-                placeholder="Describe changes made during review..."
-                value={versionNotes}
-                onChange={(e) => setVersionNotes(e.target.value)}
-                rows={3}
-                data-testid="approver-version-notes"
-              />
-            </div>
-            <div className="bg-purple-50 p-3 rounded text-sm border border-purple-200">
-              <p className="font-semibold text-purple-800">Choose how to save:</p>
-              <ul className="list-disc list-inside text-gray-700 mt-1 space-y-1">
-                <li><strong>Keep In Review</strong> - Save changes as v{projectVersion + 1}, keep status as "In Review"</li>
-                <li><strong>Approve & Save</strong> - Save changes as v{projectVersion + 1} and set status to "Approved"</li>
-              </ul>
-            </div>
-            <div className="flex gap-3">
-              <Button onClick={() => handleApproverSave(false)} variant="outline" className="flex-1 border-amber-500 text-amber-700 hover:bg-amber-50" data-testid="approver-save-review">
-                <Clock className="w-4 h-4 mr-2" />
-                Keep In Review
-              </Button>
-              <Button onClick={() => handleApproverSave(true)} className="flex-1 bg-[#10B981] hover:bg-[#10B981]/90 text-white" data-testid="approver-save-approve">
+            {hasProjectChanges() && (
+              <div>
+                <Label>Version Notes *</Label>
+                <Textarea
+                  placeholder="Describe changes made during review..."
+                  value={versionNotes}
+                  onChange={(e) => setVersionNotes(e.target.value)}
+                  rows={3}
+                  data-testid="approver-version-notes"
+                />
+              </div>
+            )}
+            {!hasProjectChanges() && (
+              <div>
+                <Label>Approval Comments (optional)</Label>
+                <Textarea
+                  placeholder="Add optional comments..."
+                  value={versionNotes}
+                  onChange={(e) => setVersionNotes(e.target.value)}
+                  rows={2}
+                  data-testid="approver-approval-comments"
+                />
+              </div>
+            )}
+            {hasProjectChanges() ? (
+              <>
+                <div className="bg-amber-50 p-3 rounded text-sm border border-amber-200">
+                  <p className="font-semibold text-amber-800">Choose how to save:</p>
+                  <ul className="list-disc list-inside text-gray-700 mt-1 space-y-1">
+                    <li><strong>Keep In Review</strong> — Save changes as v{projectVersion + 1}, keep status "In Review"</li>
+                    <li><strong>Approve & Save</strong> — Save changes as v{projectVersion + 1} and set status to "Approved"</li>
+                  </ul>
+                </div>
+                <div className="flex gap-3">
+                  <Button onClick={() => handleApproverSave(false)} variant="outline" className="flex-1 border-amber-500 text-amber-700 hover:bg-amber-50" data-testid="approver-save-review">
+                    <Clock className="w-4 h-4 mr-2" />
+                    Keep In Review
+                  </Button>
+                  <Button onClick={() => handleApproverSave(true)} className="flex-1 bg-[#10B981] hover:bg-[#10B981]/90 text-white" data-testid="approver-save-approve">
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Approve & Save
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <Button onClick={() => handleApproverSave(true)} className="w-full bg-[#10B981] hover:bg-[#10B981]/90 text-white" data-testid="approver-approve-direct">
                 <CheckCircle className="w-4 h-4 mr-2" />
-                Approve & Save
+                Approve
               </Button>
-            </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
