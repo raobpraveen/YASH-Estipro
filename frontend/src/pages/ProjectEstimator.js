@@ -100,9 +100,15 @@ const ProjectEstimator = () => {
   const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
   const isApprover = currentUser.role === "approver" || currentUser.role === "admin";
   
-  // Check if project is read-only (not latest version, approved, or view-only mode)
-  // Approvers CAN edit projects in "in_review" status
-  const isReadOnly = !isLatestVersion || projectStatus === "approved" || (!isApprover && projectStatus === "in_review") || isViewOnly;
+  // Check if current user is the DESIGNATED approver for this project
+  const isDesignatedApprover = isApprover && approverEmail && currentUser.email === approverEmail;
+  
+  // Read-only logic:
+  // - Not latest version → read-only
+  // - Approved/superseded → read-only
+  // - In review → ONLY the designated approver can edit, everyone else is locked
+  // - View-only mode → read-only
+  const isReadOnly = !isLatestVersion || projectStatus === "approved" || projectStatus === "superseded" || (projectStatus === "in_review" && !isDesignatedApprover) || isViewOnly;
   
   // Wave-level logistics (applied to all onsite resources based on formula)
   const [waveLogistics, setWaveLogistics] = useState({
@@ -1627,17 +1633,8 @@ const ProjectEstimator = () => {
                   Submit for Review
                 </Button>
               )}
-              {projectStatus === "in_review" && (
+              {projectStatus === "in_review" && isDesignatedApprover && (
                 <>
-                  <Button 
-                    onClick={() => { setApprovalAction("approve"); setApprovalActionDialog(true); }}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                    size="sm"
-                    data-testid="approve-button"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    Approve
-                  </Button>
                   <Button 
                     onClick={() => { setApprovalAction("reject"); setApprovalActionDialog(true); }}
                     variant="outline"
@@ -1659,16 +1656,16 @@ const ProjectEstimator = () => {
             <FileDown className="w-4 h-4 mr-1" />
             Export Excel
           </Button>
-          {!isReadOnly && (
+          {!isReadOnly && projectStatus !== "in_review" && (
           <Button onClick={handleSaveProject} size="sm" className="bg-[#10B981] hover:bg-[#10B981]/90 text-white" data-testid="save-project-button">
             <Save className="w-4 h-4 mr-1" />
             Save
           </Button>
           )}
-          {isApprover && projectStatus === "in_review" && !isViewOnly && (
+          {isDesignatedApprover && projectStatus === "in_review" && !isViewOnly && (
           <Button onClick={() => setApproverSaveDialogOpen(true)} size="sm" className="bg-[#8B5CF6] hover:bg-[#8B5CF6]/90 text-white" data-testid="approver-save-button">
             <Save className="w-4 h-4 mr-1" />
-            Save Changes
+            Save &amp; Approve
           </Button>
           )}
         </div>
@@ -1784,7 +1781,9 @@ const ProjectEstimator = () => {
           <CardTitle className="text-xl font-bold text-[#0F172A]">Project Information</CardTitle>
           {isReadOnly && (
             <Badge className="bg-amber-100 text-amber-800">
-              {!isLatestVersion ? "Read-only: Older Version" : "Read-only: Approved"}
+              {!isLatestVersion ? "Read-only: Older Version" : 
+               projectStatus === "in_review" ? "Read-only: In Review" : 
+               projectStatus === "superseded" ? "Read-only: Superseded" : "Read-only: Approved"}
             </Badge>
           )}
         </CardHeader>

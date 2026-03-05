@@ -59,7 +59,8 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with comprehensi
 - **Dashboard KPIs deduplication**: Unique projects only (by project_number, latest version)
 - **Sidebar redesigned**: Dark theme (#0B1120), right-edge blue accent on active items, white YASH logo, clickable logo→Dashboard
 - **Wave grid**: Add Month / Remove Month buttons, Comments column per skill row (max 100 words)
-- **Approver edit flow**: Approvers can edit in_review projects → new version with prompt (Keep In Review / Approve & Save)
+- **Approver edit flow**: Only designated approver can edit in_review projects → new version with prompt (Keep In Review / Approve & Save). Standalone Approve button removed — approver must use "Save & Approve" to ensure changes are versioned. Creator and all other users see read-only when in_review.
+- **Superseded status**: Previous version automatically marked "Superseded" when new version is created
 - **Customer edit**: Full edit dialog with PUT endpoint, + "Food & Beverages" and "Professional Services" industry verticals
 - **Skills popup**: Technology field moved to 1st position
 - **Mandatory fields**: Technology & Project Type required on save
