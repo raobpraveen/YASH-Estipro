@@ -713,26 +713,26 @@ const ProjectEstimator = () => {
   // Quick Estimate calculator state
   const [quickEstimateOpen, setQuickEstimateOpen] = useState(false);
   const [quickEstimate, setQuickEstimate] = useState({
-    resourceCount: 5,
-    durationMonths: 6,
-    avgMonthlySalary: 5000,
-    onsitePercentage: 30,
+    onsiteMM: 10,
+    offshoreMM: 20,
+    onsiteAvgSalary: 8000,
+    offshoreAvgSalary: 4000,
     overheadPercentage: 30,
   });
 
   const quickEstimateResult = (() => {
-    const { resourceCount, durationMonths, avgMonthlySalary, onsitePercentage, overheadPercentage } = quickEstimate;
-    const totalMM = resourceCount * durationMonths;
-    const onsiteMM = totalMM * (onsitePercentage / 100);
-    const offshoreMM = totalMM - onsiteMM;
-    const baseCost = totalMM * avgMonthlySalary;
+    const { onsiteMM, offshoreMM, onsiteAvgSalary, offshoreAvgSalary, overheadPercentage } = quickEstimate;
+    const totalMM = onsiteMM + offshoreMM;
+    const onsiteCost = onsiteMM * onsiteAvgSalary;
+    const offshoreCost = offshoreMM * offshoreAvgSalary;
+    const baseCost = onsiteCost + offshoreCost;
     const overheadCost = baseCost * (overheadPercentage / 100);
     const totalCost = baseCost + overheadCost;
     const sp = totalCost / (1 - profitMarginPercentage / 100);
     const spPerMM = totalMM > 0 ? sp / totalMM : 0;
     const hourly = spPerMM / 176;
     const nego = sp * (negoBufferPercentage / 100);
-    return { totalMM, onsiteMM, offshoreMM, baseCost, overheadCost, totalCost, sellingPrice: sp, spPerMM, hourly, finalPrice: sp + nego, negoBuffer: nego };
+    return { totalMM, onsiteMM, offshoreMM, onsiteCost, offshoreCost, baseCost, overheadCost, totalCost, sellingPrice: sp, spPerMM, hourly, finalPrice: sp + nego, negoBuffer: nego };
   })();
 
   // Download current wave grid data (not template)
@@ -3722,40 +3722,49 @@ const ProjectEstimator = () => {
             <DialogDescription>Get a ballpark estimate in seconds — enter basic parameters below</DialogDescription>
           </DialogHeader>
           <div className="space-y-5 mt-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-xs font-semibold">No. of Resources</Label>
-                <Input type="number" min="1" value={quickEstimate.resourceCount}
-                  onChange={e => setQuickEstimate({ ...quickEstimate, resourceCount: parseInt(e.target.value) || 1 })}
-                  data-testid="qe-resource-count" />
+            <div className="space-y-4">
+              <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Onsite</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs font-semibold">Onsite Man-Months</Label>
+                  <Input type="number" min="0" value={quickEstimate.onsiteMM}
+                    onChange={e => setQuickEstimate({ ...quickEstimate, onsiteMM: parseFloat(e.target.value) || 0 })}
+                    data-testid="qe-onsite-mm" />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold">Onsite Avg Salary ($/month)</Label>
+                  <Input type="number" min="0" value={quickEstimate.onsiteAvgSalary}
+                    onChange={e => setQuickEstimate({ ...quickEstimate, onsiteAvgSalary: parseFloat(e.target.value) || 0 })}
+                    data-testid="qe-onsite-salary" />
+                </div>
               </div>
-              <div>
-                <Label className="text-xs font-semibold">Duration (Months)</Label>
-                <Input type="number" min="1" value={quickEstimate.durationMonths}
-                  onChange={e => setQuickEstimate({ ...quickEstimate, durationMonths: parseInt(e.target.value) || 1 })}
-                  data-testid="qe-duration" />
+              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mt-3">Offshore</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs font-semibold">Offshore Man-Months</Label>
+                  <Input type="number" min="0" value={quickEstimate.offshoreMM}
+                    onChange={e => setQuickEstimate({ ...quickEstimate, offshoreMM: parseFloat(e.target.value) || 0 })}
+                    data-testid="qe-offshore-mm" />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold">Offshore Avg Salary ($/month)</Label>
+                  <Input type="number" min="0" value={quickEstimate.offshoreAvgSalary}
+                    onChange={e => setQuickEstimate({ ...quickEstimate, offshoreAvgSalary: parseFloat(e.target.value) || 0 })}
+                    data-testid="qe-offshore-salary" />
+                </div>
               </div>
-              <div>
-                <Label className="text-xs font-semibold">Avg Monthly Salary ($)</Label>
-                <Input type="number" min="0" value={quickEstimate.avgMonthlySalary}
-                  onChange={e => setQuickEstimate({ ...quickEstimate, avgMonthlySalary: parseFloat(e.target.value) || 0 })}
-                  data-testid="qe-salary" />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">Onsite %</Label>
-                <Input type="number" min="0" max="100" value={quickEstimate.onsitePercentage}
-                  onChange={e => setQuickEstimate({ ...quickEstimate, onsitePercentage: parseFloat(e.target.value) || 0 })}
-                  data-testid="qe-onsite-pct" />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">Overhead %</Label>
-                <Input type="number" min="0" max="100" value={quickEstimate.overheadPercentage}
-                  onChange={e => setQuickEstimate({ ...quickEstimate, overheadPercentage: parseFloat(e.target.value) || 0 })}
-                  data-testid="qe-overhead" />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold text-gray-400">Profit Margin %</Label>
-                <Input type="number" disabled value={profitMarginPercentage} className="bg-gray-50" />
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3">Margins</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs font-semibold">Overhead %</Label>
+                  <Input type="number" min="0" max="100" value={quickEstimate.overheadPercentage}
+                    onChange={e => setQuickEstimate({ ...quickEstimate, overheadPercentage: parseFloat(e.target.value) || 0 })}
+                    data-testid="qe-overhead" />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-gray-400">Profit Margin %</Label>
+                  <Input type="number" disabled value={profitMarginPercentage} className="bg-gray-50" />
+                </div>
               </div>
             </div>
 
@@ -3764,10 +3773,10 @@ const ProjectEstimator = () => {
               <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
                 <span className="text-gray-500">Total Man-Months</span>
                 <span className="font-mono font-semibold text-right">{quickEstimateResult.totalMM}</span>
-                <span className="text-gray-500">Onsite MM</span>
-                <span className="font-mono text-right text-amber-600">{quickEstimateResult.onsiteMM.toFixed(1)}</span>
-                <span className="text-gray-500">Offshore MM</span>
-                <span className="font-mono text-right text-blue-600">{quickEstimateResult.offshoreMM.toFixed(1)}</span>
+                <span className="text-amber-600">Onsite Cost ({quickEstimateResult.onsiteMM} MM x ${quickEstimate.onsiteAvgSalary.toLocaleString()})</span>
+                <span className="font-mono text-right text-amber-600">${quickEstimateResult.onsiteCost.toLocaleString()}</span>
+                <span className="text-blue-600">Offshore Cost ({quickEstimateResult.offshoreMM} MM x ${quickEstimate.offshoreAvgSalary.toLocaleString()})</span>
+                <span className="font-mono text-right text-blue-600">${quickEstimateResult.offshoreCost.toLocaleString()}</span>
                 <span className="text-gray-500">Base Salary Cost</span>
                 <span className="font-mono text-right">${quickEstimateResult.baseCost.toLocaleString()}</span>
                 <span className="text-gray-500">Overhead ({quickEstimate.overheadPercentage}%)</span>
