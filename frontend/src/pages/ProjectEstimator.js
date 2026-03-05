@@ -1656,32 +1656,244 @@ const ProjectEstimator = () => {
     const wb = new ExcelJS.Workbook();
     wb.creator = "YASH EstiPro";
 
+    // Helper: column number to Excel letter (1=A, 2=B, ... 27=AA)
+    const colL = (n) => { let s = ''; while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); } return s; };
+
+    // Styles
     const headerFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F172A" } };
     const headerFont = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
     const subHeaderFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0F2FE" } };
     const greenFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD1FAE5" } };
-    const amberFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
-    const purpleFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDE9FE" } };
-    const blueFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDBEAFE" } };
     const finalFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF059669" } };
     const finalFont = { bold: true, color: { argb: "FFFFFFFF" }, size: 14 };
     const thinBorder = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
-    // Row colors by Onsite/Travel combo
-    const onsiteTravelFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFCA5A5" } };   // ON + Travel YES = soft red/coral
-    const onsiteNoTravelFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } }; // ON + Travel NO  = light amber
-    const offshoreFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFECFDF5" } };       // OFF + no travel = light green/mint
-    const logisticsFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3E8FF" } };      // Logistics = light purple
-    const logisticsHeaderFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF7C3AED" } }; // Logistics header = violet
+    const onsiteTravelFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFCA5A5" } };
+    const onsiteNoTravelFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
+    const offshoreFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFECFDF5" } };
+    const logisticsFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3E8FF" } };
+    const logisticsHeaderFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF7C3AED" } };
     const logisticsHeaderFont = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+    const totalsFont = { bold: true };
+    const moneyFmt = '#,##0.00';
+    const intFmt = '#,##0';
 
-    // === Summary Sheet ===
-    const ws = wb.addWorksheet("Summary");
-    ws.columns = [{ width: 28 }, { width: 50 }, { width: 22 }];
+    const waveRefs = []; // collect cell refs from each wave sheet for summary
 
-    const titleRow = ws.addRow(["YASH Technologies - EstiPro"]);
-    titleRow.font = { bold: true, size: 16, color: { argb: "FF0F172A" } };
-    ws.addRow(["PROJECT ESTIMATE SUMMARY"]).font = { bold: true, size: 12, color: { argb: "FF6B7280" } };
-    ws.addRow([]);
+    // ========= DETAIL SHEETS (per wave) =========
+    const usedNames = new Set(["Summary"]);
+    waves.forEach((wave) => {
+      let sheetName = wave.name.replace(/[\\/*?\[\]:]/g, "").substring(0, 28) || "Wave";
+      let finalName = sheetName;
+      let counter = 2;
+      while (usedNames.has(finalName)) { finalName = `${sheetName.substring(0, 26)}_${counter++}`; }
+      usedNames.add(finalName);
+
+      const dws = wb.addWorksheet(finalName);
+      const sRef = `'${finalName.replace(/'/g, "''")}'`; // safe sheet ref for cross-sheet formulas
+      const N = wave.phase_names.length; // number of phase columns
+      const A = wave.grid_allocations.length; // number of allocation rows
+
+      // Column layout (1-based)
+      const C_SAL = 5;             // E: $/Month
+      const C_ON = 6;              // F: Onsite
+      const C_TR = 7;              // G: Travel
+      const C_PH1 = 8;             // H: first phase
+      const C_TMM = C_PH1 + N;     // Total MM
+      const C_SC = C_TMM + 1;      // Salary Cost
+      const C_OH = C_SC + 1;       // Overhead
+      const C_OHP = C_OH + 1;      // OH%
+      const C_TC = C_OHP + 1;      // Total Cost
+      const C_SP = C_TC + 1;       // Selling Price
+      const C_SPMM = C_SP + 1;     // SP/MM
+      const C_HR = C_SPMM + 1;     // Hourly
+      const C_CMT = C_HR + 1;      // Comments
+
+      // Row 1: Title
+      const titleR = dws.addRow([`${wave.name} — ${wave.duration_months} months${wave.description ? ` — ${wave.description}` : ""}`]);
+      titleR.font = { bold: true, size: 13 };
+
+      // Row 2: Parameters (editable in Excel — all formulas reference these)
+      const pRow = dws.addRow(["", "Profit Margin:", profitMarginPercentage / 100, "", "Nego Buffer:", negoBufferPercentage / 100]);
+      pRow.getCell(2).font = { bold: true }; pRow.getCell(3).numFmt = '0.00%';
+      pRow.getCell(5).font = { bold: true }; pRow.getCell(6).numFmt = '0.00%';
+      const MRG = "C2"; // profit margin cell ref (decimal)
+      const NGO = "F2"; // nego buffer cell ref (decimal)
+
+      // Row 3: empty
+      dws.addRow([]);
+
+      // Row 4: Headers
+      const headers = ["#", "Skill", "Level", "Location", "$/Month", "Onsite", "Travel",
+        ...wave.phase_names, "Total MM", "Salary Cost", "Overhead", "OH%", "Total Cost",
+        "Selling Price", "SP/MM", "Hourly", "Comments"];
+      const hRow = dws.addRow(headers);
+      hRow.eachCell(c => { c.fill = headerFill; c.font = headerFont; c.border = thinBorder; });
+      dws.columns = headers.map((h, i) => ({
+        width: i === 0 ? 5 : ["Skill", "Location", "Comments"].includes(h) ? 20 : h.length > 8 ? 15 : 11
+      }));
+
+      // Data rows: 5 to 4+A
+      const DR1 = 5; // first data row
+      const DRN = DR1 + A - 1; // last data row
+
+      wave.grid_allocations.forEach((alloc, idx) => {
+        const rn = DR1 + idx;
+        const { totalManMonths, baseSalaryCost } = calculateResourceBaseCost(alloc);
+        const ohCost = baseSalaryCost * (alloc.overhead_percentage / 100);
+        const tc = baseSalaryCost + ohCost;
+        const sp = tc / (1 - profitMarginPercentage / 100);
+        const spmm = totalManMonths > 0 ? sp / totalManMonths : 0;
+
+        const r = dws.addRow([]);
+        r.getCell(1).value = idx + 1;
+        r.getCell(2).value = alloc.skill_name;
+        r.getCell(3).value = alloc.proficiency_level;
+        r.getCell(4).value = alloc.base_location_name;
+        r.getCell(C_SAL).value = alloc.avg_monthly_salary;
+        r.getCell(C_ON).value = alloc.is_onsite ? "ON" : "OFF";
+        r.getCell(C_TR).value = alloc.travel_required ? "YES" : "NO";
+        wave.phase_names.forEach((_, i) => { r.getCell(C_PH1 + i).value = alloc.phase_allocations[i] || 0; });
+
+        r.getCell(C_OHP).value = alloc.overhead_percentage / 100;
+        r.getCell(C_OHP).numFmt = '0%';
+
+        // === FORMULAS ===
+        const phR = `${colL(C_PH1)}${rn}:${colL(C_PH1 + N - 1)}${rn}`;
+        r.getCell(C_TMM).value  = { formula: `SUM(${phR})`, result: totalManMonths };
+        r.getCell(C_SC).value   = { formula: `${colL(C_TMM)}${rn}*${colL(C_SAL)}${rn}`, result: baseSalaryCost };
+        r.getCell(C_OH).value   = { formula: `${colL(C_SC)}${rn}*${colL(C_OHP)}${rn}`, result: ohCost };
+        r.getCell(C_TC).value   = { formula: `${colL(C_SC)}${rn}+${colL(C_OH)}${rn}`, result: tc };
+        r.getCell(C_SP).value   = { formula: `${colL(C_TC)}${rn}/(1-${MRG})`, result: sp };
+        r.getCell(C_SPMM).value = { formula: `IFERROR(${colL(C_SP)}${rn}/${colL(C_TMM)}${rn},0)`, result: spmm };
+        r.getCell(C_HR).value   = { formula: `${colL(C_SPMM)}${rn}/176`, result: spmm / 176 };
+        r.getCell(C_CMT).value  = alloc.comments || "";
+
+        // Number formats for money columns
+        [C_SAL, C_SC, C_OH, C_TC, C_SP, C_SPMM, C_HR].forEach(c => { r.getCell(c).numFmt = moneyFmt; });
+        r.getCell(C_TMM).numFmt = '0.00';
+
+        // Row coloring
+        r.eachCell(c => { c.border = thinBorder; });
+        if (alloc.is_onsite && alloc.travel_required) r.eachCell(c => { c.fill = onsiteTravelFill; });
+        else if (alloc.is_onsite) r.eachCell(c => { c.fill = onsiteNoTravelFill; });
+        else r.eachCell(c => { c.fill = offshoreFill; });
+      });
+
+      // === TOTALS ROW ===
+      dws.addRow([]);
+      const TR = dws.rowCount + 1; // totals row number
+      const totR = dws.addRow([]);
+      totR.getCell(2).value = "TOTALS";
+      if (A > 0) {
+        wave.phase_names.forEach((_, i) => {
+          const c = colL(C_PH1 + i);
+          totR.getCell(C_PH1 + i).value = { formula: `SUM(${c}${DR1}:${c}${DRN})`, result: 0 };
+        });
+        [C_TMM, C_SC, C_OH, C_TC, C_SP].forEach(col => {
+          const c = colL(col);
+          totR.getCell(col).value = { formula: `SUM(${c}${DR1}:${c}${DRN})`, result: 0 };
+          totR.getCell(col).numFmt = moneyFmt;
+        });
+        totR.getCell(C_TMM).numFmt = '0.00';
+      }
+      totR.eachCell(c => { c.border = thinBorder; c.fill = subHeaderFill; });
+      totR.font = totalsFont;
+
+      // === LOGISTICS SECTION ===
+      dws.addRow([]);
+      const lgHdrR = dws.addRow([]);
+      lgHdrR.getCell(2).value = "LOGISTICS BREAKDOWN";
+      lgHdrR.eachCell(c => { c.fill = logisticsHeaderFill; c.font = logisticsHeaderFont; c.border = thinBorder; });
+
+      const lgSubR = dws.addRow([]);
+      lgSubR.getCell(2).value = "Item"; lgSubR.getCell(3).value = "Description"; lgSubR.getCell(4).value = "Amount";
+      lgSubR.eachCell(c => { c.fill = logisticsFill; c.font = { bold: true }; c.border = thinBorder; });
+
+      const lc = getLogisticsConfig(wave);
+      const onCol = colL(C_ON);
+      const mmCol = colL(C_TMM);
+      const rng = A > 0 ? `${DR1}:${onCol}${DRN}` : `${DR1}:${onCol}${DR1}`;
+      // Onsite MM = SUMPRODUCT((F="ON")*TotalMM)
+      const onsMMF = A > 0 ? `SUMPRODUCT((${onCol}${DR1}:${onCol}${DRN}="ON")*(${mmCol}${DR1}:${mmCol}${DRN}))` : "0";
+      // Onsite count = COUNTIF(F,"ON")
+      const onsCntF = A > 0 ? `COUNTIF(${onCol}${DR1}:${onCol}${DRN},"ON")` : "0";
+
+      const lgAmtCells = [];
+      [
+        ["Per-diem", `Onsite MM x $${lc.per_diem_daily} x ${lc.per_diem_days}d`, `(${onsMMF})*${lc.per_diem_daily}*${lc.per_diem_days}`],
+        ["Accommodation", `Onsite MM x $${lc.accommodation_daily} x ${lc.accommodation_days}d`, `(${onsMMF})*${lc.accommodation_daily}*${lc.accommodation_days}`],
+        ["Conveyance", `Onsite MM x $${lc.local_conveyance_daily} x ${lc.local_conveyance_days}d`, `(${onsMMF})*${lc.local_conveyance_daily}*${lc.local_conveyance_days}`],
+        ["Air Fare", `Onsite Res x $${lc.flight_cost_per_trip} x ${lc.num_trips} trips`, `(${onsCntF})*${lc.flight_cost_per_trip}*${lc.num_trips}`],
+        ["Visa & Medical", `Onsite Res x $${lc.visa_medical_per_trip} x ${lc.num_trips} trips`, `(${onsCntF})*${lc.visa_medical_per_trip}*${lc.num_trips}`],
+      ].forEach(([item, desc, formula]) => {
+        const r = dws.addRow([]);
+        r.getCell(2).value = item; r.getCell(3).value = desc;
+        r.getCell(4).value = { formula, result: 0 }; r.getCell(4).numFmt = moneyFmt;
+        r.eachCell(c => { c.fill = logisticsFill; c.border = thinBorder; });
+        lgAmtCells.push(`D${dws.rowCount}`);
+      });
+
+      // Contingency
+      const contR = dws.addRow([]);
+      contR.getCell(2).value = "Contingency"; contR.getCell(3).value = `${lc.contingency_percentage}% of subtotal`;
+      contR.getCell(4).value = { formula: `(${lgAmtCells.join("+")})*${lc.contingency_percentage}/100`, result: 0 };
+      contR.getCell(4).numFmt = moneyFmt;
+      contR.eachCell(c => { c.fill = logisticsFill; c.border = thinBorder; });
+      lgAmtCells.push(`D${dws.rowCount}`);
+
+      // Total Logistics
+      const lgTotR = dws.addRow([]);
+      lgTotR.getCell(2).value = "TOTAL LOGISTICS";
+      lgTotR.getCell(4).value = { formula: lgAmtCells.join("+"), result: 0 }; lgTotR.getCell(4).numFmt = moneyFmt;
+      lgTotR.eachCell(c => { c.fill = logisticsFill; c.font = totalsFont; c.border = thinBorder; });
+      const lgTotCell = `D${dws.rowCount}`;
+
+      // === WAVE SUMMARY ===
+      dws.addRow([]);
+      const addSumRow = (label, formula, style) => {
+        const r = dws.addRow([]);
+        r.getCell(2).value = label;
+        r.getCell(3).value = { formula, result: 0 }; r.getCell(3).numFmt = moneyFmt;
+        if (style) { r.font = style.font || {}; r.eachCell(c => { if (style.fill) c.fill = style.fill; }); }
+        return `C${dws.rowCount}`;
+      };
+
+      const resSPCell = addSumRow("Resources Selling Price", `${colL(C_SP)}${TR}`, {});
+      const waveSPCell = addSumRow("Wave Selling Price (Resources + Logistics)", `${resSPCell}+${lgTotCell}`, { font: totalsFont });
+      const negoCell = addSumRow(`Nego Buffer (${negoBufferPercentage}%)`, `${waveSPCell}*${NGO}`, {});
+      const finalCell = addSumRow("WAVE FINAL PRICE", `${waveSPCell}+${negoCell}`, { font: totalsFont, fill: greenFill });
+
+      // Hidden helper cells for summary cross-refs: Onsite MM, Offshore MM, Total Cost
+      const onsMMCell = addSumRow("Onsite MM", onsMMF, {});
+      const offMMCell = addSumRow("Offshore MM", `${colL(C_TMM)}${TR}-${onsMMCell}`, {});
+      const costCell = `${colL(C_TC)}${TR}`;
+
+      // Collect refs for summary sheet
+      waveRefs.push({
+        name: wave.name, sheet: sRef,
+        totalMM: `${sRef}!${colL(C_TMM)}${TR}`,
+        onsiteMM: `${sRef}!${onsMMCell}`,
+        offshoreMM: `${sRef}!${offMMCell}`,
+        totalLogistics: `${sRef}!${lgTotCell}`,
+        totalCost: `${sRef}!${costCell}`,
+        resourcesSP: `${sRef}!${resSPCell}`,
+        sellingPrice: `${sRef}!${waveSPCell}`,
+        negoBuffer: `${sRef}!${negoCell}`,
+        finalPrice: `${sRef}!${finalCell}`,
+      });
+    });
+
+    // ========= SUMMARY SHEET =========
+    const ws = wb.addWorksheet("Summary", { properties: { tabColor: { argb: "FF0F172A" } } });
+    wb.views = [{ activeTab: wb.worksheets.length - 1 }]; // make summary visible first
+    // Move summary to first position
+    wb.removeWorksheet(ws.id);
+    const summaryWs = wb.addWorksheet("Summary");
+
+    summaryWs.columns = [{ width: 30 }, { width: 50 }, { width: 22 }];
+    summaryWs.addRow(["YASH Technologies - EstiPro"]).font = { bold: true, size: 16, color: { argb: "FF0F172A" } };
+    summaryWs.addRow(["PROJECT ESTIMATE SUMMARY"]).font = { bold: true, size: 12, color: { argb: "FF6B7280" } };
+    summaryWs.addRow([]);
 
     const infoFields = [
       ["Project Number", projectNumber || "Not Saved"],
@@ -1698,154 +1910,62 @@ const ProjectEstimator = () => {
       ["Nego Buffer %", `${negoBufferPercentage}%`],
     ];
     if (versionNotes) infoFields.push(["Version Notes", versionNotes]);
-
     infoFields.forEach(([label, val]) => {
-      const r = ws.addRow([label, val]);
+      const r = summaryWs.addRow([label, val]);
       r.getCell(1).font = { bold: true, color: { argb: "FF374151" } };
     });
-    ws.addRow([]);
+    summaryWs.addRow([]);
 
-    waves.forEach(wave => {
-      const summary = calculateWaveSummary(wave);
-      const lg = summary.logistics;
-      const wHdr = ws.addRow([`WAVE: ${wave.name}`, `Duration: ${wave.duration_months} months`]);
-      wHdr.font = { bold: true, size: 12 };
-      wHdr.eachCell(c => { c.fill = subHeaderFill; });
+    // Per-wave summary with cross-sheet formulas
+    waveRefs.forEach((ref) => {
+      const wHdr = summaryWs.addRow([`WAVE: ${ref.name}`]);
+      wHdr.font = { bold: true, size: 12 }; wHdr.eachCell(c => { c.fill = subHeaderFill; });
 
-      [
-        ["Total Man-Months", summary.totalMM.toFixed(2)],
-        ["Onsite Man-Months", summary.onsiteMM.toFixed(2)],
-        ["Offshore Man-Months", summary.offshoreMM.toFixed(2)],
-      ].forEach(r => ws.addRow(r));
-      ws.addRow([]);
+      const addRefRow = (label, formulaRef, fmt) => {
+        const r = summaryWs.addRow([label]);
+        r.getCell(2).value = { formula: formulaRef, result: 0 };
+        if (fmt) r.getCell(2).numFmt = fmt;
+      };
 
-      const lgHdr = ws.addRow(["LOGISTICS BREAKDOWN"]);
-      lgHdr.font = { bold: true }; lgHdr.eachCell(c => { c.fill = purpleFill; });
-      [
-        ["Per-diem", `${summary.onsiteMM.toFixed(2)} MM x $${lg.config.per_diem_daily} x ${lg.config.per_diem_days} days`, `$${lg.perDiemCost.toFixed(2)}`],
-        ["Accommodation", `${summary.onsiteMM.toFixed(2)} MM x $${lg.config.accommodation_daily} x ${lg.config.accommodation_days} days`, `$${lg.accommodationCost.toFixed(2)}`],
-        ["Conveyance", `${summary.onsiteMM.toFixed(2)} MM x $${lg.config.local_conveyance_daily} x ${lg.config.local_conveyance_days} days`, `$${lg.conveyanceCost.toFixed(2)}`],
-        ["Air Fare", `${summary.onsiteResourceCount} res x $${lg.config.flight_cost_per_trip} x ${lg.config.num_trips} trips`, `$${lg.flightCost.toFixed(2)}`],
-        ["Visa & Medical", `${summary.onsiteResourceCount} res x $${lg.config.visa_medical_per_trip} x ${lg.config.num_trips} trips`, `$${lg.visaMedicalCost.toFixed(2)}`],
-        ["Contingency", `${lg.config.contingency_percentage}%`, `$${lg.contingencyCost.toFixed(2)}`],
-        ["Total Logistics", "", `$${lg.totalLogistics.toFixed(2)}`],
-      ].forEach(r => { const row = ws.addRow(r); if (r[0] === "Total Logistics") row.font = { bold: true }; });
-      ws.addRow([]);
-
-      [
-        ["Cost to Company", `$${summary.totalCostToCompany.toFixed(2)}`],
-        ["Resources Price", `$${summary.totalRowsSellingPrice.toFixed(2)}`],
-        ["Wave Selling Price", `$${summary.sellingPrice.toFixed(2)}`],
-        ["Nego Buffer", `${negoBufferPercentage}% = $${summary.negoBufferAmount.toFixed(2)}`],
-        ["Wave Final Price", `$${summary.finalPrice.toFixed(2)}`],
-      ].forEach(([l, v]) => {
-        const r = ws.addRow([l, v]);
-        if (l === "Wave Final Price") { r.font = { bold: true }; r.eachCell(c => { c.fill = greenFill; }); }
-      });
-      ws.addRow([]);
+      addRefRow("Total Man-Months", ref.totalMM, '0.00');
+      addRefRow("Onsite Man-Months", ref.onsiteMM, '0.00');
+      addRefRow("Offshore Man-Months", ref.offshoreMM, '0.00');
+      addRefRow("Total Cost to Company", ref.totalCost, moneyFmt);
+      addRefRow("Total Logistics", ref.totalLogistics, moneyFmt);
+      addRefRow("Resources Selling Price", ref.resourcesSP, moneyFmt);
+      addRefRow("Wave Selling Price", ref.sellingPrice, moneyFmt);
+      addRefRow("Nego Buffer", ref.negoBuffer, moneyFmt);
+      const fpRow = summaryWs.addRow(["Wave Final Price"]);
+      fpRow.getCell(2).value = { formula: ref.finalPrice, result: 0 };
+      fpRow.getCell(2).numFmt = moneyFmt;
+      fpRow.font = { bold: true }; fpRow.eachCell(c => { c.fill = greenFill; });
+      summaryWs.addRow([]);
     });
 
-    const overall = calculateOverallSummary();
-    const oHdr = ws.addRow(["OVERALL PROJECT"]);
+    // Overall totals with formulas
+    const oHdr = summaryWs.addRow(["OVERALL PROJECT"]);
     oHdr.font = { bold: true, size: 13 }; oHdr.eachCell(c => { c.fill = headerFill; c.font = headerFont; });
-    [
-      ["Total Man-Months", overall.totalMM.toFixed(2)],
-      ["Total Onsite MM", overall.onsiteMM.toFixed(2)],
-      ["Total Offshore MM", overall.offshoreMM.toFixed(2)],
-      ["Total Logistics", `$${overall.totalLogisticsCost.toFixed(2)}`],
-      ["Total Cost to Company", `$${overall.totalCostToCompany.toFixed(2)}`],
-      ["Total Resources Price", `$${overall.totalRowsSellingPrice.toFixed(2)}`],
-      ["Total Selling Price", `$${overall.sellingPrice.toFixed(2)}`],
-      ["Total Nego Buffer", `$${overall.negoBuffer.toFixed(2)}`],
-    ].forEach(r => ws.addRow(r));
-    const grandRow = ws.addRow(["GRAND TOTAL (Final Price)", `$${overall.finalPrice.toFixed(2)}`]);
+
+    const addOverallRow = (label, refs, fmt, style) => {
+      const r = summaryWs.addRow([label]);
+      r.getCell(2).value = { formula: refs.join("+"), result: 0 };
+      if (fmt) r.getCell(2).numFmt = fmt;
+      if (style) { if (style.font) r.font = style.font; r.eachCell(c => { if (style.fill) c.fill = style.fill; c.border = thinBorder; }); }
+    };
+
+    addOverallRow("Total Man-Months", waveRefs.map(r => r.totalMM), '0.00');
+    addOverallRow("Total Onsite MM", waveRefs.map(r => r.onsiteMM), '0.00');
+    addOverallRow("Total Offshore MM", waveRefs.map(r => r.offshoreMM), '0.00');
+    addOverallRow("Total Logistics", waveRefs.map(r => r.totalLogistics), moneyFmt);
+    addOverallRow("Total Cost to Company", waveRefs.map(r => r.totalCost), moneyFmt);
+    addOverallRow("Total Resources Price", waveRefs.map(r => r.resourcesSP), moneyFmt);
+    addOverallRow("Total Selling Price", waveRefs.map(r => r.sellingPrice), moneyFmt);
+    addOverallRow("Total Nego Buffer", waveRefs.map(r => r.negoBuffer), moneyFmt);
+
+    const grandRow = summaryWs.addRow(["GRAND TOTAL (Final Price)"]);
+    grandRow.getCell(2).value = { formula: waveRefs.map(r => r.finalPrice).join("+"), result: 0 };
+    grandRow.getCell(2).numFmt = moneyFmt;
     grandRow.eachCell(c => { c.fill = finalFill; c.font = finalFont; c.border = thinBorder; });
-
-    // === Detail sheets per wave ===
-    const usedNames = new Set(["Summary"]);
-    waves.forEach(wave => {
-      let sheetName = wave.name.replace(/[\\/*?\[\]:]/g, "").substring(0, 28);
-      if (!sheetName) sheetName = "Wave";
-      let finalName = sheetName;
-      let counter = 2;
-      while (usedNames.has(finalName)) { finalName = `${sheetName.substring(0, 26)}_${counter++}`; }
-      usedNames.add(finalName);
-      const dws = wb.addWorksheet(finalName);
-      const titleR = dws.addRow([`${wave.name} — ${wave.duration_months} months`]);
-      titleR.font = { bold: true, size: 13 };
-      dws.addRow([]);
-
-      const headers = ["#", "Skill", "Level", "Location", "$/Month", "Onsite", "Travel",
-        ...wave.phase_names, "Total MM", "Salary Cost", "Overhead", "OH%", "Total Cost",
-        "Selling Price", "SP/MM", "Hourly", "Comments"];
-      const hRow = dws.addRow(headers);
-      hRow.eachCell((c, i) => { c.fill = headerFill; c.font = headerFont; c.border = thinBorder; });
-      dws.columns = headers.map((h, i) => ({
-        width: i === 0 ? 4 : ["Skill", "Location", "Comments"].includes(h) ? 18 : h.length > 8 ? 14 : 10
-      }));
-
-      wave.grid_allocations.forEach((alloc, idx) => {
-        const { totalManMonths, baseSalaryCost } = calculateResourceBaseCost(alloc);
-        const overheadCost = baseSalaryCost * (alloc.overhead_percentage / 100);
-        const totalCost = baseSalaryCost + overheadCost;
-        const sp = totalCost / (1 - profitMarginPercentage / 100);
-        const spPerMM = totalManMonths > 0 ? sp / totalManMonths : 0;
-        const hourly = spPerMM / 176;
-
-        const r = dws.addRow([
-          idx + 1, alloc.skill_name, alloc.proficiency_level, alloc.base_location_name,
-          alloc.avg_monthly_salary, alloc.is_onsite ? "ON" : "OFF", alloc.travel_required ? "YES" : "NO",
-          ...wave.phase_names.map((_, i) => alloc.phase_allocations[i] || 0),
-          parseFloat(totalManMonths.toFixed(2)), parseFloat(baseSalaryCost.toFixed(2)),
-          parseFloat(overheadCost.toFixed(2)), `${alloc.overhead_percentage}%`,
-          parseFloat(totalCost.toFixed(2)), parseFloat(sp.toFixed(2)),
-          parseFloat(spPerMM.toFixed(2)), parseFloat(hourly.toFixed(2)),
-          alloc.comments || ""
-        ]);
-        r.eachCell(c => { c.border = thinBorder; });
-        // Color rows by Onsite/Travel combination
-        if (alloc.is_onsite && alloc.travel_required) {
-          r.eachCell(c => { c.fill = onsiteTravelFill; });
-        } else if (alloc.is_onsite) {
-          r.eachCell(c => { c.fill = onsiteNoTravelFill; });
-        } else {
-          r.eachCell(c => { c.fill = offshoreFill; });
-        }
-      });
-
-      dws.addRow([]);
-      const waveSummary = calculateWaveSummary(wave);
-      const lg = waveSummary.logistics;
-
-      // Logistics section
-      const lgTitle = dws.addRow(["", "LOGISTICS BREAKDOWN"]);
-      lgTitle.eachCell(c => { c.fill = logisticsHeaderFill; c.font = logisticsHeaderFont; c.border = thinBorder; });
-      const lgHeaders = dws.addRow(["", "Item", "Formula", "Amount"]);
-      lgHeaders.eachCell(c => { c.fill = logisticsFill; c.font = { bold: true }; c.border = thinBorder; });
-      [
-        ["Per-diem", `${waveSummary.onsiteMM.toFixed(1)} MM x $${lg.config.per_diem_daily} x ${lg.config.per_diem_days} days`, lg.perDiemCost],
-        ["Accommodation", `${waveSummary.onsiteMM.toFixed(1)} MM x $${lg.config.accommodation_daily} x ${lg.config.accommodation_days} days`, lg.accommodationCost],
-        ["Local Conveyance", `${waveSummary.onsiteMM.toFixed(1)} MM x $${lg.config.local_conveyance_daily} x ${lg.config.local_conveyance_days} days`, lg.conveyanceCost],
-        ["Air Fare", `${waveSummary.onsiteResourceCount} res x $${lg.config.flight_cost_per_trip} x ${lg.config.num_trips} trips`, lg.flightCost],
-        ["Visa & Medical", `${waveSummary.onsiteResourceCount} res x $${lg.config.visa_medical_per_trip} x ${lg.config.num_trips} trips`, lg.visaMedicalCost],
-        ["Contingency", `${lg.config.contingency_percentage}% of subtotal`, lg.contingencyCost],
-      ].forEach(([item, formula, amount]) => {
-        const r = dws.addRow(["", item, formula, parseFloat(amount.toFixed(2))]);
-        r.eachCell(c => { c.fill = logisticsFill; c.border = thinBorder; });
-      });
-      const lgTotalRow = dws.addRow(["", "TOTAL LOGISTICS", "", parseFloat(lg.totalLogistics.toFixed(2))]);
-      lgTotalRow.eachCell(c => { c.fill = logisticsFill; c.font = { bold: true }; c.border = thinBorder; });
-      dws.addRow([]);
-
-      [
-        ["Nego Buffer %", `${negoBufferPercentage}%`],
-        ["Wave Selling Price", `$${waveSummary.sellingPrice.toFixed(2)}`],
-        ["Wave Final Price (incl. buffer)", `$${waveSummary.finalPrice.toFixed(2)}`],
-      ].forEach(([l, v]) => {
-        const r = dws.addRow(["", l, v]);
-        if (l.includes("Final")) { r.font = { bold: true }; r.eachCell(c => { c.fill = greenFill; }); }
-      });
-    });
 
     const buffer = await wb.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `${projectNumber || projectName || "Project"}_v${projectVersion}_Estimate.xlsx`);
