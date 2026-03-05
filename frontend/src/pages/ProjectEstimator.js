@@ -718,17 +718,18 @@ const ProjectEstimator = () => {
     onsiteAvgSalary: 8000,
     offshoreAvgSalary: 4000,
     overheadPercentage: 30,
+    profitMargin: 35,
   });
 
   const quickEstimateResult = (() => {
-    const { onsiteMM, offshoreMM, onsiteAvgSalary, offshoreAvgSalary, overheadPercentage } = quickEstimate;
+    const { onsiteMM, offshoreMM, onsiteAvgSalary, offshoreAvgSalary, overheadPercentage, profitMargin } = quickEstimate;
     const totalMM = onsiteMM + offshoreMM;
     const onsiteCost = onsiteMM * onsiteAvgSalary;
     const offshoreCost = offshoreMM * offshoreAvgSalary;
     const baseCost = onsiteCost + offshoreCost;
     const overheadCost = baseCost * (overheadPercentage / 100);
     const totalCost = baseCost + overheadCost;
-    const sp = totalCost / (1 - profitMarginPercentage / 100);
+    const sp = totalCost / (1 - profitMargin / 100);
     const spPerMM = totalMM > 0 ? sp / totalMM : 0;
     const hourly = spPerMM / 176;
     const nego = sp * (negoBufferPercentage / 100);
@@ -3762,8 +3763,10 @@ const ProjectEstimator = () => {
                     data-testid="qe-overhead" />
                 </div>
                 <div>
-                  <Label className="text-xs font-semibold text-gray-400">Profit Margin %</Label>
-                  <Input type="number" disabled value={profitMarginPercentage} className="bg-gray-50" />
+                  <Label className="text-xs font-semibold">Profit Margin %</Label>
+                  <Input type="number" min="0" max="100" value={quickEstimate.profitMargin}
+                    onChange={e => setQuickEstimate({ ...quickEstimate, profitMargin: parseFloat(e.target.value) || 0 })}
+                    data-testid="qe-profit-margin" />
                 </div>
               </div>
             </div>
