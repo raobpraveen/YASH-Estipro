@@ -17,6 +17,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   History,
   Bell,
   UserCircle
@@ -47,6 +48,11 @@ const Layout = ({ user, onLogout }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [expandedSections, setExpandedSections] = useState({
+    main: true,
+    master: true,
+    admin: true,
+  });
 
   // Save preference to localStorage when changed
   useEffect(() => {
@@ -175,25 +181,43 @@ const Layout = ({ user, onLogout }) => {
     </TooltipProvider>
   );
 
-  const NavSection = ({ title, items }) => (
-    <>
-      {showExpanded && items.length > 0 && title && (
-        <div className="px-3 pt-6 pb-1">
-          <p className="text-[10px] font-semibold text-white/25 uppercase tracking-[0.2em]">{title}</p>
-        </div>
-      )}
-      {!showExpanded && items.length > 0 && title && (
-        <div className="h-px bg-white/5 mx-3 my-3" />
-      )}
-      <ul className="space-y-0.5 px-2">
-        {items.map((item) => (
-          <li key={item.path}>
-            <NavItem item={item} />
-          </li>
-        ))}
-      </ul>
-    </>
-  );
+  const toggleSection = (sectionKey) => {
+    setExpandedSections(prev => ({ ...prev, [sectionKey]: !prev[sectionKey] }));
+  };
+
+  const NavSection = ({ title, sectionKey, items, icon: SectionIcon }) => {
+    if (items.length === 0) return null;
+    const isExpanded = expandedSections[sectionKey] !== false;
+    
+    return (
+      <div className="mb-1">
+        {showExpanded && title ? (
+          <button
+            onClick={() => toggleSection(sectionKey)}
+            className="w-full flex items-center justify-between px-3 py-2 mt-2 text-white/40 hover:text-white/60 transition-colors"
+            data-testid={`section-toggle-${sectionKey}`}
+          >
+            <div className="flex items-center gap-2">
+              {SectionIcon && <SectionIcon className="w-3.5 h-3.5" />}
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em]">{title}</span>
+            </div>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} />
+          </button>
+        ) : !showExpanded && title ? (
+          <div className="h-px bg-white/5 mx-3 my-3" />
+        ) : null}
+        {(isExpanded || !showExpanded) && (
+          <ul className="space-y-0.5 px-2">
+            {items.map((item) => (
+              <li key={item.path}>
+                <NavItem item={item} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="flex min-h-screen">
@@ -213,11 +237,18 @@ const Layout = ({ user, onLogout }) => {
             />
           ) : (
             <div className="cursor-pointer" onClick={() => navigate('/dashboard')}>
-              <img 
-                src="/yash-logo-white.jpg" 
-                alt="YASH Technologies" 
-                className="h-12 object-contain rounded"
-              />
+              <div className="flex items-center gap-3">
+                <img 
+                  src="/yash-logo-white.jpg" 
+                  alt="YASH Technologies" 
+                  className="h-10 object-contain rounded"
+                />
+                <img 
+                  src="/estipro-logo-new.png" 
+                  alt="EstiPro" 
+                  className="h-10 object-contain"
+                />
+              </div>
               <p className="text-[10px] text-white/40 mt-2 tracking-wider uppercase">Project Cost Estimator</p>
             </div>
           )}
@@ -247,10 +278,10 @@ const Layout = ({ user, onLogout }) => {
 
         {/* Navigation */}
         <nav className="flex-1 p-2 overflow-y-auto">
-          <NavSection title="Main" items={mainNavItems} />
-          <NavSection title="Master Data" items={masterDataItems} />
-          {adminItems.length > 0 && <NavSection title="Admin" items={adminItems} />}
-          <NavSection title="" items={settingsItems} />
+          <NavSection title="Main" sectionKey="main" items={mainNavItems} icon={LayoutDashboard} />
+          <NavSection title="Master Data" sectionKey="master" items={masterDataItems} icon={Layers} />
+          {adminItems.length > 0 && <NavSection title="Admin" sectionKey="admin" items={adminItems} icon={UserCog} />}
+          <NavSection title="" sectionKey="settings" items={settingsItems} />
         </nav>
 
         {/* User info */}

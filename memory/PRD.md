@@ -91,4 +91,4 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with comprehensi
 - Iteration 15: KPI tooltips, clickable bars, combination grouping, comparison mode, Projects filters (100%)
 - Iteration 16: YASH logo on Dashboard & Estimator, sidebar theme, mandatory fields, Skills field order, Dashboard dedup, Customer edit + industry verticals (100%)
 - Iteration 17: Logo replacement, Saved Projects logo, badge hidden, sidebar grouping, logo navigation, Excel fields, wave template (100%)
-- Iteration 18: Wave Add/Remove Month, Comments column, sidebar dark redesign, approver save flow, white YASH logo (100%)
+- Iteration 18: Wave Add/Remove Month, Comments column, sidebar dark redesign with collapsible sections, approver save flow, white YASH logo + EstiPro logo, flex-wrap wave toolbar (100%)
