@@ -3146,11 +3146,11 @@ const ProjectEstimator = () => {
                         <table className="w-full border-collapse">
                           <thead>
                             <tr className="border-b-2 border-[#E2E8F0] bg-[#F8FAFC]">
-                              <th className="text-center p-2 font-semibold text-xs w-8"></th>
-                              <th className="text-center p-2 font-semibold text-xs w-8">#</th>
-                              <th className="text-left p-3 font-semibold text-sm">Skill</th>
-                              <th className="text-left p-3 font-semibold text-sm">Level</th>
-                              <th className="text-left p-3 font-semibold text-sm">Location</th>
+                              <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 0, zIndex: 10, background: '#F8FAFC' }}></th>
+                              <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 36, zIndex: 10, background: '#F8FAFC' }}>#</th>
+                              <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 72, zIndex: 10, background: '#F8FAFC', minWidth: 148 }}>Skill</th>
+                              <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 220, zIndex: 10, background: '#F8FAFC', minWidth: 128 }}>Level</th>
+                              <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 348, zIndex: 10, background: '#F8FAFC', minWidth: 140, boxShadow: '2px 0 5px rgba(0,0,0,0.08)' }}>Location</th>
                               <th className="text-right p-3 font-semibold text-sm">$/Month</th>
                               <th className="text-center p-3 font-semibold text-sm">Onsite</th>
                               <th className="text-center p-3 font-semibold text-sm">Travel</th>
@@ -3193,6 +3193,11 @@ const ProjectEstimator = () => {
                                 : allocation.is_onsite
                                 ? "bg-amber-50/40"
                                 : "bg-white";
+                              const stickyBg = allocation.is_onsite && allocation.travel_required
+                                ? '#FEF3C7'
+                                : allocation.is_onsite
+                                ? '#FFFBEB'
+                                : '#FFFFFF';
                               const groupColor = getGroupColor(allocation.resource_group_id);
                               return (
                                 <Draggable key={allocation.id} draggableId={allocation.id} index={rowIdx} isDragDisabled={isReadOnly}>
@@ -3204,11 +3209,11 @@ const ProjectEstimator = () => {
                                   style={{ ...dragProvided.draggableProps.style, borderLeft: groupColor ? `4px solid ${groupColor}` : undefined }}
                                   data-testid={`allocation-row-${allocation.id}`}
                                 >
-                                  <td className="p-1 text-center" {...dragProvided.dragHandleProps}>
+                                  <td className="p-1 text-center" style={{ position: 'sticky', left: 0, zIndex: 2, background: stickyBg }} {...dragProvided.dragHandleProps}>
                                     {!isReadOnly && <GripVertical className="w-4 h-4 text-gray-300 hover:text-gray-500 cursor-grab mx-auto" />}
                                   </td>
-                                  <td className="p-2 text-center text-xs text-gray-400 font-mono">{rowIdx + 1}</td>
-                                  <td className="p-2">
+                                  <td className="p-2 text-center text-xs text-gray-400 font-mono" style={{ position: 'sticky', left: 36, zIndex: 2, background: stickyBg }}>{rowIdx + 1}</td>
+                                  <td className="p-2" style={{ position: 'sticky', left: 72, zIndex: 2, background: stickyBg, minWidth: 148 }}>
                                     {isReadOnly ? (
                                       <Tooltip>
                                         <TooltipTrigger asChild>
@@ -3240,7 +3245,7 @@ const ProjectEstimator = () => {
                                       </Tooltip>
                                     )}
                                   </td>
-                                  <td className="p-2">
+                                  <td className="p-2" style={{ position: 'sticky', left: 220, zIndex: 2, background: stickyBg, minWidth: 128 }}>
                                     {isReadOnly ? (
                                       <span className="text-sm">{allocation.proficiency_level}</span>
                                     ) : (
@@ -3254,7 +3259,7 @@ const ProjectEstimator = () => {
                                       />
                                     )}
                                   </td>
-                                  <td className="p-2">
+                                  <td className="p-2" style={{ position: 'sticky', left: 348, zIndex: 2, background: stickyBg, minWidth: 140, boxShadow: '2px 0 5px rgba(0,0,0,0.08)' }}>
                                     {isReadOnly ? (
                                       <span className="text-sm">{allocation.base_location_name}</span>
                                     ) : (
