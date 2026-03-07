@@ -35,6 +35,9 @@ const STATUS_CONFIG = {
 
 const PROFICIENCY_LEVELS = ["Junior", "Mid", "Senior", "Lead", "Architect", "Project Management", "Delivery"];
 
+const GROUP_COLORS = ['#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+const getGroupColor = (groupId) => groupId ? GROUP_COLORS[(parseInt(groupId) - 1) % GROUP_COLORS.length] || GROUP_COLORS[0] : null;
+
 const ProjectEstimator = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -229,6 +232,7 @@ const ProjectEstimator = () => {
             overhead: a.overhead_percentage,
             onsite: !!a.is_onsite,
             travel: !!a.travel_required,
+            group: a.resource_group_id || "",
             phases: Object.keys(a.phase_allocations || {}).sort((x, y) => Number(x) - Number(y)).map(k => a.phase_allocations[k] || 0),
             comments: (a.comments || "").trim(),
           })),
@@ -546,6 +550,7 @@ const ProjectEstimator = () => {
       overhead_percentage: location.overhead_percentage,
       is_onsite: newAllocation.is_onsite,
       travel_required: newAllocation.travel_required,
+      resource_group_id: "",
       phase_allocations: {},
       comments: "",
     };
@@ -700,6 +705,7 @@ const ProjectEstimator = () => {
       overhead_percentage: firstLocation?.overhead_percentage || 0,
       is_onsite: false,
       travel_required: false,
+      resource_group_id: "",
       phase_allocations: {},
       comments: "",
     };
@@ -902,6 +908,8 @@ const ProjectEstimator = () => {
     let totalRowsSellingPrice = 0;
     let totalBaseSalaryCost = 0;
     let totalOverheadCost = 0;
+    let onsiteOverheadCost = 0;
+    let offshoreOverheadCost = 0;
 
     // Calculate selling price for each resource row: (Salary + Overhead) / (1 - profit margin%)
     wave.grid_allocations.forEach(allocation => {
@@ -921,10 +929,12 @@ const ProjectEstimator = () => {
         onsiteMM += totalManMonths;
         onsiteSellingPrice += rowSellingPrice;
         onsiteSalaryCost += baseSalaryCost;
+        onsiteOverheadCost += overheadCost;
       } else {
         offshoreMM += totalManMonths;
         offshoreSellingPrice += rowSellingPrice;
         offshoreSalaryCost += baseSalaryCost;
+        offshoreOverheadCost += overheadCost;
       }
     });
 
@@ -958,11 +968,16 @@ const ProjectEstimator = () => {
       totalLogisticsCost: logistics.totalLogistics,
       totalCost,
       totalCostToCompany: costToCompany,  // Salary + Overhead only (excludes logistics)
+      onsiteOverheadCost,
+      offshoreOverheadCost,
+      onsiteCTC: onsiteSalaryCost + onsiteOverheadCost,
+      offshoreCTC: offshoreSalaryCost + offshoreOverheadCost,
       sellingPrice: waveSellingPrice,  // Resources Price + Logistics
       negoBufferPercentage: negoBufferPct,
       negoBufferAmount,
       finalPrice,
       onsiteResourceCount: logistics.onsiteResourceCount,
+      offshoreResourceCount: (wave.grid_allocations || []).length - logistics.onsiteResourceCount,
       travelingResourceCount: logistics.travelingResourceCount,
       travelingMM: logistics.totalTravelingMM,
       logistics,
@@ -986,6 +1001,10 @@ const ProjectEstimator = () => {
     let offshoreSellingPrice = 0;
 
     let totalCostToCompany = 0;
+    let onsiteOverheadCost = 0;
+    let offshoreOverheadCost = 0;
+    let totalOnsiteResourceCount = 0;
+    let totalOffshoreResourceCount = 0;
 
     // Sum up all wave summaries
     waves.forEach(wave => {
@@ -995,6 +1014,8 @@ const ProjectEstimator = () => {
       offshoreMM += summary.offshoreMM;
       onsiteSalaryCost += summary.onsiteSalaryCost;
       offshoreSalaryCost += summary.offshoreSalaryCost;
+      onsiteOverheadCost += summary.onsiteOverheadCost;
+      offshoreOverheadCost += summary.offshoreOverheadCost;
       totalLogisticsCost += summary.totalLogisticsCost;
       totalCost += summary.totalCost;
       totalCostToCompany += summary.totalCostToCompany;  // Sum of (Salary + Overhead) per wave
@@ -1004,6 +1025,8 @@ const ProjectEstimator = () => {
       totalFinalPrice += summary.finalPrice;
       onsiteSellingPrice += summary.onsiteSellingPrice;
       offshoreSellingPrice += summary.offshoreSellingPrice;
+      totalOnsiteResourceCount += summary.onsiteResourceCount;
+      totalOffshoreResourceCount += summary.offshoreResourceCount;
     });
 
     // Calculate avg $/MM = Selling Price / MM for each category
@@ -1019,6 +1042,12 @@ const ProjectEstimator = () => {
       totalLogisticsCost,
       totalCost,
       totalCostToCompany,  // Salary + Overhead only (excludes logistics)
+      onsiteOverheadCost,
+      offshoreOverheadCost,
+      onsiteCTC: onsiteSalaryCost + onsiteOverheadCost,
+      offshoreCTC: offshoreSalaryCost + offshoreOverheadCost,
+      totalOnsiteResourceCount,
+      totalOffshoreResourceCount,
       totalRowsSellingPrice,  // Total Resources Price
       sellingPrice: totalSellingPrice,  // Total Selling Price (Resources + Logistics)
       negoBuffer: totalNegoBuffer,
@@ -1247,6 +1276,7 @@ const ProjectEstimator = () => {
           overhead: a.overhead_percentage,
           onsite: !!a.is_onsite,
           travel: !!a.travel_required,
+          group: a.resource_group_id || "",
           phases: Object.keys(a.phase_allocations || {}).sort((x, y) => Number(x) - Number(y)).map(k => a.phase_allocations[k] || 0),
           comments: (a.comments || "").trim(),
         })),
@@ -1707,6 +1737,7 @@ const ProjectEstimator = () => {
       const C_SPMM = C_SP + 1;     // SP/MM
       const C_HR = C_SPMM + 1;     // Hourly
       const C_CMT = C_HR + 1;      // Comments
+      const C_GRP = C_CMT + 1;     // Group
 
       // Row 1: Title
       const titleR = dws.addRow([`${wave.name} — ${wave.duration_months} months${wave.description ? ` — ${wave.description}` : ""}`]);
@@ -1725,11 +1756,11 @@ const ProjectEstimator = () => {
       // Row 4: Headers
       const headers = ["#", "Skill", "Level", "Location", "$/Month", "Onsite", "Travel",
         ...wave.phase_names, "Total MM", "Salary Cost", "Overhead", "OH%", "Total Cost",
-        "Selling Price", "SP/MM", "Hourly", "Comments"];
+        "Selling Price", "SP/MM", "Hourly", "Comments", "Group"];
       const hRow = dws.addRow(headers);
       hRow.eachCell(c => { c.fill = headerFill; c.font = headerFont; c.border = thinBorder; });
       dws.columns = headers.map((h, i) => ({
-        width: i === 0 ? 5 : ["Skill", "Location", "Comments"].includes(h) ? 20 : h.length > 8 ? 15 : 11
+        width: i === 0 ? 5 : ["Skill", "Location", "Comments"].includes(h) ? 20 : h === "Group" ? 8 : h.length > 8 ? 15 : 11
       }));
 
       // Data rows: 5 to 4+A
@@ -1767,6 +1798,7 @@ const ProjectEstimator = () => {
         r.getCell(C_SPMM).value = { formula: `IFERROR(${colL(C_SP)}${rn}/${colL(C_TMM)}${rn},0)`, result: spmm };
         r.getCell(C_HR).value   = { formula: `${colL(C_SPMM)}${rn}/176`, result: spmm / 176 };
         r.getCell(C_CMT).value  = alloc.comments || "";
+        r.getCell(C_GRP).value  = alloc.resource_group_id || "";
 
         // Number formats for money columns
         [C_SAL, C_SC, C_OH, C_TC, C_SP, C_SPMM, C_HR].forEach(c => { r.getCell(c).numFmt = moneyFmt; });
@@ -1811,20 +1843,22 @@ const ProjectEstimator = () => {
 
       const lc = getLogisticsConfig(wave);
       const onCol = colL(C_ON);
+      const trCol = colL(C_TR);
       const mmCol = colL(C_TMM);
-      const rng = A > 0 ? `${DR1}:${onCol}${DRN}` : `${DR1}:${onCol}${DR1}`;
-      // Onsite MM = SUMPRODUCT((F="ON")*TotalMM)
+      // Travel MM = SUMPRODUCT((Travel="YES")*TotalMM)
+      const travelMMF = A > 0 ? `SUMPRODUCT((${trCol}${DR1}:${trCol}${DRN}="YES")*(${mmCol}${DR1}:${mmCol}${DRN}))` : "0";
+      // Travel count = COUNTIF(Travel,"YES")
+      const travelCntF = A > 0 ? `COUNTIF(${trCol}${DR1}:${trCol}${DRN},"YES")` : "0";
+      // Onsite MM (for summary cross-refs)
       const onsMMF = A > 0 ? `SUMPRODUCT((${onCol}${DR1}:${onCol}${DRN}="ON")*(${mmCol}${DR1}:${mmCol}${DRN}))` : "0";
-      // Onsite count = COUNTIF(F,"ON")
-      const onsCntF = A > 0 ? `COUNTIF(${onCol}${DR1}:${onCol}${DRN},"ON")` : "0";
 
       const lgAmtCells = [];
       [
-        ["Per-diem", `Onsite MM x $${lc.per_diem_daily} x ${lc.per_diem_days}d`, `(${onsMMF})*${lc.per_diem_daily}*${lc.per_diem_days}`],
-        ["Accommodation", `Onsite MM x $${lc.accommodation_daily} x ${lc.accommodation_days}d`, `(${onsMMF})*${lc.accommodation_daily}*${lc.accommodation_days}`],
-        ["Conveyance", `Onsite MM x $${lc.local_conveyance_daily} x ${lc.local_conveyance_days}d`, `(${onsMMF})*${lc.local_conveyance_daily}*${lc.local_conveyance_days}`],
-        ["Air Fare", `Onsite Res x $${lc.flight_cost_per_trip} x ${lc.num_trips} trips`, `(${onsCntF})*${lc.flight_cost_per_trip}*${lc.num_trips}`],
-        ["Visa & Medical", `Onsite Res x $${lc.visa_medical_per_trip} x ${lc.num_trips} trips`, `(${onsCntF})*${lc.visa_medical_per_trip}*${lc.num_trips}`],
+        ["Per-diem", `Travel MM x $${lc.per_diem_daily} x ${lc.per_diem_days}d`, `(${travelMMF})*${lc.per_diem_daily}*${lc.per_diem_days}`],
+        ["Accommodation", `Travel MM x $${lc.accommodation_daily} x ${lc.accommodation_days}d`, `(${travelMMF})*${lc.accommodation_daily}*${lc.accommodation_days}`],
+        ["Conveyance", `Travel MM x $${lc.local_conveyance_daily} x ${lc.local_conveyance_days}d`, `(${travelMMF})*${lc.local_conveyance_daily}*${lc.local_conveyance_days}`],
+        ["Air Fare", `Travel Res x $${lc.flight_cost_per_trip} x ${lc.num_trips} trips`, `(${travelCntF})*${lc.flight_cost_per_trip}*${lc.num_trips}`],
+        ["Visa & Medical", `Travel Res x $${lc.visa_medical_per_trip} x ${lc.num_trips} trips`, `(${travelCntF})*${lc.visa_medical_per_trip}*${lc.num_trips}`],
       ].forEach(([item, desc, formula]) => {
         const r = dws.addRow([]);
         r.getCell(2).value = item; r.getCell(3).value = desc;
@@ -1966,6 +2000,28 @@ const ProjectEstimator = () => {
     grandRow.getCell(2).value = { formula: waveRefs.map(r => r.finalPrice).join("+"), result: 0 };
     grandRow.getCell(2).numFmt = moneyFmt;
     grandRow.eachCell(c => { c.fill = finalFill; c.font = finalFont; c.border = thinBorder; });
+
+    // === COLOR LEGEND ===
+    summaryWs.addRow([]);
+    summaryWs.addRow([]);
+    const legendHdr = summaryWs.addRow(["COLOR LEGEND"]);
+    legendHdr.font = { bold: true, size: 12 };
+    legendHdr.getCell(1).fill = headerFill;
+    legendHdr.getCell(1).font = headerFont;
+
+    const legendItems = [
+      { label: "Onsite + Travel", fill: onsiteTravelFill, desc: "Resource is onsite with travel logistics applied" },
+      { label: "Onsite (No Travel)", fill: onsiteNoTravelFill, desc: "Resource is onsite without travel logistics" },
+      { label: "Offshore", fill: offshoreFill, desc: "Offshore resource (no travel logistics)" },
+      { label: "Logistics Section", fill: logisticsFill, desc: "Logistics cost breakdown area" },
+    ];
+    legendItems.forEach(({ label, fill, desc }) => {
+      const r = summaryWs.addRow([label, desc]);
+      r.getCell(1).fill = fill;
+      r.getCell(1).font = { bold: true };
+      r.getCell(1).border = thinBorder;
+      r.getCell(2).border = thinBorder;
+    });
 
     const buffer = await wb.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `${projectNumber || projectName || "Project"}_v${projectVersion}_Estimate.xlsx`);
@@ -2588,6 +2644,67 @@ const ProjectEstimator = () => {
         </Card>
       </div>
 
+      {/* CTC Analytics */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4" data-testid="ctc-analytics-section">
+        <Card className="border border-orange-400 shadow-sm bg-orange-50/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Onsite CTC</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-extrabold font-mono text-orange-600" data-testid="onsite-ctc">
+              ${overall.onsiteCTC.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">salary + overhead</p>
+          </CardContent>
+        </Card>
+        <Card className="border border-orange-400 shadow-sm bg-orange-50/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Onsite Avg CTC/MM</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-extrabold font-mono text-orange-600" data-testid="onsite-avg-ctc">
+              ${overall.onsiteMM > 0 
+                ? (overall.onsiteCTC / overall.onsiteMM).toLocaleString(undefined, { maximumFractionDigits: 0 }) 
+                : 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border border-teal-400 shadow-sm bg-teal-50/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Offshore CTC</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-extrabold font-mono text-teal-600" data-testid="offshore-ctc">
+              ${overall.offshoreCTC.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">salary + overhead</p>
+          </CardContent>
+        </Card>
+        <Card className="border border-teal-400 shadow-sm bg-teal-50/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Offshore Avg CTC/MM</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-extrabold font-mono text-teal-600" data-testid="offshore-avg-ctc">
+              ${overall.offshoreMM > 0 
+                ? (overall.offshoreCTC / overall.offshoreMM).toLocaleString(undefined, { maximumFractionDigits: 0 }) 
+                : 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border border-gray-400 shadow-sm bg-gray-50/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Total CTC</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-extrabold font-mono text-gray-700" data-testid="total-ctc">
+              ${overall.totalCostToCompany.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">all resources</p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Total Selling Price & Final Price Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border border-[#10B981] shadow-sm bg-green-50/30">
@@ -3037,6 +3154,7 @@ const ProjectEstimator = () => {
                               <th className="text-right p-3 font-semibold text-sm">$/Month</th>
                               <th className="text-center p-3 font-semibold text-sm">Onsite</th>
                               <th className="text-center p-3 font-semibold text-sm">Travel</th>
+                              <th className="text-center p-2 font-semibold text-xs w-12">Grp</th>
                               {wave.phase_names.map((phaseName, index) => (
                                 <th key={index} className="text-center p-2 bg-[#E0F2FE]">
                                   <Input
@@ -3075,6 +3193,7 @@ const ProjectEstimator = () => {
                                 : allocation.is_onsite
                                 ? "bg-amber-50/40"
                                 : "bg-white";
+                              const groupColor = getGroupColor(allocation.resource_group_id);
                               return (
                                 <Draggable key={allocation.id} draggableId={allocation.id} index={rowIdx} isDragDisabled={isReadOnly}>
                                   {(dragProvided, snapshot) => (
@@ -3082,6 +3201,7 @@ const ProjectEstimator = () => {
                                   ref={dragProvided.innerRef}
                                   {...dragProvided.draggableProps}
                                   className={`border-b border-[#E2E8F0] ${rowBg} ${snapshot.isDragging ? "shadow-lg opacity-90 bg-blue-50" : ""}`}
+                                  style={{ ...dragProvided.draggableProps.style, borderLeft: groupColor ? `4px solid ${groupColor}` : undefined }}
                                   data-testid={`allocation-row-${allocation.id}`}
                                 >
                                   <td className="p-1 text-center" {...dragProvided.dragHandleProps}>
@@ -3090,16 +3210,34 @@ const ProjectEstimator = () => {
                                   <td className="p-2 text-center text-xs text-gray-400 font-mono">{rowIdx + 1}</td>
                                   <td className="p-2">
                                     {isReadOnly ? (
-                                      <span className="font-medium text-sm">{allocation.skill_name}</span>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="font-medium text-sm cursor-help">{allocation.skill_name}</span>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom" className="max-w-xs p-2">
+                                          <p className="font-semibold">{allocation.skill_name}</p>
+                                          <p className="text-xs text-gray-500">{allocation.proficiency_level} &middot; {allocation.base_location_name}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
                                     ) : (
-                                      <SearchableSelect
-                                        value={allocation.skill_id}
-                                        onValueChange={(value) => handleGridFieldChange(wave.id, allocation.id, 'skill_id', value)}
-                                        options={skills.map(s => ({ value: s.id, label: s.name }))}
-                                        placeholder="Skill..."
-                                        searchPlaceholder="Search skills..."
-                                        triggerClassName="w-[130px]"
-                                      />
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div>
+                                            <SearchableSelect
+                                              value={allocation.skill_id}
+                                              onValueChange={(value) => handleGridFieldChange(wave.id, allocation.id, 'skill_id', value)}
+                                              options={skills.map(s => ({ value: s.id, label: s.name }))}
+                                              placeholder="Skill..."
+                                              searchPlaceholder="Search skills..."
+                                              triggerClassName="w-[130px]"
+                                            />
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom" className="max-w-xs p-2">
+                                          <p className="font-semibold">{allocation.skill_name}</p>
+                                          <p className="text-xs text-gray-500">{allocation.proficiency_level} &middot; {allocation.base_location_name}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
                                     )}
                                   </td>
                                   <td className="p-2">
@@ -3190,6 +3328,26 @@ const ProjectEstimator = () => {
                                         )}
                                       </TooltipContent>
                                     </Tooltip>
+                                  </td>
+                                  <td className="p-1 text-center">
+                                    <Input
+                                      type="text"
+                                      placeholder=""
+                                      className="w-10 text-center font-mono text-xs p-1"
+                                      value={allocation.resource_group_id || ""}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setWaves(waves.map(w =>
+                                          w.id === wave.id
+                                            ? { ...w, grid_allocations: w.grid_allocations.map(a =>
+                                                a.id === allocation.id ? { ...a, resource_group_id: val } : a
+                                              )}
+                                            : w
+                                        ));
+                                      }}
+                                      disabled={isReadOnly}
+                                      data-testid={`group-${allocation.id}`}
+                                    />
                                   </td>
                                   {wave.phase_names.map((_, phaseIndex) => (
                                     <td key={phaseIndex} className="p-2">
@@ -3395,7 +3553,7 @@ const ProjectEstimator = () => {
                             <div className="bg-sky-50 p-3 rounded-lg border border-sky-200">
                               <p className="text-xs text-sky-700 uppercase tracking-wide">Offshore MM</p>
                               <p className="font-mono font-bold text-xl text-[#0EA5E9] mt-1">{waveSummary.offshoreMM.toFixed(1)}</p>
-                              <p className="text-xs text-gray-500 mt-0.5">${waveSummary.offshoreSalaryCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">{waveSummary.offshoreResourceCount} resources</p>
                             </div>
                             <div className="bg-sky-100 p-3 rounded-lg border border-sky-300">
                               <p className="text-xs text-sky-800 uppercase tracking-wide">Offshore Avg $/MM</p>
@@ -3430,6 +3588,41 @@ const ProjectEstimator = () => {
                             <div className="bg-emerald-100 p-3 rounded-lg border-2 border-emerald-500">
                               <p className="text-xs text-emerald-800 uppercase tracking-wide font-semibold">Final Price</p>
                               <p className="font-mono font-bold text-2xl text-emerald-700 mt-1">${waveSummary.finalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                            </div>
+                          </div>
+                          
+                          {/* Row 3: CTC Analytics */}
+                          <div className="grid grid-cols-5 gap-3">
+                            <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                              <p className="text-xs text-orange-700 uppercase tracking-wide">Onsite CTC</p>
+                              <p className="font-mono font-bold text-xl text-orange-600 mt-1">${waveSummary.onsiteCTC.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">salary + overhead</p>
+                            </div>
+                            <div className="bg-orange-100 p-3 rounded-lg border border-orange-300">
+                              <p className="text-xs text-orange-800 uppercase tracking-wide">Onsite Avg CTC/MM</p>
+                              <p className="font-mono font-bold text-xl text-orange-700 mt-1">
+                                ${waveSummary.onsiteMM > 0 
+                                  ? (waveSummary.onsiteCTC / waveSummary.onsiteMM).toLocaleString(undefined, { maximumFractionDigits: 0 }) 
+                                  : 0}
+                              </p>
+                            </div>
+                            <div className="bg-teal-50 p-3 rounded-lg border border-teal-200">
+                              <p className="text-xs text-teal-700 uppercase tracking-wide">Offshore CTC</p>
+                              <p className="font-mono font-bold text-xl text-teal-600 mt-1">${waveSummary.offshoreCTC.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">salary + overhead</p>
+                            </div>
+                            <div className="bg-teal-100 p-3 rounded-lg border border-teal-300">
+                              <p className="text-xs text-teal-800 uppercase tracking-wide">Offshore Avg CTC/MM</p>
+                              <p className="font-mono font-bold text-xl text-teal-700 mt-1">
+                                ${waveSummary.offshoreMM > 0 
+                                  ? (waveSummary.offshoreCTC / waveSummary.offshoreMM).toLocaleString(undefined, { maximumFractionDigits: 0 }) 
+                                  : 0}
+                              </p>
+                            </div>
+                            <div className="bg-gray-100 p-3 rounded-lg border border-gray-300">
+                              <p className="text-xs text-gray-600 uppercase tracking-wide">Total CTC</p>
+                              <p className="font-mono font-bold text-xl text-gray-700 mt-1">${waveSummary.totalCostToCompany.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">all resources</p>
                             </div>
                           </div>
                         </CardContent>

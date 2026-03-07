@@ -195,8 +195,8 @@ const Dashboard = () => {
         <div className="flex items-center gap-4">
           <img src="/yash-logo-new.png" alt="YASH" className="h-12 object-contain" />
           <div>
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-[#0F172A] tracking-tight">Dashboard</h1>
-            <p className="text-base text-gray-600 mt-2">Project estimation analytics and overview</p>
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-[#0F172A] tracking-tight">Estimations Overview</h1>
+            <p className="text-base text-gray-600 mt-2">Project Estimations Analyzer</p>
           </div>
         </div>
         <div className="flex gap-2">
