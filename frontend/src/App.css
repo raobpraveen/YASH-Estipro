@@ -47,3 +47,32 @@ select:focus-within {
 .table-focus:focus-within {
   background-color: rgba(14, 165, 233, 0.05);
 }
+
+/* Print styles for User Manual and Support Guide */
+@media print {
+  aside, .print\\:hidden, nav, [data-testid="toggle-sidebar"],
+  [data-testid="notification-bell"], [data-testid="logout-button"] {
+    display: none !important;
+  }
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  main > div {
+    padding: 0.5rem !important;
+  }
+  body {
+    background-color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  section {
+    page-break-inside: avoid;
+  }
+  h2 {
+    page-break-after: avoid;
+  }
+  table {
+    page-break-inside: avoid;
+  }
+}

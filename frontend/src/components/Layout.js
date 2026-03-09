@@ -20,7 +20,9 @@ import {
   ChevronDown,
   History,
   Bell,
-  UserCircle
+  UserCircle,
+  BookOpen,
+  LifeBuoy
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -134,6 +136,8 @@ const Layout = ({ user, onLogout }) => {
 
   const settingsItems = [
     { path: "/settings", icon: Settings, label: "Settings" },
+    { path: "/user-manual", icon: BookOpen, label: "User Manual" },
+    { path: "/support-guide", icon: LifeBuoy, label: "Support Guide" },
   ];
 
   const getRoleBadge = (role) => {

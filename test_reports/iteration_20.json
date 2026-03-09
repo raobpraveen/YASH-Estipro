@@ -1,0 +1,67 @@
+{
+  "summary": "Iteration 20 - Tested User Manual and Support Guide pages. All features working correctly including page rendering, TOC search, TOC navigation, sidebar links, print buttons, and content completeness.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Dashboard",
+        "issues": ["Console warnings about chart dimensions (-1,-1) - existing issue from previous iterations, not blocking functionality"]
+      }
+    ]
+  },
+  "test_results": {
+    "user_manual_page": {
+      "page_container": "PASS - data-testid='user-manual-page' renders correctly",
+      "yash_logo": "PASS - YASH logo visible in header",
+      "estipro_logo": "PASS - EstiPro logo visible in header",
+      "title": "PASS - 'User Manual' title displayed",
+      "print_button": "PASS - 'Download / Print' button with data-testid='print-manual-btn' (blue themed)",
+      "toc_sections": "PASS - All 13 sections found (Getting Started, Dashboard, Projects, Estimator, Wave Grid, Cost Calc, Logistics, Excel Export, Quick Estimator, Workflow, Versioning, Settings, Shortcuts)",
+      "toc_search": "PASS - Search filters TOC items correctly",
+      "toc_navigation": "PASS - Clicking TOC items scrolls to section",
+      "content_tables": "PASS - Tables render correctly (user roles, grid columns, etc.)",
+      "tips_callouts": "PASS - Blue tip callouts render correctly",
+      "step_indicators": "PASS - Numbered step indicators visible",
+      "footer": "PASS - YASH branding footer visible"
+    },
+    "support_guide_page": {
+      "page_container": "PASS - data-testid='support-guide-page' renders correctly",
+      "yash_logo": "PASS - YASH logo visible in header",
+      "estipro_logo": "PASS - EstiPro logo visible in header",
+      "title": "PASS - 'Support Guide' title displayed",
+      "print_button": "PASS - 'Download / Print' button with data-testid='print-guide-btn' (green themed bg-[#10B981])",
+      "toc_sections": "PASS - All 14 sections found (Architecture, User Mgmt, Master Data, Roles/Access, Audit Logs, Notifications, Data Mgmt, Troubleshooting, API Reference, Deployment, Security, Maintenance, Monitoring, FAQ)",
+      "toc_search": "PASS - Search filters TOC items correctly",
+      "content_tables": "PASS - 5 tables found (technology stack, database collections, API endpoints, roles matrix, etc.)",
+      "code_blocks": "PASS - 12 code blocks found (architecture diagram, backup commands, docker commands, etc.)",
+      "tips_callouts": "PASS - 3 green tip callouts found",
+      "warning_callouts": "PASS - 4 red warning callouts found",
+      "footer": "PASS - YASH branding footer visible"
+    },
+    "sidebar_navigation": {
+      "user_manual_link": "PASS - data-testid='nav-user-manual' visible with BookOpen icon, navigates to /user-manual",
+      "support_guide_link": "PASS - data-testid='nav-support-guide' visible with LifeBuoy icon, navigates to /support-guide"
+    }
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend only test)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "email": "admin@yash.com",
+    "password": "password"
+  },
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 20 tested User Manual and Support Guide documentation pages. Both pages are fully functional with proper YASH/EstiPro branding, TOC navigation, search functionality, print buttons, comprehensive content (tables, code blocks, tips, warnings), and sidebar navigation links. No issues found."
+}

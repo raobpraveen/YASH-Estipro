@@ -18,6 +18,8 @@ import Login from "@/pages/Login";
 import UserManagement from "@/pages/UserManagement";
 import Settings from "@/pages/Settings";
 import AuditLogs from "@/pages/AuditLogs";
+import UserManual from "@/pages/UserManual";
+import SupportGuide from "@/pages/SupportGuide";
 import { Toaster } from "@/components/ui/sonner";
 
 function App() {
@@ -79,6 +81,8 @@ function App() {
               <Route path="users" element={<UserManagement />} />
               <Route path="settings" element={<Settings />} />
               <Route path="audit-logs" element={<AuditLogs />} />
+              <Route path="user-manual" element={<UserManual />} />
+              <Route path="support-guide" element={<SupportGuide />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
           )}

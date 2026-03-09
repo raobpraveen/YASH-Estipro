@@ -1,0 +1,490 @@
+import { useState, useRef } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Printer, Search, ChevronDown, ChevronRight, BookOpen,
+  LayoutDashboard, FolderKanban, Calculator, Layers, FileSpreadsheet,
+  Settings, ArrowRight, CheckCircle, AlertTriangle, Info
+} from "lucide-react";
+
+const TOC = [
+  { id: "getting-started", title: "1. Getting Started", icon: BookOpen },
+  { id: "dashboard", title: "2. Dashboard & Analytics", icon: LayoutDashboard },
+  { id: "projects", title: "3. Project Management", icon: FolderKanban },
+  { id: "estimator", title: "4. Estimation Workspace", icon: Calculator },
+  { id: "wave-grid", title: "5. Wave Grid Operations", icon: Layers },
+  { id: "cost-calc", title: "6. Cost Calculations & CTC", icon: Calculator },
+  { id: "logistics", title: "7. Logistics Configuration", icon: Settings },
+  { id: "excel-export", title: "8. Excel Export", icon: FileSpreadsheet },
+  { id: "quick-estimator", title: "9. Quick Estimate Calculator", icon: Calculator },
+  { id: "workflow", title: "10. Approval Workflow", icon: CheckCircle },
+  { id: "version-mgmt", title: "11. Versioning & Comparison", icon: FolderKanban },
+  { id: "settings", title: "12. Settings & Profile", icon: Settings },
+  { id: "shortcuts", title: "13. Keyboard Shortcuts & Tips", icon: Info },
+];
+
+const Section = ({ id, title, children }) => (
+  <section id={id} className="mb-10 scroll-mt-20" data-testid={`manual-section-${id}`}>
+    <h2 className="text-2xl font-bold text-[#0F172A] border-b-2 border-[#1E40AF] pb-2 mb-4">{title}</h2>
+    <div className="space-y-4 text-gray-700 leading-relaxed">{children}</div>
+  </section>
+);
+
+const Tip = ({ children }) => (
+  <div className="flex gap-3 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg my-3">
+    <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+    <div className="text-sm text-blue-800">{children}</div>
+  </div>
+);
+
+const Warning = ({ children }) => (
+  <div className="flex gap-3 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg my-3">
+    <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+    <div className="text-sm text-amber-800">{children}</div>
+  </div>
+);
+
+const Step = ({ num, children }) => (
+  <div className="flex gap-3 items-start my-2">
+    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#1E40AF] text-white text-sm font-bold flex items-center justify-center">{num}</span>
+    <div className="text-sm pt-0.5">{children}</div>
+  </div>
+);
+
+const KeyValue = ({ label, children }) => (
+  <div className="grid grid-cols-[180px_1fr] gap-2 py-1.5 border-b border-gray-100 text-sm">
+    <span className="font-semibold text-gray-600">{label}</span>
+    <span>{children}</span>
+  </div>
+);
+
+export default function UserManual() {
+  const [search, setSearch] = useState("");
+  const [expandedToc, setExpandedToc] = useState(true);
+  const contentRef = useRef(null);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const scrollTo = (id) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const filteredTOC = TOC.filter(t => t.title.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="max-w-6xl mx-auto" data-testid="user-manual-page">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6 print:mb-2">
+        <div className="flex items-center gap-4">
+          <img src="/yash-logo-new.png" alt="YASH" className="h-10 object-contain" />
+          <img src="/estipro-logo-new.png" alt="EstiPro" className="h-10 object-contain" />
+          <div className="ml-2">
+            <h1 className="text-3xl font-extrabold text-[#0F172A] tracking-tight">User Manual</h1>
+            <p className="text-sm text-gray-500">YASH EstiPro &mdash; Project Cost Estimator</p>
+          </div>
+        </div>
+        <Button onClick={handlePrint} className="bg-[#1E40AF] hover:bg-[#1E3A8A] text-white print:hidden" data-testid="print-manual-btn">
+          <Printer className="w-4 h-4 mr-2" /> Download / Print
+        </Button>
+      </div>
+
+      <div className="flex gap-6">
+        {/* Sticky Table of Contents */}
+        <aside className="w-72 flex-shrink-0 print:hidden">
+          <Card className="sticky top-20 border border-gray-200">
+            <CardContent className="p-4">
+              <button
+                onClick={() => setExpandedToc(!expandedToc)}
+                className="flex items-center justify-between w-full mb-3"
+              >
+                <span className="font-bold text-sm text-[#0F172A] uppercase tracking-wide">Table of Contents</span>
+                {expandedToc ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </button>
+              {expandedToc && (
+                <>
+                  <div className="relative mb-3">
+                    <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-gray-400" />
+                    <Input
+                      placeholder="Search sections..."
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      className="pl-8 h-8 text-xs"
+                      data-testid="manual-search"
+                    />
+                  </div>
+                  <nav className="space-y-0.5 max-h-[60vh] overflow-y-auto">
+                    {filteredTOC.map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => scrollTo(item.id)}
+                        className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-xs text-gray-600 hover:bg-gray-100 hover:text-[#1E40AF] transition-colors"
+                      >
+                        <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{item.title}</span>
+                      </button>
+                    ))}
+                  </nav>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </aside>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0" ref={contentRef}>
+          {/* Section 1: Getting Started */}
+          <Section id="getting-started" title="1. Getting Started">
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">1.1 Logging In</h3>
+            <Step num="1">Navigate to the application URL in your browser.</Step>
+            <Step num="2">Enter your registered <strong>Email</strong> and <strong>Password</strong>.</Step>
+            <Step num="3">Click <strong>"Sign In"</strong> to access the dashboard.</Step>
+            <Tip>If you've forgotten your password, contact your administrator to have it reset.</Tip>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">1.2 User Roles</h3>
+            <p>YASH EstiPro supports three user roles with different access levels:</p>
+            <div className="rounded-lg border overflow-hidden mt-2">
+              <table className="w-full text-sm">
+                <thead className="bg-[#0F172A] text-white">
+                  <tr><th className="p-3 text-left">Role</th><th className="p-3 text-left">Capabilities</th></tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b"><td className="p-3 font-semibold">Admin</td><td className="p-3">Full access: create/edit/delete projects, manage users, configure master data, approve/reject projects, view audit logs.</td></tr>
+                  <tr className="border-b"><td className="p-3 font-semibold">Approver</td><td className="p-3">Create/edit projects, approve or reject projects submitted for review.</td></tr>
+                  <tr><td className="p-3 font-semibold">User</td><td className="p-3">Create and edit own projects, submit for review. Cannot approve/reject.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">1.3 Navigation</h3>
+            <p>The sidebar provides access to all areas of the application:</p>
+            <KeyValue label="Dashboard">Estimations overview with analytics and KPIs.</KeyValue>
+            <KeyValue label="Estimator">Create or edit project estimations.</KeyValue>
+            <KeyValue label="Projects">Browse, filter, and manage all projects.</KeyValue>
+            <KeyValue label="Master Data">Manage Skills, Locations, Technologies, Customers, and more.</KeyValue>
+            <KeyValue label="Settings">Personal profile, theme, and date format preferences.</KeyValue>
+            <Tip>Use <strong>Ctrl+B</strong> (or <strong>Cmd+B</strong> on Mac) to toggle the sidebar between expanded and collapsed modes.</Tip>
+          </Section>
+
+          {/* Section 2: Dashboard */}
+          <Section id="dashboard" title="2. Dashboard & Analytics">
+            <p>The <strong>Estimations Overview</strong> dashboard provides a high-level summary of all project estimations in the system.</p>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">2.1 KPI Cards</h3>
+            <KeyValue label="Total Projects">Count of all projects in the system.</KeyValue>
+            <KeyValue label="Active Projects">Projects currently in Draft or In Review status.</KeyValue>
+            <KeyValue label="Total Estimated Value">Sum of all project final prices.</KeyValue>
+            <KeyValue label="Approved Projects">Projects that have received approval.</KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">2.2 Charts & Analytics</h3>
+            <p>The dashboard displays interactive charts including:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>Projects by Status</strong> &mdash; Pie chart showing distribution across Draft, In Review, Approved, and Rejected.</li>
+              <li><strong>Estimation Trends</strong> &mdash; Bar chart showing project creation over time.</li>
+              <li><strong>Top Projects by Value</strong> &mdash; Ranking of highest-value estimations.</li>
+              <li><strong>Technology Distribution</strong> &mdash; Breakdown of technologies used across projects.</li>
+            </ul>
+            <Tip>Use the time range and status filters at the top of the dashboard to narrow down the analytics view.</Tip>
+          </Section>
+
+          {/* Section 3: Project Management */}
+          <Section id="projects" title="3. Project Management">
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">3.1 Projects List</h3>
+            <p>The Projects page displays all estimations with filtering and sorting capabilities.</p>
+            <KeyValue label="Search">Filter by project name or number.</KeyValue>
+            <KeyValue label="Status Filter">Filter by Draft, In Review, Approved, or Rejected.</KeyValue>
+            <KeyValue label="Actions">Edit, view summary, compare versions, clone, or archive projects.</KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">3.2 Creating a New Project</h3>
+            <Step num="1">Click <strong>"Estimator"</strong> in the sidebar.</Step>
+            <Step num="2">Fill in the project details: Name, Customer, Technology, Project Type, Sales Manager, Profit Margin %, and Nego Buffer %.</Step>
+            <Step num="3">Add waves with monthly phases and resource allocations.</Step>
+            <Step num="4">Click <strong>"Save"</strong> to create the project as a Draft.</Step>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">3.3 Project Summary</h3>
+            <p>The Project Summary page shows a comprehensive overview including:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li>Project metadata (name, customer, technology, dates)</li>
+              <li>Overall cost breakdown (MM, CTC, Selling Price, Final Price)</li>
+              <li>Wave-by-wave summary with resource details</li>
+              <li>Version history and status</li>
+            </ul>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">3.4 Cloning Projects</h3>
+            <p>To create a new project based on an existing estimation, use the <strong>Clone</strong> action from the Projects list. This copies all waves, resources, and configurations into a new draft project.</p>
+          </Section>
+
+          {/* Section 4: Estimator */}
+          <Section id="estimator" title="4. Estimation Workspace">
+            <p>The Estimator is the core workspace for building project cost estimations.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">4.1 Project Header</h3>
+            <p>The top section captures key project information:</p>
+            <KeyValue label="Project Name">Descriptive name for the estimation.</KeyValue>
+            <KeyValue label="Customer">Selected from master data.</KeyValue>
+            <KeyValue label="Technology">Primary technology stack.</KeyValue>
+            <KeyValue label="Project Type">Category (Fixed Price, T&M, etc.).</KeyValue>
+            <KeyValue label="Sales Manager">Assigned sales contact.</KeyValue>
+            <KeyValue label="Profit Margin %">Target margin applied to all resources.</KeyValue>
+            <KeyValue label="Nego Buffer %">Negotiation buffer applied to the final selling price.</KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">4.2 Overall Summary Cards</h3>
+            <p>Above the wave tabs, summary cards display aggregated metrics across all waves:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>Total MM, Onsite MM, Offshore MM</strong> &mdash; Man-month totals</li>
+              <li><strong>Resources Price, Logistics</strong> &mdash; Cost components</li>
+              <li><strong>Onsite/Offshore Avg $/MM and Selling Price</strong> &mdash; Per-location pricing</li>
+              <li><strong>CTC Analytics</strong> &mdash; Onsite CTC, Offshore CTC, Avg CTC/MM, Total CTC (Cost to Company = Salary + Overhead)</li>
+              <li><strong>Total Selling Price, Nego Buffer, Final Price</strong> &mdash; Final pricing</li>
+            </ul>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">4.3 Wave Tabs</h3>
+            <p>Projects are organized into waves (phases). Each wave tab shows:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li>Wave name and description (editable)</li>
+              <li>Duration, resource count, onsite/traveling count</li>
+              <li>The resource allocation grid</li>
+              <li>Wave-level summary cards including CTC analytics</li>
+            </ul>
+            <Tip>Click <strong>"+ Add Wave"</strong> to add a new estimation phase. Use <strong>"Clone Wave"</strong> to duplicate an existing wave's configuration.</Tip>
+          </Section>
+
+          {/* Section 5: Wave Grid */}
+          <Section id="wave-grid" title="5. Wave Grid Operations">
+            <p>The wave grid is the heart of the estimation, where individual resources and their monthly allocations are managed.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">5.1 Grid Columns</h3>
+            <div className="rounded-lg border overflow-hidden mt-2">
+              <table className="w-full text-sm">
+                <thead className="bg-[#0F172A] text-white">
+                  <tr><th className="p-2 text-left">Column</th><th className="p-2 text-left">Description</th></tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b"><td className="p-2 font-semibold">#</td><td className="p-2">Row number. Drag the grip handle to reorder rows.</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">Skill</td><td className="p-2">Resource skill/role (searchable dropdown). Hover to see full description.</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">Level</td><td className="p-2">Proficiency level (Junior, Mid, Senior, Lead, Architect, PM, Delivery).</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">Location</td><td className="p-2">Base location (determines salary lookup).</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">$/Month</td><td className="p-2">Average monthly salary (auto-populated from proficiency rates).</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">Onsite</td><td className="p-2">ON/OFF toggle indicating if the resource is onsite.</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">Travel</td><td className="p-2">YES/NO toggle indicating if travel logistics apply.</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">Grp</td><td className="p-2">Resource Group ID to link related rows (e.g., same person split onsite/offshore). Matching groups get a colored left border.</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">Month 1..N</td><td className="p-2">Man-month allocation for each phase (0 to 1.0 typically).</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">Total MM</td><td className="p-2">Sum of all monthly allocations for this row.</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">Salary Cost</td><td className="p-2">$/Month &times; Total MM.</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">Overhead</td><td className="p-2">Overhead cost (Salary &times; OH%).</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">Total Cost</td><td className="p-2">Salary + Overhead (CTC).</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">Selling Price</td><td className="p-2">Total Cost / (1 &minus; Profit Margin%).</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">SP/MM</td><td className="p-2">Selling Price per Man-Month.</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">Hourly</td><td className="p-2">SP/MM / ~176 working hours.</td></tr>
+                  <tr><td className="p-2 font-semibold">Comments</td><td className="p-2">Free-text notes for each resource row.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.2 Frozen Columns</h3>
+            <p>The first five columns (<strong>#, Skill, Level, Location</strong>) are frozen and remain visible when you scroll the grid horizontally. This allows you to always identify which resource you're viewing even when scrolling to the Selling Price or Hourly columns on the right.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.3 Row Operations</h3>
+            <KeyValue label="Add Resource">Opens a dialog to select Skill, Level, Location. Salary is auto-populated.</KeyValue>
+            <KeyValue label="Add Row">Adds a blank row for quick manual entry.</KeyValue>
+            <KeyValue label="Drag & Drop">Reorder rows by dragging the grip handle on the left.</KeyValue>
+            <KeyValue label="Delete Row">Click the trash icon on the right to remove a resource.</KeyValue>
+            <KeyValue label="Apply to All">Click the "Apply to all months" button to set the same allocation across all phases.</KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.4 Resource Group ID</h3>
+            <p>Use the <strong>Grp</strong> column to link related rows. For example, if the same consultant works 50% onsite and 50% offshore, create two rows and assign them the same Group ID (e.g., "1"). Rows with the same group get matching colored left borders for easy visual identification.</p>
+            <Tip>Group IDs help with accurate headcount tracking when a single resource spans multiple deployment types.</Tip>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.5 Row Color Coding</h3>
+            <div className="rounded-lg border overflow-hidden mt-2">
+              <table className="w-full text-sm">
+                <thead className="bg-[#0F172A] text-white">
+                  <tr><th className="p-2 text-left">Color</th><th className="p-2 text-left">Meaning</th></tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b bg-amber-100"><td className="p-2 font-semibold">Amber (warm)</td><td className="p-2">Onsite resource with Travel logistics applied.</td></tr>
+                  <tr className="border-b bg-amber-50"><td className="p-2 font-semibold">Light amber</td><td className="p-2">Onsite resource, no travel.</td></tr>
+                  <tr className="bg-white"><td className="p-2 font-semibold">White</td><td className="p-2">Offshore resource.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.6 Skill Tooltip</h3>
+            <p>Hover over any <strong>Skill</strong> cell in the grid to see a tooltip with the full skill name, proficiency level, and base location. This is especially useful when skill names are truncated in the dropdown.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.7 Toolbar Actions</h3>
+            <KeyValue label="Logistics Config">Configure per-diem, accommodation, travel costs for this wave.</KeyValue>
+            <KeyValue label="Add/Remove Month">Dynamically add or remove phase columns.</KeyValue>
+            <KeyValue label="Download Template">Export an Excel template for bulk data entry.</KeyValue>
+            <KeyValue label="Download Data">Export current grid data as Excel.</KeyValue>
+            <KeyValue label="Upload Grid">Import data from an Excel template.</KeyValue>
+            <KeyValue label="Clone Wave">Create a copy of the current wave.</KeyValue>
+            <KeyValue label="Delete Wave">Remove the current wave (with confirmation).</KeyValue>
+          </Section>
+
+          {/* Section 6: Cost Calculations */}
+          <Section id="cost-calc" title="6. Cost Calculations & CTC">
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">6.1 Row-Level Calculation</h3>
+            <div className="bg-gray-50 p-4 rounded-lg border font-mono text-sm space-y-2 my-3">
+              <p><strong>Salary Cost</strong> = Avg Monthly Salary &times; Total Man-Months</p>
+              <p><strong>Overhead Cost</strong> = Salary Cost &times; (Overhead % / 100)</p>
+              <p><strong>Total Cost (CTC)</strong> = Salary Cost + Overhead Cost</p>
+              <p><strong>Selling Price</strong> = Total Cost / (1 &minus; Profit Margin % / 100)</p>
+              <p><strong>SP per MM</strong> = Selling Price / Total Man-Months</p>
+              <p><strong>Hourly Rate</strong> = SP per MM / 176</p>
+            </div>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">6.2 CTC Analytics</h3>
+            <p>Cost to Company (CTC) is shown in both wave-level and overall summary cards:</p>
+            <KeyValue label="Onsite CTC">Total Salary + Overhead for all onsite resources.</KeyValue>
+            <KeyValue label="Offshore CTC">Total Salary + Overhead for all offshore resources.</KeyValue>
+            <KeyValue label="Avg CTC/MM">CTC divided by total man-months for that location type.</KeyValue>
+            <KeyValue label="Total CTC">Combined CTC for all resources across all locations.</KeyValue>
+            <Tip>CTC excludes logistics costs. It represents the internal cost of resources before adding travel/logistics expenses.</Tip>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">6.3 Wave & Overall Pricing</h3>
+            <div className="bg-gray-50 p-4 rounded-lg border font-mono text-sm space-y-2 my-3">
+              <p><strong>Resources Price</strong> = Sum of all row Selling Prices</p>
+              <p><strong>Logistics Cost</strong> = Per-diem + Accommodation + Conveyance + Airfare + Visa (for traveling resources)</p>
+              <p><strong>Total Selling Price</strong> = Resources Price + Logistics Cost</p>
+              <p><strong>Nego Buffer</strong> = Total Selling Price &times; Nego Buffer %</p>
+              <p><strong>Final Price</strong> = Total Selling Price + Nego Buffer</p>
+            </div>
+          </Section>
+
+          {/* Section 7: Logistics */}
+          <Section id="logistics" title="7. Logistics Configuration">
+            <p>Each wave has its own logistics configuration that applies to <strong>resources marked as Travel = YES</strong>.</p>
+            <Step num="1">Click <strong>"Logistics Config"</strong> in the wave toolbar.</Step>
+            <Step num="2">Configure the following fields per wave:</Step>
+            <KeyValue label="Per Diem Daily Rate">Daily allowance for traveling resources.</KeyValue>
+            <KeyValue label="Per Diem Days/Month">Number of per-diem days per month.</KeyValue>
+            <KeyValue label="Accommodation Daily">Daily accommodation cost.</KeyValue>
+            <KeyValue label="Accommodation Days">Accommodation days per month.</KeyValue>
+            <KeyValue label="Local Conveyance">Daily local transport cost.</KeyValue>
+            <KeyValue label="Conveyance Days">Conveyance days per month.</KeyValue>
+            <KeyValue label="Flight Cost/Trip">Air travel cost per round trip.</KeyValue>
+            <KeyValue label="Visa & Medical/Trip">Visa processing and medical costs per trip.</KeyValue>
+            <KeyValue label="Number of Trips">Total trips during the wave duration.</KeyValue>
+            <Step num="3">Click <strong>"Save Logistics"</strong> to apply the configuration.</Step>
+            <Warning>Logistics costs are applied ONLY to resources with <strong>Travel = YES</strong>, regardless of the Onsite/Offshore status. Ensure the Travel flag is set correctly for accurate cost estimation.</Warning>
+          </Section>
+
+          {/* Section 8: Excel Export */}
+          <Section id="excel-export" title="8. Excel Export">
+            <p>The Excel export generates a professional, formula-powered workbook.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">8.1 Exporting</h3>
+            <Step num="1">Open a project in the Estimator.</Step>
+            <Step num="2">Click <strong>"Export to Excel"</strong> in the toolbar.</Step>
+            <Step num="3">The file downloads automatically with all sheets.</Step>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">8.2 Sheet Structure</h3>
+            <KeyValue label="Summary Sheet">Cross-wave summary with formulas referencing detail sheets. Includes Total MM, Onsite/Offshore breakdown, Logistics, and Grand Total.</KeyValue>
+            <KeyValue label="Wave Detail Sheets">One sheet per wave with all resource rows, monthly allocations, cost formulas, logistics breakdown, and wave totals.</KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">8.3 Formula-Powered</h3>
+            <p>All cost calculations in the Excel use <strong>live formulas</strong> &mdash; not static values. If you modify a salary or allocation in Excel, all derived values (costs, selling prices, logistics) will automatically recalculate.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">8.4 Color Legend</h3>
+            <p>The Summary sheet includes a <strong>Color Legend</strong> section explaining the row colors used in detail sheets:</p>
+            <div className="flex gap-3 mt-2 flex-wrap">
+              <span className="flex items-center gap-2 text-sm"><span className="w-4 h-4 rounded bg-red-200 border"></span> Onsite + Travel</span>
+              <span className="flex items-center gap-2 text-sm"><span className="w-4 h-4 rounded bg-amber-100 border"></span> Onsite (No Travel)</span>
+              <span className="flex items-center gap-2 text-sm"><span className="w-4 h-4 rounded bg-green-100 border"></span> Offshore</span>
+              <span className="flex items-center gap-2 text-sm"><span className="w-4 h-4 rounded bg-purple-100 border"></span> Logistics Section</span>
+            </div>
+            <Tip>The exported Excel preserves the Resource Group ID in a "Group" column at the end of each detail sheet.</Tip>
+          </Section>
+
+          {/* Section 9: Quick Estimator */}
+          <Section id="quick-estimator" title="9. Quick Estimate Calculator">
+            <p>The Quick Estimate Calculator provides a rapid, high-level cost projection without creating a full project.</p>
+            <Step num="1">Click the <strong>"Quick Estimate"</strong> button in the Estimator toolbar.</Step>
+            <Step num="2">Enter the number of resources by level (Junior, Mid, Senior, Lead).</Step>
+            <Step num="3">Set the project duration in months.</Step>
+            <Step num="4">The calculator instantly shows estimated cost ranges including base cost, overhead, and selling price.</Step>
+            <Tip>Use Quick Estimate for initial client conversations before building a detailed project estimation.</Tip>
+          </Section>
+
+          {/* Section 10: Workflow */}
+          <Section id="workflow" title="10. Approval Workflow">
+            <p>Projects follow a defined approval workflow:</p>
+            <div className="flex items-center gap-2 flex-wrap my-4 text-sm font-semibold">
+              <span className="px-3 py-1.5 bg-gray-200 rounded-full">Draft</span>
+              <ArrowRight className="w-4 h-4 text-gray-400" />
+              <span className="px-3 py-1.5 bg-amber-200 rounded-full">In Review</span>
+              <ArrowRight className="w-4 h-4 text-gray-400" />
+              <span className="px-3 py-1.5 bg-green-200 rounded-full">Approved</span>
+              <span className="text-gray-400 mx-1">or</span>
+              <span className="px-3 py-1.5 bg-red-200 rounded-full">Rejected</span>
+            </div>
+            <KeyValue label="Draft">Project is being worked on. Fully editable.</KeyValue>
+            <KeyValue label="In Review">Submitted for approval. Read-only for the creator.</KeyValue>
+            <KeyValue label="Approved">Estimation is finalized. Read-only. Can be cloned for new versions.</KeyValue>
+            <KeyValue label="Rejected">Returned with feedback. Can be edited and resubmitted.</KeyValue>
+            <Warning>Once a project is approved, it becomes read-only. To make changes, clone the project or create a new version.</Warning>
+          </Section>
+
+          {/* Section 11: Versioning */}
+          <Section id="version-mgmt" title="11. Versioning & Comparison">
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">11.1 Version Management</h3>
+            <p>Every save creates a new version with a mandatory comment explaining the changes. Previous versions are preserved and accessible from the Project Summary.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">11.2 Comparing Versions</h3>
+            <Step num="1">Navigate to a project's Summary page.</Step>
+            <Step num="2">Click <strong>"Compare Versions"</strong>.</Step>
+            <Step num="3">Select two versions to compare side-by-side.</Step>
+            <p className="text-sm mt-2">The comparison highlights changes in resources, allocations, and pricing between the selected versions.</p>
+          </Section>
+
+          {/* Section 12: Settings */}
+          <Section id="settings" title="12. Settings & Profile">
+            <p>Access personal settings from the <strong>Settings</strong> page in the sidebar.</p>
+            <KeyValue label="Theme">Choose between light and dark theme preference.</KeyValue>
+            <KeyValue label="Date Format">Set your preferred date display format.</KeyValue>
+            <KeyValue label="Profile">View and update your display name and email.</KeyValue>
+          </Section>
+
+          {/* Section 13: Shortcuts */}
+          <Section id="shortcuts" title="13. Keyboard Shortcuts & Tips">
+            <div className="rounded-lg border overflow-hidden mt-2">
+              <table className="w-full text-sm">
+                <thead className="bg-[#0F172A] text-white">
+                  <tr><th className="p-2 text-left">Shortcut</th><th className="p-2 text-left">Action</th></tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b"><td className="p-2 font-mono">Ctrl + B</td><td className="p-2">Toggle sidebar collapse/expand.</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono">Ctrl + S</td><td className="p-2">Save project (when in Estimator).</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono">Tab</td><td className="p-2">Navigate between grid cells.</td></tr>
+                  <tr><td className="p-2 font-mono">Esc</td><td className="p-2">Close dialogs and dropdowns.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">Pro Tips</h3>
+            <ul className="list-disc pl-6 space-y-2 text-sm">
+              <li>Use <strong>"Add Row"</strong> for quick data entry when you already know all the values, rather than the "Add Resource" dialog.</li>
+              <li>Use <strong>"Clone Wave"</strong> when creating similar phases to avoid re-entering common resources.</li>
+              <li>Set the <strong>Nego Buffer</strong> at the project level to maintain consistent negotiation margins across all waves.</li>
+              <li>Use <strong>Resource Group IDs</strong> to track split deployments (e.g., same person 60% onsite, 40% offshore).</li>
+              <li>Hover over <strong>Skill</strong> cells to see full descriptions without opening the dropdown.</li>
+              <li>The Excel export contains <strong>live formulas</strong> &mdash; you can modify values in Excel and see recalculated results instantly.</li>
+            </ul>
+          </Section>
+
+          {/* Footer */}
+          <div className="border-t-2 border-[#1E40AF] pt-4 mt-10 text-center text-sm text-gray-500 print:mt-4">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <img src="/yash-logo-new.png" alt="YASH" className="h-6 object-contain" />
+              <img src="/estipro-logo-new.png" alt="EstiPro" className="h-6 object-contain" />
+            </div>
+            <p>YASH EstiPro User Manual &mdash; &copy; 2026 YASH Technologies. All rights reserved.</p>
+            <p className="text-xs text-gray-400 mt-1">Version 1.0 &mdash; Last updated: {new Date().toLocaleDateString()}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
