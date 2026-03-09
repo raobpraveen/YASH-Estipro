@@ -977,6 +977,9 @@ const ProjectEstimator = () => {
       totalLogisticsCost: logistics.totalLogistics,
       totalCost,
       totalCostToCompany: costToCompany,  // Salary + Overhead only (excludes logistics)
+      effectiveProfitMargin: totalRowsSellingPrice > 0
+        ? ((totalRowsSellingPrice - costToCompany) / totalRowsSellingPrice * 100)
+        : profitMarginPercentage,
       onsiteOverheadCost,
       offshoreOverheadCost,
       onsiteCTC: onsiteSalaryCost + onsiteOverheadCost,
@@ -1051,6 +1054,9 @@ const ProjectEstimator = () => {
       totalLogisticsCost,
       totalCost,
       totalCostToCompany,  // Salary + Overhead only (excludes logistics)
+      effectiveProfitMargin: totalRowsSellingPrice > 0
+        ? ((totalRowsSellingPrice - totalCostToCompany) / totalRowsSellingPrice * 100)
+        : 0,
       onsiteOverheadCost,
       offshoreOverheadCost,
       onsiteCTC: onsiteSalaryCost + onsiteOverheadCost,
@@ -2984,6 +2990,23 @@ const ProjectEstimator = () => {
         </Card>
       </div>
 
+      {/* Effective Profit Margin indicator */}
+      {Math.abs(overall.effectiveProfitMargin - profitMarginPercentage) > 0.01 && (
+        <div className="flex items-center gap-4 bg-indigo-50 border border-indigo-200 rounded-lg px-5 py-3" data-testid="effective-margin-overall">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-indigo-700">Set Margin:</span>
+            <span className="font-mono font-bold text-lg text-indigo-600">{profitMarginPercentage.toFixed(1)}%</span>
+          </div>
+          <span className="text-indigo-300 text-lg">&rarr;</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-indigo-700">Effective Margin (with overrides):</span>
+            <span className={`font-mono font-bold text-xl ${overall.effectiveProfitMargin >= profitMarginPercentage ? 'text-green-600' : 'text-red-600'}`} data-testid="effective-margin-value">
+              {overall.effectiveProfitMargin.toFixed(1)}%
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Wave Management */}
       <Card className="border border-[#E2E8F0] shadow-sm">
         <CardHeader>
@@ -3635,6 +3658,9 @@ const ProjectEstimator = () => {
                                   </td>
                                   <td className="p-3 text-right font-mono tabular-nums text-sm text-blue-600 bg-blue-50/30">
                                     ${spPerMM.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    {hasOverride && (
+                                      <div className="text-[10px] line-through text-gray-400">${(totalManMonths > 0 ? calcSellingPrice / totalManMonths : 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                    )}
                                   </td>
                                   <td className="p-3 text-right font-mono tabular-nums text-sm text-blue-600 bg-blue-50/30">
                                     ${hourlyPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -3868,6 +3894,24 @@ const ProjectEstimator = () => {
                               <p className="font-mono font-bold text-2xl text-emerald-700 mt-1">${waveSummary.finalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                             </div>
                           </div>
+
+                          {/* Effective Profit Margin indicator */}
+                          {Math.abs(waveSummary.effectiveProfitMargin - profitMarginPercentage) > 0.01 && (
+                            <div className="flex items-center gap-3 bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-2.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-indigo-700 uppercase">Set Margin:</span>
+                                <span className="font-mono font-bold text-indigo-600">{profitMarginPercentage.toFixed(1)}%</span>
+                              </div>
+                              <span className="text-indigo-300">&rarr;</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-indigo-700 uppercase">Effective Margin:</span>
+                                <span className={`font-mono font-bold text-lg ${waveSummary.effectiveProfitMargin >= profitMarginPercentage ? 'text-green-600' : 'text-red-600'}`}>
+                                  {waveSummary.effectiveProfitMargin.toFixed(1)}%
+                                </span>
+                              </div>
+                              <span className="text-xs text-indigo-400 ml-auto">based on overrides applied</span>
+                            </div>
+                          )}
                           
                           {/* Row 3: CTC Analytics */}
                           <div className="grid grid-cols-5 gap-3">
