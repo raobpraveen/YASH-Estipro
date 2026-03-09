@@ -29,6 +29,8 @@ const STATUS_CONFIG = {
   draft: { label: "Draft", color: "bg-gray-100 text-gray-700", icon: Clock },
   in_review: { label: "In Review", color: "bg-amber-100 text-amber-700", icon: Clock },
   superseded: { label: "Superseded", color: "bg-gray-100 text-gray-500", icon: History },
+  suspended: { label: "Suspended", color: "bg-orange-100 text-orange-700", icon: Clock },
+  obsolete: { label: "Obsolete", color: "bg-red-50 text-red-400", icon: XCircle },
   approved: { label: "Approved", color: "bg-green-100 text-green-700", icon: CheckCircle },
   rejected: { label: "Rejected", color: "bg-red-100 text-red-700", icon: XCircle },
 };
@@ -73,6 +75,7 @@ const ProjectEstimator = () => {
   
   // Approval workflow
   const [projectStatus, setProjectStatus] = useState("draft");
+  const [projectCreatorId, setProjectCreatorId] = useState("");
   const [approverEmail, setApproverEmail] = useState("");
   const [approvalComments, setApprovalComments] = useState("");
   const [submitForReviewDialog, setSubmitForReviewDialog] = useState(false);
@@ -117,7 +120,7 @@ const ProjectEstimator = () => {
   // - Approved/superseded → read-only
   // - In review → ONLY the designated approver can edit, everyone else is locked
   // - View-only mode → read-only
-  const isReadOnly = !isLatestVersion || projectStatus === "approved" || projectStatus === "superseded" || (projectStatus === "in_review" && !isDesignatedApprover) || isViewOnly;
+  const isReadOnly = !isLatestVersion || projectStatus === "approved" || projectStatus === "superseded" || projectStatus === "suspended" || projectStatus === "obsolete" || (projectStatus === "in_review" && !isDesignatedApprover) || isViewOnly;
   
   // Wave-level logistics (applied to all onsite resources based on formula)
   const [waveLogistics, setWaveLogistics] = useState({
@@ -201,6 +204,7 @@ const ProjectEstimator = () => {
       setApprovalComments(project.approval_comments || "");
       setSalesManagerId(project.sales_manager_id || "");
       setIsLatestVersion(project.is_latest_version !== false);
+      setProjectCreatorId(project.created_by_id || "");
       
       if (project.waves && project.waves.length > 0) {
         setWaves(project.waves);
@@ -1402,6 +1406,7 @@ const ProjectEstimator = () => {
     setNegoBufferPercentage(0);
     setVersionNotes("");
     setProjectStatus("draft");
+    setProjectCreatorId("");
     setApproverEmail("");
     setApprovalComments("");
     setSalesManagerId("");
@@ -2208,10 +2213,41 @@ const ProjectEstimator = () => {
         }
 
         if (allocations.length > 0) {
+          // Parse logistics section from the sheet
+          const parsedLogistics = {};
+          for (let r = headerRowNum + allocations.length + 2; r <= ws.rowCount; r++) {
+            const row = ws.getRow(r);
+            const cellB = (getCellVal(row.getCell(2)) || "").toString().trim().toLowerCase();
+            const cellC = (getCellVal(row.getCell(3)) || "").toString().trim();
+            if (!cellB) continue;
+            // Parse description patterns like "Travel MM x $50 x 30d" or "Travel Res x $450 x 6 trips"
+            const dailyMatch = cellC.match(/\$(\d+(?:\.\d+)?)\s*x\s*(\d+)\s*d/i);
+            const tripsMatch = cellC.match(/\$(\d+(?:\.\d+)?)\s*x\s*(\d+)\s*trip/i);
+            const pctMatch = cellC.match(/^(\d+(?:\.\d+)?)%/);
+            if (cellB.includes("per-diem") && dailyMatch) {
+              parsedLogistics.per_diem_daily = parseFloat(dailyMatch[1]);
+              parsedLogistics.per_diem_days = parseInt(dailyMatch[2]);
+            } else if (cellB.includes("accommodation") && dailyMatch) {
+              parsedLogistics.accommodation_daily = parseFloat(dailyMatch[1]);
+              parsedLogistics.accommodation_days = parseInt(dailyMatch[2]);
+            } else if (cellB.includes("conveyance") && dailyMatch) {
+              parsedLogistics.local_conveyance_daily = parseFloat(dailyMatch[1]);
+              parsedLogistics.local_conveyance_days = parseInt(dailyMatch[2]);
+            } else if (cellB.includes("air fare") && tripsMatch) {
+              parsedLogistics.flight_cost_per_trip = parseFloat(tripsMatch[1]);
+              parsedLogistics.num_trips = parseInt(tripsMatch[2]);
+            } else if ((cellB.includes("visa") || cellB.includes("medical")) && tripsMatch) {
+              parsedLogistics.visa_medical_per_trip = parseFloat(tripsMatch[1]);
+            } else if (cellB.includes("contingency") && pctMatch) {
+              parsedLogistics.contingency_percentage = parseFloat(pctMatch[1]);
+            }
+          }
+
           parsedWaves.push({
             sheetName: name,
             phaseNames,
             allocations,
+            logistics: Object.keys(parsedLogistics).length > 0 ? parsedLogistics : null,
           });
         }
       });
@@ -2231,7 +2267,7 @@ const ProjectEstimator = () => {
     }
   };
 
-  const confirmSmartImport = async () => {
+  const confirmSmartImport = async (asNewVersion = false) => {
     if (!smartImportData) return;
     setSmartImportLoading(true);
     try {
@@ -2258,14 +2294,14 @@ const ProjectEstimator = () => {
         } catch { /* location may already exist */ }
       }
 
-      // Build new waves
+      // Build new waves with parsed logistics
       const newWaves = smartImportData.waves.map((pw, idx) => ({
         id: `wave_imp_${Date.now()}_${idx}`,
         name: pw.sheetName.replace(/^W\d+\s*-?\s*/, "") || `Wave ${idx + 1}`,
         description: "",
         duration_months: pw.phaseNames.length,
         phase_names: pw.phaseNames,
-        logistics: waves[0]?.logistics || {},
+        logistics_config: pw.logistics || waves[0]?.logistics_config || {},
         grid_allocations: pw.allocations.map(a => ({
           ...a,
           id: a.id,
@@ -2274,8 +2310,35 @@ const ProjectEstimator = () => {
         })),
       }));
 
-      setWaves(newWaves);
-      if (newWaves.length > 0) setActiveWaveId(newWaves[0].id);
+      if (asNewVersion && projectId) {
+        // Import as a new version — suspend old, create new
+        const payload = getProjectPayload();
+        payload.waves = newWaves;
+        payload.is_import = true;
+        payload.version_notes = `Smart Import: re-imported from Excel file`;
+        try {
+          const response = await axios.post(`${API}/projects/${projectId}/new-version`, payload, { headers: apiHeaders });
+          setProjectId(response.data.id);
+          setProjectVersion(response.data.version);
+          setProjectStatus(response.data.status || "draft");
+          setApproverEmail(response.data.approver_email || "");
+          setApprovalComments("");
+          setIsLatestVersion(true);
+          setWaves(newWaves);
+          if (newWaves.length > 0) setActiveWaveId(newWaves[0].id);
+          toast.success(`New version v${response.data.version} created from import. Previous version suspended.`);
+        } catch (err) {
+          toast.error("Failed to create new version: " + (err.response?.data?.detail || err.message));
+          setSmartImportLoading(false);
+          return;
+        }
+      } else {
+        // Replace current waves locally (user must save)
+        setWaves(newWaves);
+        if (newWaves.length > 0) setActiveWaveId(newWaves[0].id);
+        toast.success(`Imported ${newWaves.length} wave(s) with ${smartImportData.totalResources} resource(s). Save the project to persist.`);
+      }
+
       setSmartImportDialog(false);
       setSmartImportData(null);
 
@@ -2286,8 +2349,6 @@ const ProjectEstimator = () => {
       ]);
       setSkills(skillsRes.data);
       setLocations(locsRes.data);
-
-      toast.success(`Imported ${newWaves.length} wave(s) with ${smartImportData.totalResources} resource(s). Save the project to persist.`);
     } catch (err) {
       console.error("Smart Import error:", err);
       toast.error("Import failed: " + (err.message || "Unknown error"));
@@ -2298,6 +2359,22 @@ const ProjectEstimator = () => {
 
   const activeWave = waves.find(w => w.id === activeWaveId);
   const overall = calculateOverallSummary();
+
+  const isCreator = projectCreatorId === currentUser.id;
+  const canMarkObsolete = projectId && isCreator && (projectStatus === "draft" || projectStatus === "suspended");
+
+  const handleMarkObsolete = async () => {
+    if (!projectId || !canMarkObsolete) return;
+    if (!window.confirm("Are you sure you want to mark this version as Obsolete? This cannot be undone.")) return;
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`${API}/projects/${projectId}/obsolete`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      setProjectStatus("obsolete");
+      toast.success("Project marked as obsolete");
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to mark as obsolete");
+    }
+  };
 
   const getStatusBadge = () => {
     const config = STATUS_CONFIG[projectStatus] || STATUS_CONFIG.draft;
@@ -2412,6 +2489,18 @@ const ProjectEstimator = () => {
                     Reject
                   </Button>
                 </>
+              )}
+              {canMarkObsolete && (
+                <Button 
+                  onClick={handleMarkObsolete}
+                  variant="outline"
+                  size="sm"
+                  className="border-red-400 text-red-400 hover:bg-red-50"
+                  data-testid="mark-obsolete-button"
+                >
+                  <XCircle className="w-4 h-4 mr-1" />
+                  Mark Obsolete
+                </Button>
               )}
             </>
           )}
@@ -2562,7 +2651,9 @@ const ProjectEstimator = () => {
             <Badge className="bg-amber-100 text-amber-800">
               {!isLatestVersion ? "Read-only: Older Version" : 
                projectStatus === "in_review" ? "Read-only: In Review" : 
-               projectStatus === "superseded" ? "Read-only: Superseded" : "Read-only: Approved"}
+               projectStatus === "superseded" ? "Read-only: Superseded" :
+               projectStatus === "suspended" ? "Read-only: Suspended" :
+               projectStatus === "obsolete" ? "Read-only: Obsolete" : "Read-only: Approved"}
             </Badge>
           )}
         </CardHeader>
@@ -3446,8 +3537,8 @@ const ProjectEstimator = () => {
                               <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 36, zIndex: 10, background: '#F8FAFC' }}>#</th>
                               <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 72, zIndex: 10, background: '#F8FAFC', minWidth: 148 }}>Skill</th>
                               <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 220, zIndex: 10, background: '#F8FAFC', minWidth: 128 }}>Level</th>
-                              <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 348, zIndex: 10, background: '#F8FAFC', minWidth: 140, boxShadow: '2px 0 5px rgba(0,0,0,0.08)' }}>Location</th>
-                              <th className="text-right p-3 font-semibold text-sm">$/Month</th>
+                              <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 348, zIndex: 10, background: '#F8FAFC', minWidth: 140 }}>Location</th>
+                              <th className="text-right p-3 font-semibold text-sm" style={{ position: 'sticky', left: 488, zIndex: 10, background: '#F8FAFC', minWidth: 100, boxShadow: '2px 0 5px rgba(0,0,0,0.08)' }}>$/Month</th>
                               <th className="text-center p-3 font-semibold text-sm">Onsite</th>
                               <th className="text-center p-3 font-semibold text-sm">Travel</th>
                               <th className="text-center p-2 font-semibold text-xs w-12">Grp</th>
@@ -3558,7 +3649,7 @@ const ProjectEstimator = () => {
                                       />
                                     )}
                                   </td>
-                                  <td className="p-2" style={{ position: 'sticky', left: 348, zIndex: 2, background: stickyBg, minWidth: 140, boxShadow: '2px 0 5px rgba(0,0,0,0.08)' }}>
+                                  <td className="p-2" style={{ position: 'sticky', left: 348, zIndex: 2, background: stickyBg, minWidth: 140 }}>
                                     {isReadOnly ? (
                                       <span className="text-sm">{allocation.base_location_name}</span>
                                     ) : (
@@ -3572,7 +3663,7 @@ const ProjectEstimator = () => {
                                       />
                                     )}
                                   </td>
-                                  <td className="p-3 text-right">
+                                  <td className="p-3 text-right" style={{ position: 'sticky', left: 488, zIndex: 2, background: stickyBg, minWidth: 100, boxShadow: '2px 0 5px rgba(0,0,0,0.08)' }}>
                                     <Input
                                       type="number"
                                       className="w-24 text-right font-mono text-sm"
@@ -4468,8 +4559,16 @@ const ProjectEstimator = () => {
                 </div>
               )}
 
+              {smartImportData.waves.some(w => w.logistics) && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <p className="text-sm font-semibold text-purple-700 mb-1">Logistics data detected</p>
+                  <p className="text-xs text-purple-600">Logistics configuration will be imported from the Excel file.</p>
+                </div>
+              )}
+
               <div className="bg-gray-50 border rounded-lg p-3 text-xs text-gray-500">
-                This will <strong>replace</strong> all current waves with the imported data. Custom salary values from the Excel will be preserved for this estimation. Remember to <strong>Save</strong> the project after import.
+                <strong>Replace current:</strong> Overwrites all waves locally (save to persist).<br/>
+                {projectId && <><strong>Import as New Version:</strong> Creates a new version and suspends the current one.</>}
               </div>
             </div>
           )}
@@ -4477,8 +4576,13 @@ const ProjectEstimator = () => {
             <Button variant="outline" onClick={() => { setSmartImportDialog(false); setSmartImportData(null); }} data-testid="cancel-import-btn">
               Cancel
             </Button>
-            <Button onClick={confirmSmartImport} disabled={smartImportLoading} className="bg-purple-600 hover:bg-purple-700 text-white" data-testid="confirm-import-btn">
-              {smartImportLoading ? "Importing..." : "Confirm Import"}
+            {projectId && (
+              <Button onClick={() => confirmSmartImport(true)} disabled={smartImportLoading} className="bg-orange-600 hover:bg-orange-700 text-white" data-testid="import-new-version-btn">
+                {smartImportLoading ? "Creating..." : "Import as New Version"}
+              </Button>
+            )}
+            <Button onClick={() => confirmSmartImport(false)} disabled={smartImportLoading} className="bg-purple-600 hover:bg-purple-700 text-white" data-testid="confirm-import-btn">
+              {smartImportLoading ? "Importing..." : "Replace Current"}
             </Button>
           </DialogFooter>
         </DialogContent>

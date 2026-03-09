@@ -1849,6 +1849,14 @@ async def approve_project(project_id: str, comments: str = "", user: dict = Depe
     
     await db.projects.update_one({"id": project_id}, {"$set": update_data})
     
+    # Auto-obsolete other Draft versions of the same project number
+    project_number = project.get("project_number", "")
+    if project_number:
+        await db.projects.update_many(
+            {"project_number": project_number, "status": "draft", "id": {"$ne": project_id}},
+            {"$set": {"status": "obsolete", "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    
     # Create audit log for approval
     current_user = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
     if current_user:
@@ -1894,7 +1902,7 @@ async def approve_project(project_id: str, comments: str = "", user: dict = Depe
     return {"message": "Project approved", "status": "approved"}
 
 
-@app.put("/api/projects/{project_id}/obsolete")
+@api_router.put("/projects/{project_id}/obsolete")
 async def mark_project_obsolete(project_id: str, user: dict = Depends(require_auth)):
     """Mark a project as obsolete - only the creator can do this"""
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
