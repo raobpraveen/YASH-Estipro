@@ -14,6 +14,7 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 - **Excel Smart Import**: Re-import EstiPro-exported Excel files with auto-creation of missing master data, logistics parsing, and "Import as New Version" capability
 - **Authentication**: JWT-based with role-based access (Admin, Approver, User)
 - **Documentation**: In-app User Manual and Support Guide
+- **Version Comparison**: Field-level diff between any two versions + automated change history log
 
 ## Architecture
 - **Frontend**: React 18 + Tailwind CSS + Shadcn UI
@@ -41,26 +42,41 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 - Master data management (Skills, Locations, Customers, Technologies, Project Types, Sales Managers, Proficiency Rates)
 - User management (admin)
 - Project cloning & archiving
-- Version comparison
 - Settings & profile
 
 ### Recent Additions (March 2026)
-- **Bug Fixes**: Excel logistics formula (Travel=YES), Skill hover tooltip, Offshore MM card fix, CTC analytics, Excel color legend
-- **Resource Group ID**: Link related rows with colored borders
-- **Frozen Columns**: First 5 grid columns + $/Month stay visible during horizontal scroll
-- **CTC Analytics**: Onsite/Offshore CTC cards in wave & overall summaries
-- **User Manual**: 13-section in-app documentation with YASH branding
-- **Support Guide**: 14-section technical reference for admins/IT support
-- **Custom Selling Price Override (P1)**: "Ovr $/Hr" column overrides calculated selling price per row
-- **Excel Smart Import (P2)**: Re-import EstiPro-exported Excel files, auto-create missing skills/locations
+- Resource Group ID feature with grid coloring
+- Frozen columns (first 5 + $/Month) for grid navigation
+- CTC Analytics cards
+- User Manual & Support Guide pages
+- Custom Selling Price Override (Ovr $/Hr)
+- Smart Import with logistics parsing and "Import as New Version"
+- Suspended & Obsolete project statuses
+- Mark Obsolete button with confirmation dialog
+- Auto-obsolete Draft versions on approval
 
 ### Latest Additions (March 9, 2026)
-- **Suspended & Obsolete Statuses**: New project statuses for version lifecycle management
-- **Smart Import → Import as New Version**: Creates a new version from Excel import, suspending the old version
-- **Smart Import → Logistics Parsing**: Imports logistics configuration (per-diem, accommodation, conveyance, air fare, visa/medical, contingency) from Excel files
-- **Frozen $/Month Column**: The $/Month column is now sticky during horizontal scroll alongside the first 5 columns
-- **Mark Obsolete Button**: Project creators can mark Draft or Suspended projects as Obsolete
-- **Auto-Obsolete on Approval**: When a version is approved, other Draft versions of the same project are automatically set to Obsolete
+- **Version Comparison (Field-Level Diff)**: Complete rewrite of CompareVersions.js with:
+  - Summary banner showing total changes, header/resource/allocation/logistics counts
+  - Header diff table (profit margin, nego buffer, customer, technologies, locations, etc.)
+  - Wave-by-wave diff with expandable sections
+  - Resource-level diff showing added/removed/modified resources
+  - Cell-level allocation diff (Phase X: 1.0 → 0.5)
+  - Logistics config diff per wave
+  - Unchanged resources hidden with count
+- **Change History (Audit Log)**: Auto-records every save with detailed field-level diffs
+  - Stored in `change_logs` MongoDB collection
+  - Accessible via "Change History" tab on the comparison page
+  - Shows timestamp, user, version, expandable details
+  - Backend API: GET /api/change-logs/{project_number}
+- **Excel Export Fix**: Replaced client-side blob download with backend download proxy (POST buffer → GET with Content-Disposition)
+
+## Backend API Endpoints (Key)
+- POST /api/download-file → Upload file buffer, returns download_id
+- GET /api/download-file/{download_id} → Serve file as HTTP download
+- GET /api/projects/compare-detail?v1={id}&v2={id} → Field-level diff
+- GET /api/change-logs/{project_number} → Change history
+- PUT /api/projects/{project_id}/obsolete → Mark project obsolete
 
 ## Prioritized Backlog
 ### P1 - Upcoming
@@ -72,4 +88,4 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 - Actuals Tracking & Profitability Module (spec in /app/memory/ACTUALS_MODULE_SPEC.md)
 
 ### Refactoring
-- Break down ProjectEstimator.js (5000+ lines) into smaller components (WaveGrid, WaveTabs, QuickEstimateDialog, SummaryCards, SmartImportDialog)
+- Break down ProjectEstimator.js (5000+ lines) into smaller components

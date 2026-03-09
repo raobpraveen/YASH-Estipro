@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ArrowRight, GitCompare } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  ArrowLeft, GitCompare, Plus, Minus, RefreshCw, ChevronDown, ChevronRight,
+  FileText, Settings, Truck, History, AlertCircle
+} from "lucide-react";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -13,452 +18,461 @@ const API = `${BACKEND_URL}/api`;
 
 const CompareVersions = () => {
   const { projectId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [versions, setVersions] = useState([]);
-  const [leftVersion, setLeftVersion] = useState(null);
-  const [rightVersion, setRightVersion] = useState(null);
   const [leftVersionId, setLeftVersionId] = useState("");
   const [rightVersionId, setRightVersionId] = useState("");
+  const [diff, setDiff] = useState(null);
+  const [changeLogs, setChangeLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [diffLoading, setDiffLoading] = useState(false);
+  const [expandedWaves, setExpandedWaves] = useState({});
+  const [expandedLogs, setExpandedLogs] = useState({});
+  const [activeTab, setActiveTab] = useState("comparison");
 
   useEffect(() => {
-    if (projectId) {
-      fetchVersions();
-    }
+    if (projectId) fetchVersions();
   }, [projectId]);
+
+  useEffect(() => {
+    if (leftVersionId && rightVersionId && leftVersionId !== rightVersionId) {
+      fetchDiff();
+    } else {
+      setDiff(null);
+    }
+  }, [leftVersionId, rightVersionId]);
 
   const fetchVersions = async () => {
     try {
-      const response = await axios.get(`${API}/projects/${projectId}/versions`);
-      const vers = response.data;
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API}/projects/${projectId}/versions`, { headers: { Authorization: `Bearer ${token}` } });
+      const vers = res.data;
       setVersions(vers);
-      
-      // Auto-select latest two versions for comparison
-      if (vers.length >= 2) {
-        setLeftVersionId(vers[1].id); // Previous version
-        setRightVersionId(vers[0].id); // Latest version
-        setLeftVersion(vers[1]);
-        setRightVersion(vers[0]);
-      } else if (vers.length === 1) {
-        setLeftVersionId(vers[0].id);
+      // Auto-select from URL params or latest two
+      const v1 = searchParams.get("v1");
+      const v2 = searchParams.get("v2");
+      if (v1 && v2) {
+        setLeftVersionId(v1);
+        setRightVersionId(v2);
+      } else if (vers.length >= 2) {
+        setLeftVersionId(vers[1].id);
         setRightVersionId(vers[0].id);
-        setLeftVersion(vers[0]);
-        setRightVersion(vers[0]);
       }
-    } catch (error) {
-      toast.error("Failed to load project versions");
+      // Fetch change logs
+      if (vers.length > 0) {
+        const pn = vers[0].project_number;
+        try {
+          const logsRes = await axios.get(`${API}/change-logs/${pn}`, { headers: { Authorization: `Bearer ${token}` } });
+          setChangeLogs(logsRes.data);
+        } catch { /* no logs yet */ }
+      }
+    } catch {
+      toast.error("Failed to load versions");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVersionChange = async (side, versionId) => {
+  const fetchDiff = async () => {
+    setDiffLoading(true);
     try {
-      const response = await axios.get(`${API}/projects/${versionId}`);
-      if (side === "left") {
-        setLeftVersionId(versionId);
-        setLeftVersion(response.data);
-      } else {
-        setRightVersionId(versionId);
-        setRightVersion(response.data);
-      }
-    } catch (error) {
-      toast.error("Failed to load version");
-    }
-  };
-
-  // Calculate summary for a project version
-  const calculateSummary = (project) => {
-    if (!project || !project.waves) {
-      return { 
-        totalMM: 0, onsiteMM: 0, offshoreMM: 0, travelingMM: 0, totalLogistics: 0, sellingPrice: 0, 
-        resourceCount: 0, travelingResourceCount: 0, onsiteSalaryCost: 0, offshoreSalaryCost: 0,
-        onsiteSellingPrice: 0, offshoreSellingPrice: 0
-      };
-    }
-
-    const profitMargin = project.profit_margin_percentage || 35;
-    let totalMM = 0, onsiteMM = 0, offshoreMM = 0, travelingMM = 0, totalLogistics = 0;
-    let totalBaseCost = 0, resourceCount = 0, travelingResourceCount = 0;
-    let onsiteSalaryCost = 0, offshoreSalaryCost = 0;
-
-    project.waves.forEach(wave => {
-      const config = wave.logistics_config || {
-        per_diem_daily: 50, per_diem_days: 30,
-        accommodation_daily: 80, accommodation_days: 30,
-        local_conveyance_daily: 15, local_conveyance_days: 21,
-        flight_cost_per_trip: 450, visa_medical_per_trip: 400,
-        num_trips: 6, contingency_percentage: 5,
-      };
-
-      let waveTravelingMM = 0, waveTravelingResources = 0;
-
-      (wave.grid_allocations || []).forEach(alloc => {
-        const mm = Object.values(alloc.phase_allocations || {}).reduce((s, v) => s + v, 0);
-        const salaryCost = alloc.avg_monthly_salary * mm;
-        totalMM += mm;
-        resourceCount++;
-
-        if (alloc.is_onsite) {
-          onsiteMM += mm;
-          onsiteSalaryCost += salaryCost;
-        } else {
-          offshoreMM += mm;
-          offshoreSalaryCost += salaryCost;
-        }
-
-        // Count traveling resources for logistics
-        if (alloc.travel_required) {
-          travelingMM += mm;
-          waveTravelingMM += mm;
-          waveTravelingResources++;
-          travelingResourceCount++;
-        }
-
-        totalBaseCost += salaryCost;
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API}/projects/compare-detail?v1=${leftVersionId}&v2=${rightVersionId}`, { headers: { Authorization: `Bearer ${token}` } });
+      setDiff(res.data);
+      // Auto-expand waves that have changes
+      const expanded = {};
+      (res.data.wave_diffs || []).forEach((wd, i) => {
+        if (wd.status !== "unchanged") expanded[i] = true;
       });
-
-      // Wave logistics - only for traveling resources
-      const perDiem = waveTravelingMM * config.per_diem_daily * config.per_diem_days;
-      const accommodation = waveTravelingMM * config.accommodation_daily * config.accommodation_days;
-      const conveyance = waveTravelingMM * config.local_conveyance_daily * config.local_conveyance_days;
-      const flights = waveTravelingResources * config.flight_cost_per_trip * config.num_trips;
-      const visa = waveTravelingResources * config.visa_medical_per_trip * config.num_trips;
-      const subtotal = perDiem + accommodation + conveyance + flights + visa;
-      const contingency = subtotal * (config.contingency_percentage / 100);
-      totalLogistics += subtotal + contingency;
-    });
-
-    const baseCostWithLogistics = totalBaseCost + totalLogistics;
-    // Assume avg 30% overhead
-    const costToCompany = baseCostWithLogistics * 1.3;
-    const sellingPrice = costToCompany / (1 - profitMargin / 100);
-    
-    // Calculate onsite and offshore selling prices
-    const onsiteOverheadCost = onsiteSalaryCost * 0.3;
-    const offshoreOverheadCost = offshoreSalaryCost * 0.3;
-    const onsiteSellingPrice = (onsiteSalaryCost + onsiteOverheadCost + totalLogistics) / (1 - profitMargin / 100);
-    const offshoreSellingPrice = (offshoreSalaryCost + offshoreOverheadCost) / (1 - profitMargin / 100);
-
-    return { 
-      totalMM, onsiteMM, offshoreMM, travelingMM, totalLogistics, sellingPrice, 
-      resourceCount, travelingResourceCount, onsiteSalaryCost, offshoreSalaryCost,
-      onsiteSellingPrice, offshoreSellingPrice
-    };
+      setExpandedWaves(expanded);
+    } catch (err) {
+      toast.error("Failed to compute diff");
+    } finally {
+      setDiffLoading(false);
+    }
   };
 
-  const leftSummary = calculateSummary(leftVersion);
-  const rightSummary = calculateSummary(rightVersion);
-
-  // Calculate differences
-  const getDiff = (left, right) => {
-    const diff = right - left;
-    const pct = left !== 0 ? ((diff / left) * 100).toFixed(1) : (right !== 0 ? "100" : "0");
-    return { diff, pct, increased: diff > 0, decreased: diff < 0 };
-  };
-
-  const mmDiff = getDiff(leftSummary.totalMM, rightSummary.totalMM);
-  const onsiteDiff = getDiff(leftSummary.onsiteMM, rightSummary.onsiteMM);
-  const offshoreDiff = getDiff(leftSummary.offshoreMM, rightSummary.offshoreMM);
-  const travelingDiff = getDiff(leftSummary.travelingMM, rightSummary.travelingMM);
-  const logisticsDiff = getDiff(leftSummary.totalLogistics, rightSummary.totalLogistics);
-  const priceDiff = getDiff(leftSummary.sellingPrice, rightSummary.sellingPrice);
-  const resourceDiff = getDiff(leftSummary.resourceCount, rightSummary.resourceCount);
-  const travelingResourceDiff = getDiff(leftSummary.travelingResourceCount, rightSummary.travelingResourceCount);
-  const onsiteSellingPriceDiff = getDiff(leftSummary.onsiteSellingPrice, rightSummary.onsiteSellingPrice);
-  const offshoreSellingPriceDiff = getDiff(leftSummary.offshoreSellingPrice, rightSummary.offshoreSellingPrice);
+  const toggleWave = (i) => setExpandedWaves(prev => ({ ...prev, [i]: !prev[i] }));
+  const toggleLog = (i) => setExpandedLogs(prev => ({ ...prev, [i]: !prev[i] }));
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Loading versions...</p>
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64"><p className="text-gray-500">Loading versions...</p></div>;
   }
-
-  if (versions.length === 0) {
+  if (versions.length < 2) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" onClick={() => navigate("/projects")}>
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Projects
-        </Button>
-        <div className="text-center py-12">
-          <p className="text-gray-500">No versions found for this project</p>
-        </div>
+        <Button variant="ghost" onClick={() => navigate("/projects")}><ArrowLeft className="w-4 h-4 mr-2" /> Back</Button>
+        <div className="text-center py-12"><p className="text-gray-500">Need at least 2 versions to compare.</p></div>
       </div>
     );
   }
 
+  const projectNumber = versions[0]?.project_number || "Project";
+
   return (
-    <div data-testid="compare-versions" className="space-y-6">
+    <div data-testid="compare-versions" className="space-y-5 max-w-[1400px] mx-auto">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => navigate("/projects")} data-testid="back-button">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/projects")} data-testid="back-button">
+            <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-[#0F172A] flex items-center gap-2">
-              <GitCompare className="w-8 h-8 text-[#8B5CF6]" />
-              Compare Versions
+            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+              <GitCompare className="w-6 h-6 text-violet-600" />
+              Version Comparison
             </h1>
-            <p className="text-gray-600">{leftVersion?.project_number || "Project"}</p>
+            <p className="text-sm text-gray-500">{projectNumber} — {versions[0]?.name}</p>
           </div>
         </div>
       </div>
 
       {/* Version Selectors */}
-      <div className="grid grid-cols-2 gap-8">
-        <Card className="border-2 border-[#0EA5E9]">
-          <CardHeader className="bg-[#E0F2FE] pb-3">
-            <CardTitle className="text-lg flex items-center justify-between">
-              <span>Version A (Baseline)</span>
-              <Select value={leftVersionId} onValueChange={(v) => handleVersionChange("left", v)}>
-                <SelectTrigger className="w-32" data-testid="left-version-select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {versions.map(v => (
-                    <SelectItem key={v.id} value={v.id}>v{v.version}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4">
-            {leftVersion && (
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Project Name</span>
-                  <span className="font-semibold">{leftVersion.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Customer</span>
-                  <span className="font-semibold">{leftVersion.customer_name || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Profit Margin</span>
-                  <span className="font-semibold">{leftVersion.profit_margin_percentage}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Waves</span>
-                  <span className="font-semibold">{leftVersion.waves?.length || 0}</span>
-                </div>
-                {leftVersion.version_notes && (
-                  <div className="border-t pt-3 mt-3">
-                    <span className="text-gray-600 block mb-1">Version Notes:</span>
-                    <p className="text-sm bg-gray-50 p-2 rounded italic">{leftVersion.version_notes}</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 border-[#10B981]">
-          <CardHeader className="bg-green-50 pb-3">
-            <CardTitle className="text-lg flex items-center justify-between">
-              <span>Version B (Compare)</span>
-              <Select value={rightVersionId} onValueChange={(v) => handleVersionChange("right", v)}>
-                <SelectTrigger className="w-32" data-testid="right-version-select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {versions.map(v => (
-                    <SelectItem key={v.id} value={v.id}>v{v.version}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4">
-            {rightVersion && (
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Project Name</span>
-                  <span className="font-semibold">{rightVersion.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Customer</span>
-                  <span className="font-semibold">{rightVersion.customer_name || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Profit Margin</span>
-                  <span className="font-semibold">{rightVersion.profit_margin_percentage}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Waves</span>
-                  <span className="font-semibold">{rightVersion.waves?.length || 0}</span>
-                </div>
-                {rightVersion.version_notes && (
-                  <div className="border-t pt-3 mt-3">
-                    <span className="text-gray-600 block mb-1">Version Notes:</span>
-                    <p className="text-sm bg-green-50 p-2 rounded italic">{rightVersion.version_notes}</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <div className="flex items-center gap-4 bg-slate-50 border rounded-lg p-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-slate-600">Baseline:</span>
+          <Select value={leftVersionId} onValueChange={setLeftVersionId}>
+            <SelectTrigger className="w-44" data-testid="left-version-select">
+              <SelectValue placeholder="Select version" />
+            </SelectTrigger>
+            <SelectContent>
+              {versions.map(v => (
+                <SelectItem key={v.id} value={v.id}>v{v.version} — {v.status}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <GitCompare className="w-5 h-5 text-gray-400" />
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-slate-600">Compare:</span>
+          <Select value={rightVersionId} onValueChange={setRightVersionId}>
+            <SelectTrigger className="w-44" data-testid="right-version-select">
+              <SelectValue placeholder="Select version" />
+            </SelectTrigger>
+            <SelectContent>
+              {versions.map(v => (
+                <SelectItem key={v.id} value={v.id}>v{v.version} — {v.status}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {leftVersionId === rightVersionId && (
+          <span className="text-xs text-amber-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Select different versions</span>
+        )}
       </div>
 
-      {/* Comparison Table */}
-      <Card className="border-2">
-        <CardHeader>
-          <CardTitle className="text-xl font-bold">Side-by-Side Comparison</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b-2">
-                <th className="text-left py-3 px-4">Metric</th>
-                <th className="text-right py-3 px-4 bg-[#E0F2FE]">v{leftVersion?.version || "?"}</th>
-                <th className="text-right py-3 px-4 bg-green-50">v{rightVersion?.version || "?"}</th>
-                <th className="text-right py-3 px-4">Change</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b">
-                <td className="py-3 px-4 font-medium">Total Man-Months</td>
-                <td className="py-3 px-4 text-right font-mono">{leftSummary.totalMM.toFixed(1)}</td>
-                <td className="py-3 px-4 text-right font-mono">{rightSummary.totalMM.toFixed(1)}</td>
-                <td className="py-3 px-4 text-right">
-                  <DiffBadge diff={mmDiff} suffix=" MM" />
-                </td>
-              </tr>
-              <tr className="border-b bg-amber-50/30">
-                <td className="py-3 px-4 font-medium text-[#F59E0B]">Onsite MM</td>
-                <td className="py-3 px-4 text-right font-mono">{leftSummary.onsiteMM.toFixed(1)}</td>
-                <td className="py-3 px-4 text-right font-mono">{rightSummary.onsiteMM.toFixed(1)}</td>
-                <td className="py-3 px-4 text-right">
-                  <DiffBadge diff={onsiteDiff} suffix=" MM" />
-                </td>
-              </tr>
-              <tr className="border-b bg-blue-50/30">
-                <td className="py-3 px-4 font-medium text-[#0EA5E9]">Offshore MM</td>
-                <td className="py-3 px-4 text-right font-mono">{leftSummary.offshoreMM.toFixed(1)}</td>
-                <td className="py-3 px-4 text-right font-mono">{rightSummary.offshoreMM.toFixed(1)}</td>
-                <td className="py-3 px-4 text-right">
-                  <DiffBadge diff={offshoreDiff} suffix=" MM" />
-                </td>
-              </tr>
-              <tr className="border-b">
-                <td className="py-3 px-4 font-medium">Total Resources</td>
-                <td className="py-3 px-4 text-right font-mono">{leftSummary.resourceCount}</td>
-                <td className="py-3 px-4 text-right font-mono">{rightSummary.resourceCount}</td>
-                <td className="py-3 px-4 text-right">
-                  <DiffBadge diff={resourceDiff} suffix="" />
-                </td>
-              </tr>
-              <tr className="border-b bg-purple-50/30">
-                <td className="py-3 px-4 font-medium text-purple-600">Traveling Resources</td>
-                <td className="py-3 px-4 text-right font-mono">{leftSummary.travelingResourceCount} ({leftSummary.travelingMM.toFixed(1)} MM)</td>
-                <td className="py-3 px-4 text-right font-mono">{rightSummary.travelingResourceCount} ({rightSummary.travelingMM.toFixed(1)} MM)</td>
-                <td className="py-3 px-4 text-right">
-                  <DiffBadge diff={travelingResourceDiff} suffix=" res" />
-                </td>
-              </tr>
-              <tr className="border-b bg-purple-50/30">
-                <td className="py-3 px-4 font-medium">Total Logistics</td>
-                <td className="py-3 px-4 text-right font-mono">${leftSummary.totalLogistics.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                <td className="py-3 px-4 text-right font-mono">${rightSummary.totalLogistics.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                <td className="py-3 px-4 text-right">
-                  <DiffBadge diff={logisticsDiff} prefix="$" isCurrency />
-                </td>
-              </tr>
-              <tr className="border-b bg-amber-50/30">
-                <td className="py-3 px-4 font-medium text-[#F59E0B]">Onsite Selling Price</td>
-                <td className="py-3 px-4 text-right font-mono">${leftSummary.onsiteSellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                <td className="py-3 px-4 text-right font-mono">${rightSummary.onsiteSellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                <td className="py-3 px-4 text-right">
-                  <DiffBadge diff={onsiteSellingPriceDiff} prefix="$" isCurrency />
-                </td>
-              </tr>
-              <tr className="border-b bg-blue-50/30">
-                <td className="py-3 px-4 font-medium text-[#0EA5E9]">Offshore Selling Price</td>
-                <td className="py-3 px-4 text-right font-mono">${leftSummary.offshoreSellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                <td className="py-3 px-4 text-right font-mono">${rightSummary.offshoreSellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                <td className="py-3 px-4 text-right">
-                  <DiffBadge diff={offshoreSellingPriceDiff} prefix="$" isCurrency />
-                </td>
-              </tr>
-              <tr className="border-b-2 bg-green-50">
-                <td className="py-4 px-4 font-bold text-lg">Selling Price</td>
-                <td className="py-4 px-4 text-right font-mono font-bold text-xl">${leftSummary.sellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                <td className="py-4 px-4 text-right font-mono font-bold text-xl text-[#10B981]">${rightSummary.sellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                <td className="py-4 px-4 text-right">
-                  <DiffBadge diff={priceDiff} prefix="$" isCurrency large />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="comparison" data-testid="tab-comparison"><GitCompare className="w-4 h-4 mr-1" /> Side-by-Side Diff</TabsTrigger>
+          <TabsTrigger value="changelog" data-testid="tab-changelog"><History className="w-4 h-4 mr-1" /> Change History ({changeLogs.length})</TabsTrigger>
+        </TabsList>
 
-      {/* Wave Comparison */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl font-bold">Wave Comparison</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <h3 className="font-semibold mb-2 text-[#0EA5E9]">v{leftVersion?.version} Waves</h3>
-              {leftVersion?.waves?.length > 0 ? (
-                <div className="space-y-2">
-                  {leftVersion.waves.map((wave, i) => (
-                    <div key={i} className="p-2 bg-[#E0F2FE] rounded text-sm">
-                      <span className="font-medium">{wave.name}</span>
-                      <span className="text-gray-600 ml-2">{wave.duration_months}m, {wave.grid_allocations?.length || 0} resources</span>
-                    </div>
-                  ))}
+        {/* ===== COMPARISON TAB ===== */}
+        <TabsContent value="comparison" className="space-y-4">
+          {diffLoading && <div className="text-center py-8 text-gray-500">Computing diff...</div>}
+          {!diff && !diffLoading && <div className="text-center py-8 text-gray-400">Select two different versions above to compare.</div>}
+
+          {diff && (
+            <>
+              {/* Summary Banner */}
+              <div className="bg-slate-900 text-white rounded-lg p-4 flex items-center gap-6" data-testid="diff-summary">
+                <span className="font-bold text-lg">v{diff.left_version} → v{diff.right_version}</span>
+                <div className="flex gap-4 text-sm">
+                  <SummaryPill icon={<RefreshCw className="w-3 h-3" />} count={diff.summary.total_changes} label="Total Changes" color="text-violet-300" />
+                  <SummaryPill icon={<FileText className="w-3 h-3" />} count={diff.summary.header_changes} label="Header" color="text-sky-300" />
+                  <SummaryPill icon={<Plus className="w-3 h-3" />} count={diff.summary.resources_added} label="Added" color="text-emerald-300" />
+                  <SummaryPill icon={<Minus className="w-3 h-3" />} count={diff.summary.resources_removed} label="Removed" color="text-red-300" />
+                  <SummaryPill icon={<RefreshCw className="w-3 h-3" />} count={diff.summary.resources_modified} label="Modified" color="text-amber-300" />
+                  <SummaryPill icon={<Settings className="w-3 h-3" />} count={diff.summary.allocation_changes} label="Cell Changes" color="text-cyan-300" />
+                  <SummaryPill icon={<Truck className="w-3 h-3" />} count={diff.summary.logistics_changes} label="Logistics" color="text-purple-300" />
                 </div>
-              ) : (
-                <p className="text-gray-500 text-sm">No waves</p>
+              </div>
+
+              {/* Header Diff */}
+              {diff.header_diff.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-sky-600" /> Header Changes
+                      <Badge variant="secondary" className="ml-1">{diff.header_diff.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-48">Field</TableHead>
+                          <TableHead className="bg-red-50/50">v{diff.left_version} (Old)</TableHead>
+                          <TableHead className="bg-green-50/50">v{diff.right_version} (New)</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {diff.header_diff.map((h, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="font-medium text-sm">{h.field}</TableCell>
+                            <TableCell className="bg-red-50/30"><DiffValue value={h.old_value} type="old" /></TableCell>
+                            <TableCell className="bg-green-50/30"><DiffValue value={h.new_value} type="new" /></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
               )}
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2 text-[#10B981]">v{rightVersion?.version} Waves</h3>
-              {rightVersion?.waves?.length > 0 ? (
-                <div className="space-y-2">
-                  {rightVersion.waves.map((wave, i) => (
-                    <div key={i} className="p-2 bg-green-50 rounded text-sm">
-                      <span className="font-medium">{wave.name}</span>
-                      <span className="text-gray-600 ml-2">{wave.duration_months}m, {wave.grid_allocations?.length || 0} resources</span>
-                    </div>
-                  ))}
+
+              {/* Wave Diffs */}
+              {diff.wave_diffs.map((wd, wi) => (
+                <Card key={wi} className={`border-l-4 ${wd.status === "added" ? "border-l-emerald-500" : wd.status === "removed" ? "border-l-red-500" : wd.status === "modified" ? "border-l-amber-500" : "border-l-gray-200"}`}>
+                  <CardHeader className="pb-2 cursor-pointer" onClick={() => toggleWave(wi)}>
+                    <CardTitle className="text-base font-semibold flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {expandedWaves[wi] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        {wd.wave_name}
+                        <WaveStatusBadge status={wd.status} />
+                      </div>
+                      <div className="flex gap-2 text-xs font-normal text-gray-500">
+                        {wd.resources?.filter(r => r.status === "added").length > 0 && <span className="text-emerald-600">+{wd.resources.filter(r => r.status === "added").length} res</span>}
+                        {wd.resources?.filter(r => r.status === "removed").length > 0 && <span className="text-red-600">-{wd.resources.filter(r => r.status === "removed").length} res</span>}
+                        {wd.resources?.filter(r => r.status === "modified").length > 0 && <span className="text-amber-600">{wd.resources.filter(r => r.status === "modified").length} changed</span>}
+                        {wd.phases_added?.length > 0 && <span className="text-emerald-600">+{wd.phases_added.length} months</span>}
+                        {wd.phases_removed?.length > 0 && <span className="text-red-600">-{wd.phases_removed.length} months</span>}
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+
+                  {expandedWaves[wi] && (
+                    <CardContent className="space-y-4 pt-0">
+                      {/* Wave config changes */}
+                      {wd.config_diff?.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1"><Settings className="w-3 h-3" /> Wave Config</h4>
+                          <div className="grid grid-cols-3 gap-2 text-sm">
+                            {wd.config_diff.map((cd, ci) => (
+                              <div key={ci} className="bg-amber-50 border border-amber-100 rounded p-2">
+                                <span className="text-xs text-gray-500 block">{cd.field}</span>
+                                <span className="text-red-600 line-through mr-2">{cd.old_value}</span>
+                                <span className="text-emerald-700 font-medium">{cd.new_value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Phase changes */}
+                      {(wd.phases_added?.length > 0 || wd.phases_removed?.length > 0) && (
+                        <div className="flex gap-4 text-sm">
+                          {wd.phases_added?.length > 0 && (
+                            <div className="flex items-center gap-1 text-emerald-700">
+                              <Plus className="w-3 h-3" /> Months added: {wd.phases_added.join(", ")}
+                            </div>
+                          )}
+                          {wd.phases_removed?.length > 0 && (
+                            <div className="flex items-center gap-1 text-red-600">
+                              <Minus className="w-3 h-3" /> Months removed: {wd.phases_removed.join(", ")}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Resources table */}
+                      {wd.resources?.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Resources</h4>
+                          <div className="overflow-x-auto border rounded-lg">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-slate-50">
+                                  <TableHead className="w-8"></TableHead>
+                                  <TableHead className="text-xs">Skill</TableHead>
+                                  <TableHead className="text-xs">Level</TableHead>
+                                  <TableHead className="text-xs">Location</TableHead>
+                                  <TableHead className="text-xs">Changes</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {wd.resources.filter(r => r.status !== "unchanged").map((res, ri) => (
+                                  <TableRow key={ri} className={res.status === "added" ? "bg-emerald-50" : res.status === "removed" ? "bg-red-50" : ""}>
+                                    <TableCell><ResourceStatusIcon status={res.status} /></TableCell>
+                                    <TableCell className="text-sm font-medium">{res.skill_name}</TableCell>
+                                    <TableCell className="text-sm">{res.level}</TableCell>
+                                    <TableCell className="text-sm">{res.location}</TableCell>
+                                    <TableCell>
+                                      {res.status === "added" && <Badge className="bg-emerald-100 text-emerald-700 text-xs">New Resource</Badge>}
+                                      {res.status === "removed" && <Badge className="bg-red-100 text-red-700 text-xs">Removed</Badge>}
+                                      {res.status === "modified" && (
+                                        <div className="flex flex-wrap gap-1">
+                                          {res.field_changes.map((fc, fi) => (
+                                            <div key={fi} className="inline-flex items-center bg-amber-50 border border-amber-200 rounded px-2 py-0.5 text-xs">
+                                              <span className="font-medium text-gray-700 mr-1">{fc.field}:</span>
+                                              <span className="text-red-600 line-through mr-1">{fc.old_value || "—"}</span>
+                                              <span className="text-gray-400 mr-1">→</span>
+                                              <span className="text-emerald-700 font-medium">{fc.new_value || "—"}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                                {wd.resources.filter(r => r.status !== "unchanged").length === 0 && (
+                                  <TableRow><TableCell colSpan={5} className="text-center text-gray-400 text-sm py-3">No resource changes</TableCell></TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
+                          </div>
+                          {wd.resources.filter(r => r.status === "unchanged").length > 0 && (
+                            <p className="text-xs text-gray-400 mt-1">{wd.resources.filter(r => r.status === "unchanged").length} unchanged resource(s) hidden</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Logistics diff */}
+                      {wd.logistics_diff?.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1"><Truck className="w-3 h-3" /> Logistics Changes</h4>
+                          <div className="grid grid-cols-3 gap-2 text-sm">
+                            {wd.logistics_diff.map((ld, li) => (
+                              <div key={li} className="bg-purple-50 border border-purple-100 rounded p-2">
+                                <span className="text-xs text-gray-500 block">{ld.field}</span>
+                                <span className="text-red-600 line-through mr-2">{ld.old_value}</span>
+                                <span className="text-emerald-700 font-medium">{ld.new_value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  )}
+                </Card>
+              ))}
+
+              {diff.summary.total_changes === 0 && (
+                <div className="text-center py-8 text-gray-400">
+                  <GitCompare className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                  <p>No differences found between these versions.</p>
                 </div>
-              ) : (
-                <p className="text-gray-500 text-sm">No waves</p>
               )}
+            </>
+          )}
+        </TabsContent>
+
+        {/* ===== CHANGE HISTORY TAB ===== */}
+        <TabsContent value="changelog" className="space-y-3">
+          {changeLogs.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <History className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p>No change history recorded yet.</p>
+              <p className="text-xs mt-1">Changes will be recorded automatically on each save.</p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          ) : (
+            changeLogs.map((log, li) => (
+              <Card key={li} className="border-l-4 border-l-violet-400">
+                <CardHeader className="pb-2 cursor-pointer" onClick={() => toggleLog(li)}>
+                  <CardTitle className="text-sm font-medium flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {expandedLogs[li] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      <span className="text-gray-600">{new Date(log.timestamp).toLocaleString()}</span>
+                      <Badge variant="outline" className="text-xs">v{log.version}</Badge>
+                      <span className="text-gray-500">{log.user_name || log.user_email}</span>
+                    </div>
+                    <div className="flex gap-2 text-xs">
+                      {log.summary?.header_changes > 0 && <Badge className="bg-sky-100 text-sky-700">{log.summary.header_changes} header</Badge>}
+                      {log.summary?.resources_added > 0 && <Badge className="bg-emerald-100 text-emerald-700">+{log.summary.resources_added} res</Badge>}
+                      {log.summary?.resources_removed > 0 && <Badge className="bg-red-100 text-red-700">-{log.summary.resources_removed} res</Badge>}
+                      {log.summary?.resources_modified > 0 && <Badge className="bg-amber-100 text-amber-700">{log.summary.resources_modified} modified</Badge>}
+                      {log.summary?.allocation_changes > 0 && <Badge className="bg-cyan-100 text-cyan-700">{log.summary.allocation_changes} cells</Badge>}
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                {expandedLogs[li] && (
+                  <CardContent className="pt-0 space-y-3">
+                    {log.header_diff?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">Header Changes</h4>
+                        <div className="space-y-1">
+                          {log.header_diff.map((h, hi) => (
+                            <div key={hi} className="text-sm flex items-center gap-2">
+                              <span className="font-medium text-gray-700 w-36">{h.field}:</span>
+                              <span className="text-red-600 line-through">{h.old_value || "—"}</span>
+                              <span className="text-gray-400">→</span>
+                              <span className="text-emerald-700 font-medium">{h.new_value || "—"}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {log.wave_diffs?.filter(w => w.status !== "unchanged").map((wd, wi) => (
+                      <div key={wi}>
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">{wd.wave_name} <WaveStatusBadge status={wd.status} /></h4>
+                        {wd.resources?.filter(r => r.status !== "unchanged").map((res, ri) => (
+                          <div key={ri} className="ml-4 text-sm mb-1">
+                            <span className="font-medium">{res.skill_name} ({res.level}, {res.location})</span>
+                            {res.status === "added" && <Badge className="ml-2 bg-emerald-100 text-emerald-700 text-xs">Added</Badge>}
+                            {res.status === "removed" && <Badge className="ml-2 bg-red-100 text-red-700 text-xs">Removed</Badge>}
+                            {res.status === "modified" && (
+                              <div className="ml-4 mt-1 flex flex-wrap gap-1">
+                                {res.field_changes.map((fc, fi) => (
+                                  <span key={fi} className="inline-flex items-center bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 text-xs">
+                                    {fc.field}: <span className="text-red-600 line-through mx-0.5">{fc.old_value || "—"}</span> → <span className="text-emerald-700 font-medium ml-0.5">{fc.new_value || "—"}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {wd.logistics_diff?.length > 0 && (
+                          <div className="ml-4 text-xs text-purple-600">
+                            Logistics: {wd.logistics_diff.map(l => `${l.field}: ${l.old_value}→${l.new_value}`).join(", ")}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </CardContent>
+                )}
+              </Card>
+            ))
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
 
-// Component for showing difference with color coding
-const DiffBadge = ({ diff, prefix = "", suffix = "", isCurrency = false, large = false }) => {
-  const { diff: diffValue, pct, increased, decreased } = diff;
-  
-  if (diffValue === 0) {
-    return <span className="text-gray-400 text-sm">No change</span>;
-  }
+// --- Small helper components ---
 
-  const formattedDiff = isCurrency 
-    ? Math.abs(diffValue).toLocaleString(undefined, { maximumFractionDigits: 0 })
-    : Math.abs(diffValue).toFixed(1);
+const SummaryPill = ({ icon, count, label, color }) => (
+  <div className={`flex items-center gap-1 ${color}`}>
+    {icon} <span className="font-bold">{count}</span> <span className="opacity-70">{label}</span>
+  </div>
+);
 
-  const color = increased ? "text-red-600 bg-red-50" : "text-green-600 bg-green-50";
-  const arrow = increased ? "↑" : "↓";
-  const sign = increased ? "+" : "-";
-
+const DiffValue = ({ value, type }) => {
+  if (!value && value !== 0) return <span className="text-gray-300">—</span>;
   return (
-    <Badge className={`${color} ${large ? "text-base px-3 py-1" : "text-xs"}`}>
-      {arrow} {sign}{prefix}{formattedDiff}{suffix} ({pct}%)
-    </Badge>
+    <span className={`text-sm font-mono ${type === "old" ? "text-red-700 bg-red-100 px-1.5 py-0.5 rounded" : "text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded"}`}>
+      {value}
+    </span>
   );
+};
+
+const WaveStatusBadge = ({ status }) => {
+  const config = {
+    added: { label: "Added", className: "bg-emerald-100 text-emerald-700" },
+    removed: { label: "Removed", className: "bg-red-100 text-red-700" },
+    modified: { label: "Modified", className: "bg-amber-100 text-amber-700" },
+    unchanged: { label: "No Changes", className: "bg-gray-100 text-gray-500" },
+  };
+  const c = config[status] || config.unchanged;
+  return <Badge className={`${c.className} text-xs ml-2`}>{c.label}</Badge>;
+};
+
+const ResourceStatusIcon = ({ status }) => {
+  if (status === "added") return <Plus className="w-4 h-4 text-emerald-600" />;
+  if (status === "removed") return <Minus className="w-4 h-4 text-red-600" />;
+  if (status === "modified") return <RefreshCw className="w-4 h-4 text-amber-600" />;
+  return null;
 };
 
 export default CompareVersions;

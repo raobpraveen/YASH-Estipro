@@ -731,6 +731,172 @@ def detect_changes(old_data: dict, new_data: dict, fields_to_track: List[str]) -
     return changes
 
 
+def compute_detailed_diff(old_project: dict, new_project: dict) -> dict:
+    """Compute comprehensive field-level diff between two project versions."""
+    header_diff = []
+    header_fields = [
+        ("name", "Project Name"), ("customer_name", "Customer"), ("description", "Description"),
+        ("profit_margin_percentage", "Profit Margin %"), ("nego_buffer_percentage", "Nego Buffer %"),
+        ("sales_manager_name", "Sales Manager"), ("approver_email", "Approver Email"),
+        ("status", "Status"),
+    ]
+    list_fields = [
+        ("technology_names", "Technologies"), ("project_type_names", "Project Types"),
+        ("project_location_names", "Locations"),
+    ]
+    for key, label in header_fields:
+        ov, nv = old_project.get(key, ""), new_project.get(key, "")
+        if str(ov) != str(nv):
+            header_diff.append({"field": label, "key": key, "old_value": str(ov) if ov else "", "new_value": str(nv) if nv else ""})
+    for key, label in list_fields:
+        ov = sorted(old_project.get(key) or [])
+        nv = sorted(new_project.get(key) or [])
+        if ov != nv:
+            header_diff.append({"field": label, "key": key, "old_value": ", ".join(ov), "new_value": ", ".join(nv)})
+
+    old_waves = old_project.get("waves") or []
+    new_waves = new_project.get("waves") or []
+
+    # Match waves by name
+    old_wave_map = {w.get("name", f"Wave {i}"): w for i, w in enumerate(old_waves)}
+    new_wave_map = {w.get("name", f"Wave {i}"): w for i, w in enumerate(new_waves)}
+    all_wave_names = list(dict.fromkeys(list(old_wave_map.keys()) + list(new_wave_map.keys())))
+
+    wave_diffs = []
+    total_res_added = total_res_removed = total_res_modified = total_alloc_changes = total_logistics_changes = 0
+
+    for wname in all_wave_names:
+        ow = old_wave_map.get(wname)
+        nw = new_wave_map.get(wname)
+        if not ow:
+            nr = len((nw or {}).get("grid_allocations", []))
+            total_res_added += nr
+            wave_diffs.append({"wave_name": wname, "status": "added", "new_resources": nr, "resources": [], "config_diff": [], "logistics_diff": [], "phases_added": (nw or {}).get("phase_names", []), "phases_removed": []})
+            continue
+        if not nw:
+            nr = len(ow.get("grid_allocations", []))
+            total_res_removed += nr
+            wave_diffs.append({"wave_name": wname, "status": "removed", "old_resources": nr, "resources": [], "config_diff": [], "logistics_diff": [], "phases_added": [], "phases_removed": ow.get("phase_names", [])})
+            continue
+
+        # Wave config diff
+        config_diff = []
+        for ck, cl in [("duration_months", "Duration (months)"), ("nego_buffer_percentage", "Nego Buffer %")]:
+            ocv, ncv = ow.get(ck, 0), nw.get(ck, 0)
+            if ocv != ncv:
+                config_diff.append({"field": cl, "old_value": str(ocv), "new_value": str(ncv)})
+
+        # Phase names diff
+        old_phases = ow.get("phase_names", [])
+        new_phases = nw.get("phase_names", [])
+        phases_added = [p for p in new_phases if p not in old_phases]
+        phases_removed = [p for p in old_phases if p not in new_phases]
+
+        # Logistics diff
+        logistics_diff = []
+        olc = ow.get("logistics_config") or {}
+        nlc = nw.get("logistics_config") or {}
+        for lk, ll in [("per_diem_daily", "Per Diem ($/day)"), ("per_diem_days", "Per Diem Days"),
+                        ("accommodation_daily", "Accommodation ($/day)"), ("accommodation_days", "Accommodation Days"),
+                        ("local_conveyance_daily", "Conveyance ($/day)"), ("local_conveyance_days", "Conveyance Days"),
+                        ("flight_cost_per_trip", "Flight Cost/Trip"), ("visa_medical_per_trip", "Visa & Medical/Trip"),
+                        ("num_trips", "Number of Trips"), ("contingency_percentage", "Contingency %")]:
+            olv, nlv = olc.get(lk, 0), nlc.get(lk, 0)
+            if olv != nlv:
+                logistics_diff.append({"field": ll, "old_value": str(olv), "new_value": str(nlv)})
+                total_logistics_changes += 1
+
+        # Resource matching: by (skill_name, proficiency_level, base_location_name)
+        old_allocs = ow.get("grid_allocations") or []
+        new_allocs = nw.get("grid_allocations") or []
+
+        def make_key(a):
+            return f"{a.get('skill_name','')}|{a.get('proficiency_level','')}|{a.get('base_location_name','')}"
+
+        old_by_key = {}
+        for a in old_allocs:
+            k = make_key(a)
+            old_by_key.setdefault(k, []).append(a)
+        new_by_key = {}
+        for a in new_allocs:
+            k = make_key(a)
+            new_by_key.setdefault(k, []).append(a)
+
+        resources = []
+        matched_new = set()
+
+        for ok, old_list in old_by_key.items():
+            new_list = new_by_key.get(ok, [])
+            for idx, oa in enumerate(old_list):
+                if idx < len(new_list):
+                    na = new_list[idx]
+                    matched_new.add(id(na))
+                    field_changes = []
+                    for fk, fl in [("skill_name", "Skill"), ("proficiency_level", "Level"), ("base_location_name", "Location"),
+                                    ("avg_monthly_salary", "$/Month"), ("overhead_percentage", "Overhead %"),
+                                    ("is_onsite", "Onsite"), ("travel_required", "Travel Required"),
+                                    ("override_hourly_rate", "Override $/Hr"), ("resource_group_id", "Group ID"), ("comments", "Comments")]:
+                        ofv = oa.get(fk, "")
+                        nfv = na.get(fk, "")
+                        if str(ofv) != str(nfv):
+                            field_changes.append({"field": fl, "old_value": str(ofv) if ofv is not None else "", "new_value": str(nfv) if nfv is not None else ""})
+                    # Phase allocation diff
+                    old_pa = oa.get("phase_allocations") or {}
+                    new_pa = na.get("phase_allocations") or {}
+                    all_phases_keys = sorted(set(list(old_pa.keys()) + list(new_pa.keys())))
+                    for pk in all_phases_keys:
+                        opv = old_pa.get(pk, 0)
+                        npv = new_pa.get(pk, 0)
+                        if opv != npv:
+                            # Use phase name if available
+                            phase_label = pk
+                            try:
+                                pi = int(pk)
+                                if pi < len(old_phases):
+                                    phase_label = old_phases[pi]
+                                elif pi < len(new_phases):
+                                    phase_label = new_phases[pi]
+                            except (ValueError, IndexError):
+                                pass
+                            field_changes.append({"field": f"Phase: {phase_label}", "old_value": str(opv), "new_value": str(npv)})
+                            total_alloc_changes += 1
+                    if field_changes:
+                        total_res_modified += 1
+                        resources.append({"status": "modified", "skill_name": oa.get("skill_name", ""), "level": oa.get("proficiency_level", ""), "location": oa.get("base_location_name", ""), "field_changes": field_changes})
+                    else:
+                        resources.append({"status": "unchanged", "skill_name": oa.get("skill_name", ""), "level": oa.get("proficiency_level", ""), "location": oa.get("base_location_name", ""), "field_changes": []})
+                else:
+                    total_res_removed += 1
+                    resources.append({"status": "removed", "skill_name": oa.get("skill_name", ""), "level": oa.get("proficiency_level", ""), "location": oa.get("base_location_name", ""), "field_changes": []})
+
+        for nk, new_list in new_by_key.items():
+            for na in new_list:
+                if id(na) not in matched_new:
+                    total_res_added += 1
+                    resources.append({"status": "added", "skill_name": na.get("skill_name", ""), "level": na.get("proficiency_level", ""), "location": na.get("base_location_name", ""), "field_changes": []})
+
+        wave_status = "unchanged"
+        if config_diff or logistics_diff or phases_added or phases_removed or any(r["status"] != "unchanged" for r in resources):
+            wave_status = "modified"
+        wave_diffs.append({
+            "wave_name": wname, "status": wave_status, "config_diff": config_diff,
+            "logistics_diff": logistics_diff, "phases_added": phases_added,
+            "phases_removed": phases_removed, "resources": resources,
+        })
+
+    total_changes = len(header_diff) + total_res_added + total_res_removed + total_res_modified + total_alloc_changes + total_logistics_changes
+    return {
+        "summary": {
+            "total_changes": total_changes, "header_changes": len(header_diff),
+            "resources_added": total_res_added, "resources_removed": total_res_removed,
+            "resources_modified": total_res_modified, "allocation_changes": total_alloc_changes,
+            "logistics_changes": total_logistics_changes,
+        },
+        "header_diff": header_diff,
+        "wave_diffs": wave_diffs,
+    }
+
+
 # Email Helper Function
 async def send_email(to_email: str, subject: str, html_body: str, text_body: str = None):
     """Send email via SMTP with inline YASH logo"""
@@ -1356,6 +1522,29 @@ async def get_archived_projects():
     return projects
 
 
+@api_router.get("/projects/compare-detail")
+async def compare_projects_detail(v1: str, v2: str):
+    """Compute detailed field-level diff between two project versions."""
+    left = await db.projects.find_one({"id": v1}, {"_id": 0})
+    right = await db.projects.find_one({"id": v2}, {"_id": 0})
+    if not left or not right:
+        raise HTTPException(status_code=404, detail="One or both versions not found")
+    diff = compute_detailed_diff(left, right)
+    diff["left_version"] = left.get("version", 1)
+    diff["right_version"] = right.get("version", 1)
+    diff["left_id"] = v1
+    diff["right_id"] = v2
+    diff["project_number"] = left.get("project_number", "")
+    return diff
+
+@api_router.get("/change-logs/{project_number}")
+async def get_change_logs(project_number: str):
+    """Get change history for a project."""
+    logs = await db.change_logs.find({"project_number": project_number}, {"_id": 0}).sort("timestamp", -1).to_list(100)
+    return logs
+
+
+
 @api_router.get("/projects/{project_id}", response_model=Project)
 async def get_project(project_id: str):
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
@@ -1401,11 +1590,31 @@ async def update_project(project_id: str, input: ProjectUpdate, user: dict = Dep
     update_data = input.model_dump(exclude_unset=True)
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
     
+    # Compute detailed change log before update
+    detailed_diff = compute_detailed_diff(existing, {**existing, **update_data})
+    
     # Detect changes for audit log
     fields_to_track = ["name", "description", "status", "profit_margin_percentage", "customer_id", "customer_name", "version_notes"]
     changes = detect_changes(existing, update_data, fields_to_track)
     
     await db.projects.update_one({"id": project_id}, {"$set": update_data})
+    
+    # Record detailed change log if there are changes
+    current_user = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
+    if detailed_diff["summary"]["total_changes"] > 0 and current_user:
+        change_log_entry = {
+            "id": str(uuid.uuid4()),
+            "project_id": project_id,
+            "project_number": existing.get("project_number", ""),
+            "version": existing.get("version", 1),
+            "user_name": current_user.get("name", ""),
+            "user_email": current_user.get("email", ""),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "summary": detailed_diff["summary"],
+            "header_diff": detailed_diff["header_diff"],
+            "wave_diffs": detailed_diff["wave_diffs"],
+        }
+        await db.change_logs.insert_one(change_log_entry)
     
     # Create audit log for update
     current_user = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
