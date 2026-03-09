@@ -2024,6 +2024,20 @@ const ProjectEstimator = () => {
     grandRow.getCell(2).numFmt = moneyFmt;
     grandRow.eachCell(c => { c.fill = finalFill; c.font = finalFont; c.border = thinBorder; });
 
+    // === EFFECTIVE PROFIT MARGIN ===
+    const overallSummary = calculateOverallSummary(waves);
+    if (Math.abs(overallSummary.effectiveProfitMargin - profitMarginPercentage) > 0.01) {
+      summaryWs.addRow([]);
+      const mrgRow = summaryWs.addRow([
+        "EFFECTIVE PROFIT MARGIN",
+        `${overallSummary.effectiveProfitMargin.toFixed(1)}%  (Set: ${profitMarginPercentage.toFixed(1)}%)`
+      ]);
+      mrgRow.getCell(1).font = { bold: true, color: { argb: "FF4F46E5" } };
+      mrgRow.getCell(2).font = { bold: true, color: { argb: overallSummary.effectiveProfitMargin >= profitMarginPercentage ? "FF059669" : "FFDC2626" } };
+      mrgRow.getCell(1).border = thinBorder;
+      mrgRow.getCell(2).border = thinBorder;
+    }
+
     // === COLOR LEGEND ===
     summaryWs.addRow([]);
     summaryWs.addRow([]);
