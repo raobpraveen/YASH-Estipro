@@ -2369,14 +2369,15 @@ const ProjectEstimator = () => {
 
   const isCreator = projectCreatorId === currentUser.id;
   const canMarkObsolete = projectId && isCreator && (projectStatus === "draft" || projectStatus === "suspended");
+  const [obsoleteConfirmOpen, setObsoleteConfirmOpen] = useState(false);
 
   const handleMarkObsolete = async () => {
     if (!projectId || !canMarkObsolete) return;
-    if (!window.confirm("Are you sure you want to mark this version as Obsolete? This cannot be undone.")) return;
     try {
       const token = localStorage.getItem("token");
       await axios.put(`${API}/projects/${projectId}/obsolete`, {}, { headers: { Authorization: `Bearer ${token}` } });
       setProjectStatus("obsolete");
+      setObsoleteConfirmOpen(false);
       toast.success("Project marked as obsolete");
     } catch (err) {
       toast.error(err.response?.data?.detail || "Failed to mark as obsolete");
@@ -2499,7 +2500,7 @@ const ProjectEstimator = () => {
               )}
               {canMarkObsolete && (
                 <Button 
-                  onClick={handleMarkObsolete}
+                  onClick={() => setObsoleteConfirmOpen(true)}
                   variant="outline"
                   size="sm"
                   className="border-red-400 text-red-400 hover:bg-red-50"
@@ -4590,6 +4591,28 @@ const ProjectEstimator = () => {
             )}
             <Button onClick={() => confirmSmartImport(false)} disabled={smartImportLoading} className="bg-purple-600 hover:bg-purple-700 text-white" data-testid="confirm-import-btn">
               {smartImportLoading ? "Importing..." : "Replace Current"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
+      {/* Mark Obsolete Confirmation Dialog */}
+      <Dialog open={obsoleteConfirmOpen} onOpenChange={setObsoleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold text-red-600">
+              <XCircle className="w-5 h-5" />
+              Mark as Obsolete
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to mark this version as <strong>Obsolete</strong>? This cannot be undone. The project will become read-only.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setObsoleteConfirmOpen(false)} data-testid="cancel-obsolete-btn">Cancel</Button>
+            <Button onClick={handleMarkObsolete} className="bg-red-600 hover:bg-red-700 text-white" data-testid="confirm-obsolete-btn">
+              Yes, Mark Obsolete
             </Button>
           </DialogFooter>
         </DialogContent>
