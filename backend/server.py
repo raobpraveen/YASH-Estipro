@@ -517,6 +517,9 @@ class WaveGridAllocation(BaseModel):
     is_onsite: bool = False
     travel_required: bool = False  # Indicates if travel logistics apply
     phase_allocations: Dict[str, float] = {}
+    override_hourly_rate: Optional[float] = None  # Override selling price hourly rate
+    resource_group_id: str = ""  # Resource grouping identifier
+    comments: str = ""  # Row-level comments
     # Logistics costs - editable per resource (legacy fields, now calculated at wave level)
     per_diem_daily: float = 50
     per_diem_days: int = 30

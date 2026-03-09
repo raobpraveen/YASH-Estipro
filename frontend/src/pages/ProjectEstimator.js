@@ -233,6 +233,7 @@ const ProjectEstimator = () => {
             onsite: !!a.is_onsite,
             travel: !!a.travel_required,
             group: a.resource_group_id || "",
+            ovr: a.override_hourly_rate || null,
             phases: Object.keys(a.phase_allocations || {}).sort((x, y) => Number(x) - Number(y)).map(k => a.phase_allocations[k] || 0),
             comments: (a.comments || "").trim(),
           })),
@@ -551,6 +552,7 @@ const ProjectEstimator = () => {
       is_onsite: newAllocation.is_onsite,
       travel_required: newAllocation.travel_required,
       resource_group_id: "",
+      override_hourly_rate: null,
       phase_allocations: {},
       comments: "",
     };
@@ -706,6 +708,7 @@ const ProjectEstimator = () => {
       is_onsite: false,
       travel_required: false,
       resource_group_id: "",
+      override_hourly_rate: null,
       phase_allocations: {},
       comments: "",
     };
@@ -718,6 +721,9 @@ const ProjectEstimator = () => {
 
   // Quick Estimate calculator state
   const [quickEstimateOpen, setQuickEstimateOpen] = useState(false);
+  const [smartImportDialog, setSmartImportDialog] = useState(false);
+  const [smartImportData, setSmartImportData] = useState(null);
+  const [smartImportLoading, setSmartImportLoading] = useState(false);
   const [quickEstimate, setQuickEstimate] = useState({
     onsiteMM: 10,
     offshoreMM: 20,
@@ -918,21 +924,24 @@ const ProjectEstimator = () => {
       const overheadCost = baseSalaryCost * (allocation.overhead_percentage / 100);
       const totalCost = baseSalaryCost + overheadCost;
       const rowSellingPrice = totalCost / (1 - profitMarginPercentage / 100);
+      const effectiveSellingPrice = allocation.override_hourly_rate > 0
+        ? allocation.override_hourly_rate * 176 * totalManMonths
+        : rowSellingPrice;
       
       totalMM += totalManMonths;
       totalBaseSalaryCost += baseSalaryCost;
       totalOverheadCost += overheadCost;
-      totalRowsSellingPrice += rowSellingPrice;
+      totalRowsSellingPrice += effectiveSellingPrice;
 
       // Separate by Onsite indicator (ON = is_onsite true, OFF = is_onsite false)
       if (allocation.is_onsite) {
         onsiteMM += totalManMonths;
-        onsiteSellingPrice += rowSellingPrice;
+        onsiteSellingPrice += effectiveSellingPrice;
         onsiteSalaryCost += baseSalaryCost;
         onsiteOverheadCost += overheadCost;
       } else {
         offshoreMM += totalManMonths;
-        offshoreSellingPrice += rowSellingPrice;
+        offshoreSellingPrice += effectiveSellingPrice;
         offshoreSalaryCost += baseSalaryCost;
         offshoreOverheadCost += overheadCost;
       }
@@ -1277,6 +1286,7 @@ const ProjectEstimator = () => {
           onsite: !!a.is_onsite,
           travel: !!a.travel_required,
           group: a.resource_group_id || "",
+          ovr: a.override_hourly_rate || null,
           phases: Object.keys(a.phase_allocations || {}).sort((x, y) => Number(x) - Number(y)).map(k => a.phase_allocations[k] || 0),
           comments: (a.comments || "").trim(),
         })),
@@ -1736,7 +1746,8 @@ const ProjectEstimator = () => {
       const C_SP = C_TC + 1;       // Selling Price
       const C_SPMM = C_SP + 1;     // SP/MM
       const C_HR = C_SPMM + 1;     // Hourly
-      const C_CMT = C_HR + 1;      // Comments
+      const C_OVR = C_HR + 1;      // Override $/Hr
+      const C_CMT = C_OVR + 1;     // Comments
       const C_GRP = C_CMT + 1;     // Group
 
       // Row 1: Title
@@ -1756,11 +1767,11 @@ const ProjectEstimator = () => {
       // Row 4: Headers
       const headers = ["#", "Skill", "Level", "Location", "$/Month", "Onsite", "Travel",
         ...wave.phase_names, "Total MM", "Salary Cost", "Overhead", "OH%", "Total Cost",
-        "Selling Price", "SP/MM", "Hourly", "Comments", "Group"];
+        "Selling Price", "SP/MM", "Hourly", "Ovr $/Hr", "Comments", "Group"];
       const hRow = dws.addRow(headers);
       hRow.eachCell(c => { c.fill = headerFill; c.font = headerFont; c.border = thinBorder; });
       dws.columns = headers.map((h, i) => ({
-        width: i === 0 ? 5 : ["Skill", "Location", "Comments"].includes(h) ? 20 : h === "Group" ? 8 : h.length > 8 ? 15 : 11
+        width: i === 0 ? 5 : ["Skill", "Location", "Comments"].includes(h) ? 20 : h === "Group" ? 8 : h === "Ovr $/Hr" ? 10 : h.length > 8 ? 15 : 11
       }));
 
       // Data rows: 5 to 4+A
@@ -1794,14 +1805,20 @@ const ProjectEstimator = () => {
         r.getCell(C_SC).value   = { formula: `${colL(C_TMM)}${rn}*${colL(C_SAL)}${rn}`, result: baseSalaryCost };
         r.getCell(C_OH).value   = { formula: `${colL(C_SC)}${rn}*${colL(C_OHP)}${rn}`, result: ohCost };
         r.getCell(C_TC).value   = { formula: `${colL(C_SC)}${rn}+${colL(C_OH)}${rn}`, result: tc };
-        r.getCell(C_SP).value   = { formula: `${colL(C_TC)}${rn}/(1-${MRG})`, result: sp };
-        r.getCell(C_SPMM).value = { formula: `IFERROR(${colL(C_SP)}${rn}/${colL(C_TMM)}${rn},0)`, result: spmm };
-        r.getCell(C_HR).value   = { formula: `${colL(C_SPMM)}${rn}/176`, result: spmm / 176 };
+        const ovrCol = colL(C_OVR);
+        const hasOvr = alloc.override_hourly_rate > 0;
+        const effectiveSP = hasOvr ? alloc.override_hourly_rate * 176 * totalManMonths : sp;
+        const effectiveSPMM = hasOvr ? alloc.override_hourly_rate * 176 : spmm;
+        const effectiveHR = hasOvr ? alloc.override_hourly_rate : spmm / 176;
+        r.getCell(C_SP).value   = { formula: `IF(${ovrCol}${rn}>0,${ovrCol}${rn}*176*${colL(C_TMM)}${rn},${colL(C_TC)}${rn}/(1-${MRG}))`, result: effectiveSP };
+        r.getCell(C_SPMM).value = { formula: `IFERROR(${colL(C_SP)}${rn}/${colL(C_TMM)}${rn},0)`, result: effectiveSPMM };
+        r.getCell(C_HR).value   = { formula: `IF(${ovrCol}${rn}>0,${ovrCol}${rn},${colL(C_SPMM)}${rn}/176)`, result: effectiveHR };
         r.getCell(C_CMT).value  = alloc.comments || "";
         r.getCell(C_GRP).value  = alloc.resource_group_id || "";
+        r.getCell(C_OVR).value  = alloc.override_hourly_rate || "";
 
         // Number formats for money columns
-        [C_SAL, C_SC, C_OH, C_TC, C_SP, C_SPMM, C_HR].forEach(c => { r.getCell(c).numFmt = moneyFmt; });
+        [C_SAL, C_SC, C_OH, C_TC, C_SP, C_SPMM, C_HR, C_OVR].forEach(c => { r.getCell(c).numFmt = moneyFmt; });
         r.getCell(C_TMM).numFmt = '0.00';
 
         // Row coloring
@@ -2032,6 +2049,217 @@ const ProjectEstimator = () => {
     }
   };
 
+  // === SMART IMPORT: Parse EstiPro-exported Excel ===
+  const handleSmartImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // reset
+    if (!file) return;
+
+    setSmartImportLoading(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buffer);
+
+      const getCellVal = (cell) => {
+        if (!cell || !cell.value) return "";
+        if (typeof cell.value === "object" && cell.value.result !== undefined) return cell.value.result;
+        if (typeof cell.value === "object" && cell.value.text) return cell.value.text;
+        return cell.value;
+      };
+
+      const parsedWaves = [];
+      const missingSkills = new Set();
+      const missingLocations = new Set();
+
+      wb.eachSheet((ws) => {
+        const name = ws.name;
+        if (name.toLowerCase() === "summary") return;
+
+        // Read header row
+        const headerRow = ws.getRow(1);
+        const headers = {};
+        headerRow.eachCell((cell, colNum) => {
+          const val = (cell.value || "").toString().toLowerCase().replace(/[^a-z0-9$/]/g, "");
+          headers[colNum] = val;
+        });
+
+        // Find column positions
+        const findCol = (...keywords) => {
+          for (const [col, h] of Object.entries(headers)) {
+            if (keywords.some(k => h.includes(k))) return parseInt(col);
+          }
+          return -1;
+        };
+
+        const colSkill = findCol("skill");
+        const colLevel = findCol("level");
+        const colLocation = findCol("location");
+        const colSalary = findCol("$month", "month");
+        const colOnsite = findCol("onsite");
+        const colTravel = findCol("travel");
+        const colGrp = findCol("grp");
+        const colOvr = findCol("ovr$hr", "ovr");
+        const colComments = findCol("comment");
+
+        // Find phase columns: between Travel/Grp and "Total MM"
+        const colTMM = findCol("totalmm");
+        const phaseStart = Math.max(colTravel, colGrp, colOnsite) + 1;
+        const phaseEnd = colTMM > 0 ? colTMM : phaseStart;
+
+        // Read phase names from header
+        const phaseNames = [];
+        for (let c = phaseStart; c < phaseEnd; c++) {
+          const val = getCellVal(headerRow.getCell(c));
+          if (val && !val.toString().toLowerCase().includes("total")) phaseNames.push(val.toString());
+        }
+
+        // Parse data rows
+        const allocations = [];
+        for (let r = 2; r <= ws.rowCount; r++) {
+          const row = ws.getRow(r);
+          const skillName = getCellVal(row.getCell(colSkill))?.toString().trim();
+          if (!skillName) continue;
+          if (skillName.toLowerCase().includes("sub-total") || skillName.toLowerCase().includes("logistics") || skillName.toLowerCase().includes("total")) break;
+
+          const level = getCellVal(row.getCell(colLevel))?.toString().trim() || "Mid";
+          const location = getCellVal(row.getCell(colLocation))?.toString().trim() || "";
+          const salary = parseFloat(getCellVal(row.getCell(colSalary))) || 0;
+          const onsite = (getCellVal(row.getCell(colOnsite)) || "").toString().toUpperCase();
+          const travel = (getCellVal(row.getCell(colTravel)) || "").toString().toUpperCase();
+          const grp = getCellVal(row.getCell(colGrp))?.toString() || "";
+          const ovr = parseFloat(getCellVal(row.getCell(colOvr))) || null;
+          const comments = getCellVal(row.getCell(colComments))?.toString() || "";
+
+          // Phase allocations
+          const phases = {};
+          for (let c = phaseStart; c < phaseStart + phaseNames.length; c++) {
+            const val = parseFloat(getCellVal(row.getCell(c))) || 0;
+            phases[c - phaseStart] = val;
+          }
+
+          // Match against master data
+          const matchedSkill = skills.find(s => s.name.toLowerCase() === skillName.toLowerCase());
+          const matchedLocation = locations.find(l => l.name.toLowerCase() === location.toLowerCase());
+
+          if (!matchedSkill && skillName) missingSkills.add(skillName);
+          if (!matchedLocation && location) missingLocations.add(location);
+
+          // Find matching rate
+          const matchedRate = rates.find(r =>
+            r.skill_name?.toLowerCase() === skillName.toLowerCase() &&
+            r.proficiency_level?.toLowerCase() === level.toLowerCase() &&
+            r.location_name?.toLowerCase() === location.toLowerCase()
+          );
+          const ohPct = matchedRate?.overhead_percentage || 15;
+
+          allocations.push({
+            id: `imp_${Date.now()}_${r}`,
+            skill_id: matchedSkill?.id || "",
+            skill_name: skillName,
+            proficiency_level: level,
+            base_location_id: matchedLocation?.id || "",
+            base_location_name: location,
+            avg_monthly_salary: salary,
+            overhead_percentage: ohPct,
+            is_onsite: onsite === "ON" || onsite === "YES",
+            travel_required: travel === "YES",
+            resource_group_id: grp,
+            override_hourly_rate: ovr,
+            phase_allocations: phases,
+            comments,
+          });
+        }
+
+        if (allocations.length > 0) {
+          parsedWaves.push({
+            sheetName: name,
+            phaseNames,
+            allocations,
+          });
+        }
+      });
+
+      setSmartImportData({
+        waves: parsedWaves,
+        missingSkills: [...missingSkills],
+        missingLocations: [...missingLocations],
+        totalResources: parsedWaves.reduce((s, w) => s + w.allocations.length, 0),
+      });
+      setSmartImportDialog(true);
+    } catch (err) {
+      console.error("Smart Import parse error:", err);
+      toast.error("Failed to parse Excel file: " + (err.message || "Unknown format"));
+    } finally {
+      setSmartImportLoading(false);
+    }
+  };
+
+  const confirmSmartImport = async () => {
+    if (!smartImportData) return;
+    setSmartImportLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const apiHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+      // Auto-create missing skills
+      const skillMap = {};
+      skills.forEach(s => { skillMap[s.name.toLowerCase()] = s; });
+      for (const name of smartImportData.missingSkills) {
+        try {
+          const res = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/skills`, { name, category: "Imported" }, { headers: apiHeaders });
+          skillMap[name.toLowerCase()] = res.data;
+        } catch { /* skill may already exist */ }
+      }
+
+      // Auto-create missing locations
+      const locMap = {};
+      locations.forEach(l => { locMap[l.name.toLowerCase()] = l; });
+      for (const name of smartImportData.missingLocations) {
+        try {
+          const res = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/base-locations`, { name, country_code: "" }, { headers: apiHeaders });
+          locMap[name.toLowerCase()] = res.data;
+        } catch { /* location may already exist */ }
+      }
+
+      // Build new waves
+      const newWaves = smartImportData.waves.map((pw, idx) => ({
+        id: `wave_imp_${Date.now()}_${idx}`,
+        name: pw.sheetName.replace(/^W\d+\s*-?\s*/, "") || `Wave ${idx + 1}`,
+        description: "",
+        duration_months: pw.phaseNames.length,
+        phase_names: pw.phaseNames,
+        logistics: waves[0]?.logistics || {},
+        grid_allocations: pw.allocations.map(a => ({
+          ...a,
+          id: a.id,
+          skill_id: skillMap[a.skill_name.toLowerCase()]?.id || a.skill_id,
+          base_location_id: locMap[a.base_location_name.toLowerCase()]?.id || a.base_location_id,
+        })),
+      }));
+
+      setWaves(newWaves);
+      if (newWaves.length > 0) setActiveWaveId(newWaves[0].id);
+      setSmartImportDialog(false);
+      setSmartImportData(null);
+
+      // Refresh master data
+      const [skillsRes, locsRes] = await Promise.all([
+        axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/skills`, { headers: apiHeaders }),
+        axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/base-locations`, { headers: apiHeaders }),
+      ]);
+      setSkills(skillsRes.data);
+      setLocations(locsRes.data);
+
+      toast.success(`Imported ${newWaves.length} wave(s) with ${smartImportData.totalResources} resource(s). Save the project to persist.`);
+    } catch (err) {
+      console.error("Smart Import error:", err);
+      toast.error("Import failed: " + (err.message || "Unknown error"));
+    } finally {
+      setSmartImportLoading(false);
+    }
+  };
+
   const activeWave = waves.find(w => w.id === activeWaveId);
   const overall = calculateOverallSummary();
 
@@ -2162,6 +2390,21 @@ const ProjectEstimator = () => {
             <FileDown className="w-4 h-4 mr-1" />
             Export Excel
           </Button>
+          {!isReadOnly && (
+          <div className="relative">
+            <input
+              type="file"
+              accept=".xlsx"
+              onChange={handleSmartImportFile}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              data-testid="smart-import-input"
+            />
+            <Button variant="outline" size="sm" className="border-purple-600 text-purple-600 hover:bg-purple-50 pointer-events-none" disabled={smartImportLoading}>
+              <Upload className="w-4 h-4 mr-1" />
+              {smartImportLoading ? "Parsing..." : "Smart Import"}
+            </Button>
+          </div>
+          )}
           {!isReadOnly && projectStatus !== "in_review" && (
           <Button onClick={handleSaveProject} size="sm" className="bg-[#10B981] hover:bg-[#10B981]/90 text-white" data-testid="save-project-button">
             <Save className="w-4 h-4 mr-1" />
@@ -3173,6 +3416,7 @@ const ProjectEstimator = () => {
                               <th className="text-right p-3 font-semibold text-sm bg-green-50">Selling Price</th>
                               <th className="text-right p-3 font-semibold text-sm bg-blue-50">SP/MM</th>
                               <th className="text-right p-3 font-semibold text-sm bg-blue-50">Hourly</th>
+                              <th className="text-right p-2 font-semibold text-xs bg-purple-50 w-20">Ovr $/Hr</th>
                               <th className="text-left p-3 font-semibold text-sm">Comments</th>
                               <th className="text-center p-3 font-semibold text-sm">Actions</th>
                             </tr>
@@ -3184,9 +3428,11 @@ const ProjectEstimator = () => {
                               const { totalManMonths, baseSalaryCost } = calculateResourceBaseCost(allocation);
                               const overheadCost = baseSalaryCost * (allocation.overhead_percentage / 100);
                               const totalCost = baseSalaryCost + overheadCost;
-                              const sellingPrice = totalCost / (1 - profitMarginPercentage / 100);
+                              const calcSellingPrice = totalCost / (1 - profitMarginPercentage / 100);
+                              const hasOverride = allocation.override_hourly_rate > 0;
+                              const sellingPrice = hasOverride ? allocation.override_hourly_rate * 176 * totalManMonths : calcSellingPrice;
                               const spPerMM = totalManMonths > 0 ? sellingPrice / totalManMonths : 0;
-                              const hourlyPrice = spPerMM / 176;
+                              const hourlyPrice = hasOverride ? allocation.override_hourly_rate : (spPerMM / 176);
                               // Row color by Onsite/Travel combo
                               const rowBg = allocation.is_onsite && allocation.travel_required
                                 ? "bg-amber-100/60"
@@ -3383,12 +3629,39 @@ const ProjectEstimator = () => {
                                   </td>
                                   <td className="p-3 text-right font-mono tabular-nums text-sm font-semibold text-[#10B981] bg-green-50/50">
                                     ${sellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    {hasOverride && (
+                                      <div className="text-[10px] line-through text-gray-400">${calcSellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                    )}
                                   </td>
                                   <td className="p-3 text-right font-mono tabular-nums text-sm text-blue-600 bg-blue-50/30">
                                     ${spPerMM.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                   </td>
                                   <td className="p-3 text-right font-mono tabular-nums text-sm text-blue-600 bg-blue-50/30">
                                     ${hourlyPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    {hasOverride && (
+                                      <div className="text-[10px] line-through text-gray-400">${(totalManMonths > 0 ? calcSellingPrice / totalManMonths / 176 : 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                    )}
+                                  </td>
+                                  <td className="p-1 text-right bg-purple-50/30">
+                                    <Input
+                                      type="number"
+                                      step="1"
+                                      placeholder=""
+                                      className="w-16 text-right font-mono text-xs p-1"
+                                      value={allocation.override_hourly_rate || ""}
+                                      onChange={(e) => {
+                                        const val = e.target.value ? parseFloat(e.target.value) : null;
+                                        setWaves(waves.map(w =>
+                                          w.id === wave.id
+                                            ? { ...w, grid_allocations: w.grid_allocations.map(a =>
+                                                a.id === allocation.id ? { ...a, override_hourly_rate: val } : a
+                                              )}
+                                            : w
+                                        ));
+                                      }}
+                                      disabled={isReadOnly}
+                                      data-testid={`override-hr-${allocation.id}`}
+                                    />
                                   </td>
                                   <td className="p-2">
                                     <Textarea
@@ -4066,6 +4339,74 @@ const ProjectEstimator = () => {
               </CardContent>
             </Card>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Smart Import Preview Dialog */}
+      <Dialog open={smartImportDialog} onOpenChange={(open) => { if (!open) { setSmartImportDialog(false); setSmartImportData(null); } }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-[#0F172A]">
+              <Upload className="w-5 h-5 text-purple-600" />
+              Smart Import Preview
+            </DialogTitle>
+            <DialogDescription>Review the parsed data before importing into this project.</DialogDescription>
+          </DialogHeader>
+          {smartImportData && (
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-600">{smartImportData.waves.length}</p>
+                  <p className="text-xs text-gray-500">Waves Detected</p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-green-600">{smartImportData.totalResources}</p>
+                  <p className="text-xs text-gray-500">Total Resources</p>
+                </div>
+              </div>
+
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-100">
+                    <tr><th className="p-2 text-left">Wave</th><th className="p-2 text-center">Months</th><th className="p-2 text-center">Resources</th></tr>
+                  </thead>
+                  <tbody>
+                    {smartImportData.waves.map((w, i) => (
+                      <tr key={i} className="border-t">
+                        <td className="p-2 font-medium">{w.sheetName}</td>
+                        <td className="p-2 text-center">{w.phaseNames.length}</td>
+                        <td className="p-2 text-center">{w.allocations.length}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {(smartImportData.missingSkills.length > 0 || smartImportData.missingLocations.length > 0) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-sm font-semibold text-amber-700 mb-1">New master data will be auto-created:</p>
+                  {smartImportData.missingSkills.length > 0 && (
+                    <p className="text-xs text-amber-600">Skills: {smartImportData.missingSkills.join(", ")}</p>
+                  )}
+                  {smartImportData.missingLocations.length > 0 && (
+                    <p className="text-xs text-amber-600 mt-1">Locations: {smartImportData.missingLocations.join(", ")}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="bg-gray-50 border rounded-lg p-3 text-xs text-gray-500">
+                This will <strong>replace</strong> all current waves with the imported data. Custom salary values from the Excel will be preserved for this estimation. Remember to <strong>Save</strong> the project after import.
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setSmartImportDialog(false); setSmartImportData(null); }} data-testid="cancel-import-btn">
+              Cancel
+            </Button>
+            <Button onClick={confirmSmartImport} disabled={smartImportLoading} className="bg-purple-600 hover:bg-purple-700 text-white" data-testid="confirm-import-btn">
+              {smartImportLoading ? "Importing..." : "Confirm Import"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
