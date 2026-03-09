@@ -2096,8 +2096,19 @@ const ProjectEstimator = () => {
         const name = ws.name;
         if (name.toLowerCase() === "summary") return;
 
-        // Read header row
-        const headerRow = ws.getRow(1);
+        // Find the header row (look for row containing "#" and "Skill")
+        let headerRowNum = 1;
+        for (let r = 1; r <= Math.min(10, ws.rowCount); r++) {
+          const row = ws.getRow(r);
+          let hasSkill = false;
+          row.eachCell((cell) => {
+            const v = (cell.value || "").toString().toLowerCase();
+            if (v === "skill" || v === "#") hasSkill = true;
+          });
+          if (hasSkill) { headerRowNum = r; break; }
+        }
+
+        const headerRow = ws.getRow(headerRowNum);
         const headers = {};
         headerRow.eachCell((cell, colNum) => {
           const val = (cell.value || "").toString().toLowerCase().replace(/[^a-z0-9$/]/g, "");
@@ -2126,10 +2137,10 @@ const ProjectEstimator = () => {
         // Skip sheets without recognizable headers
         if (!colSkill || !colLevel) return;
 
-        // Find phase columns: between the last config column and "Total MM"
+        // Find phase columns: between Travel and "Total MM" 
+        // Phase months are right after Travel column and before Total MM
         const colTMM = findCol("totalmm");
-        const lastConfigCol = Math.max(colTravel || 0, colGrp || 0, colOnsite || 0, colOvr || 0);
-        const phaseStart = lastConfigCol + 1;
+        const phaseStart = (colTravel || colOnsite || colSalary || 0) + 1;
         const phaseEnd = colTMM > 0 ? colTMM : phaseStart;
 
         // Read phase names from header
@@ -2139,9 +2150,9 @@ const ProjectEstimator = () => {
           if (val && !val.toString().toLowerCase().includes("total")) phaseNames.push(val.toString());
         }
 
-        // Parse data rows
+        // Parse data rows (start after header)
         const allocations = [];
-        for (let r = 2; r <= ws.rowCount; r++) {
+        for (let r = headerRowNum + 1; r <= ws.rowCount; r++) {
           const row = ws.getRow(r);
           const skillName = safeCell(row, colSkill)?.toString().trim();
           if (!skillName) continue;
