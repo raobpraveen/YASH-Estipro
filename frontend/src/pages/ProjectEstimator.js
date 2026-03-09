@@ -2067,7 +2067,7 @@ const ProjectEstimator = () => {
 
     const buffer = await wb.xlsx.writeBuffer();
     const fileName = `${projectNumber || projectName || "Project"}_v${projectVersion}_Estimate.xlsx`;
-    // Upload to backend, get download ID, then navigate to download URL
+    // Upload to backend, get download ID, then trigger download via hidden iframe
     const uploadRes = await fetch(`${API}/download-file`, {
       method: 'POST',
       headers: {
@@ -2077,8 +2077,12 @@ const ProjectEstimator = () => {
       body: buffer,
     });
     const { download_id } = await uploadRes.json();
-    // Navigate to the GET endpoint — triggers a real browser download
-    window.open(`${API}/download-file/${download_id}`, '_blank');
+    // Use hidden iframe to trigger download — bypasses popup blockers
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = `${API}/download-file/${download_id}`;
+    document.body.appendChild(iframe);
+    setTimeout(() => document.body.removeChild(iframe), 30000);
     toast.success("Exported to Excel successfully");
     } catch (err) {
       console.error("Excel export error:", err);
