@@ -575,7 +575,7 @@ class Project(BaseModel):
     is_template: bool = False  # Flag to mark as template
     template_name: str = ""  # Name for the template
     # Approval workflow fields
-    status: str = "draft"  # draft, in_review, approved, rejected
+    status: str = "draft"  # draft, in_review, approved, rejected, superseded, suspended, obsolete
     approver_email: str = ""
     approval_comments: str = ""
     submitted_at: Optional[str] = None
@@ -646,6 +646,7 @@ class ProjectUpdate(BaseModel):
     approval_comments: Optional[str] = None
     sales_manager_id: Optional[str] = None
     sales_manager_name: Optional[str] = None
+    is_import: Optional[bool] = None  # Flag for smart import version creation
 
 # Notification model
 class Notification(BaseModel):
@@ -1500,10 +1501,15 @@ async def create_new_version(project_id: str, input: ProjectUpdate, user: dict =
     if not existing:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    # Mark current as not latest and set status to superseded
+    # Check if this is an import-triggered version (suspend old) or normal version (supersede old)
+    update_data = input.model_dump(exclude_unset=True)
+    is_import = update_data.pop("is_import", False) if "is_import" in update_data else False
+    old_status = "suspended" if is_import else "superseded"
+    
+    # Mark current as not latest
     await db.projects.update_one(
         {"id": project_id},
-        {"$set": {"is_latest_version": False, "status": "superseded", "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {"is_latest_version": False, "status": old_status, "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
     
     # Get current max version for this project number
@@ -1886,6 +1892,43 @@ async def approve_project(project_id: str, comments: str = "", user: dict = Depe
         await send_email(creator_email, subject, html_body, text_body)
     
     return {"message": "Project approved", "status": "approved"}
+
+
+@app.put("/api/projects/{project_id}/obsolete")
+async def mark_project_obsolete(project_id: str, user: dict = Depends(require_auth)):
+    """Mark a project as obsolete - only the creator can do this"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Only the creator can mark as obsolete
+    if project.get("created_by_id") != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Only the project creator can mark it as obsolete")
+    
+    old_status = project.get("status", "draft")
+    if old_status in ("approved", "obsolete"):
+        raise HTTPException(status_code=400, detail=f"Cannot mark {old_status} project as obsolete")
+    
+    await db.projects.update_one(
+        {"id": project_id},
+        {"$set": {"status": "obsolete", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    current_user = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
+    if current_user:
+        await create_audit_log(
+            user=current_user,
+            action="status_change",
+            entity_type="project",
+            entity_id=project_id,
+            entity_name=project.get("name", ""),
+            project_id=project_id,
+            project_number=project.get("project_number", ""),
+            project_name=project.get("name", ""),
+            changes=[{"field": "status", "old_value": old_status, "new_value": "obsolete"}],
+        )
+    
+    return {"message": "Project marked as obsolete", "status": "obsolete"}
 
 
 # Reject project
