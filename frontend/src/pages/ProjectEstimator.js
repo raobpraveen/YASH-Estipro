@@ -2104,27 +2104,32 @@ const ProjectEstimator = () => {
           headers[colNum] = val;
         });
 
-        // Find column positions
+        // Find column positions (returns 0 if not found — safe for getCell guards)
         const findCol = (...keywords) => {
           for (const [col, h] of Object.entries(headers)) {
             if (keywords.some(k => h.includes(k))) return parseInt(col);
           }
-          return -1;
+          return 0;
         };
+        const safeCell = (row, col) => col > 0 ? getCellVal(row.getCell(col)) : "";
 
         const colSkill = findCol("skill");
         const colLevel = findCol("level");
         const colLocation = findCol("location");
-        const colSalary = findCol("$month", "month");
+        const colSalary = findCol("$/month", "$month");
         const colOnsite = findCol("onsite");
         const colTravel = findCol("travel");
         const colGrp = findCol("grp");
-        const colOvr = findCol("ovr$hr", "ovr");
+        const colOvr = findCol("ovr$/hr", "ovr$hr", "ovr");
         const colComments = findCol("comment");
 
-        // Find phase columns: between Travel/Grp and "Total MM"
+        // Skip sheets without recognizable headers
+        if (!colSkill || !colLevel) return;
+
+        // Find phase columns: between the last config column and "Total MM"
         const colTMM = findCol("totalmm");
-        const phaseStart = Math.max(colTravel, colGrp, colOnsite) + 1;
+        const lastConfigCol = Math.max(colTravel || 0, colGrp || 0, colOnsite || 0, colOvr || 0);
+        const phaseStart = lastConfigCol + 1;
         const phaseEnd = colTMM > 0 ? colTMM : phaseStart;
 
         // Read phase names from header
@@ -2138,18 +2143,18 @@ const ProjectEstimator = () => {
         const allocations = [];
         for (let r = 2; r <= ws.rowCount; r++) {
           const row = ws.getRow(r);
-          const skillName = getCellVal(row.getCell(colSkill))?.toString().trim();
+          const skillName = safeCell(row, colSkill)?.toString().trim();
           if (!skillName) continue;
           if (skillName.toLowerCase().includes("sub-total") || skillName.toLowerCase().includes("logistics") || skillName.toLowerCase().includes("total")) break;
 
-          const level = getCellVal(row.getCell(colLevel))?.toString().trim() || "Mid";
-          const location = getCellVal(row.getCell(colLocation))?.toString().trim() || "";
-          const salary = parseFloat(getCellVal(row.getCell(colSalary))) || 0;
-          const onsite = (getCellVal(row.getCell(colOnsite)) || "").toString().toUpperCase();
-          const travel = (getCellVal(row.getCell(colTravel)) || "").toString().toUpperCase();
-          const grp = getCellVal(row.getCell(colGrp))?.toString() || "";
-          const ovr = parseFloat(getCellVal(row.getCell(colOvr))) || null;
-          const comments = getCellVal(row.getCell(colComments))?.toString() || "";
+          const level = safeCell(row, colLevel)?.toString().trim() || "Mid";
+          const location = safeCell(row, colLocation)?.toString().trim() || "";
+          const salary = parseFloat(safeCell(row, colSalary)) || 0;
+          const onsite = (safeCell(row, colOnsite) || "").toString().toUpperCase();
+          const travel = (safeCell(row, colTravel) || "").toString().toUpperCase();
+          const grp = safeCell(row, colGrp)?.toString() || "";
+          const ovr = parseFloat(safeCell(row, colOvr)) || null;
+          const comments = safeCell(row, colComments)?.toString() || "";
 
           // Phase allocations
           const phases = {};
