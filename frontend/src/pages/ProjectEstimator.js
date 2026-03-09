@@ -1810,12 +1810,12 @@ const ProjectEstimator = () => {
         const effectiveSP = hasOvr ? alloc.override_hourly_rate * 176 * totalManMonths : sp;
         const effectiveSPMM = hasOvr ? alloc.override_hourly_rate * 176 : spmm;
         const effectiveHR = hasOvr ? alloc.override_hourly_rate : spmm / 176;
-        r.getCell(C_SP).value   = { formula: `IF(${ovrCol}${rn}>0,${ovrCol}${rn}*176*${colL(C_TMM)}${rn},${colL(C_TC)}${rn}/(1-${MRG}))`, result: effectiveSP };
+        r.getCell(C_SP).value   = { formula: `IF(AND(ISNUMBER(${ovrCol}${rn}),${ovrCol}${rn}>0),${ovrCol}${rn}*176*${colL(C_TMM)}${rn},${colL(C_TC)}${rn}/(1-${MRG}))`, result: effectiveSP };
         r.getCell(C_SPMM).value = { formula: `IFERROR(${colL(C_SP)}${rn}/${colL(C_TMM)}${rn},0)`, result: effectiveSPMM };
-        r.getCell(C_HR).value   = { formula: `IF(${ovrCol}${rn}>0,${ovrCol}${rn},${colL(C_SPMM)}${rn}/176)`, result: effectiveHR };
+        r.getCell(C_HR).value   = { formula: `IF(AND(ISNUMBER(${ovrCol}${rn}),${ovrCol}${rn}>0),${ovrCol}${rn},${colL(C_SPMM)}${rn}/176)`, result: effectiveHR };
         r.getCell(C_CMT).value  = alloc.comments || "";
         r.getCell(C_GRP).value  = alloc.resource_group_id || "";
-        r.getCell(C_OVR).value  = alloc.override_hourly_rate || "";
+        r.getCell(C_OVR).value  = alloc.override_hourly_rate > 0 ? alloc.override_hourly_rate : null;
 
         // Number formats for money columns
         [C_SAL, C_SC, C_OH, C_TC, C_SP, C_SPMM, C_HR, C_OVR].forEach(c => { r.getCell(c).numFmt = moneyFmt; });
