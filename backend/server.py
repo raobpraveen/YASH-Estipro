@@ -1,5 +1,6 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -40,6 +41,7 @@ security = HTTPBearer(auto_error=False)
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
+_temp_downloads = {}  # Temporary in-memory storage for file downloads
 
 
 # User Models
@@ -2551,6 +2553,35 @@ async def compare_periods(
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+@api_router.post("/download-file")
+async def download_file(request: Request):
+    """Store file temporarily and return download ID"""
+    body = await request.body()
+    filename = request.headers.get("X-Filename", "download.xlsx")
+    content_type = request.headers.get("X-Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    download_id = str(uuid.uuid4())
+    # Store in memory with TTL (simple dict, cleaned periodically)
+    _temp_downloads[download_id] = {
+        "data": body,
+        "filename": filename,
+        "content_type": content_type,
+        "created": datetime.now(timezone.utc)
+    }
+    return {"download_id": download_id}
+
+@api_router.get("/download-file/{download_id}")
+async def get_download_file(download_id: str):
+    """Serve the stored file as a proper HTTP download"""
+    entry = _temp_downloads.pop(download_id, None)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Download expired or not found")
+    return Response(
+        content=entry["data"],
+        media_type=entry["content_type"],
+        headers={"Content-Disposition": f'attachment; filename="{entry["filename"]}"'}
+    )
+
 
 app.include_router(api_router)
 

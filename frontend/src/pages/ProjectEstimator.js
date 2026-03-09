@@ -2066,14 +2066,19 @@ const ProjectEstimator = () => {
     });
 
     const buffer = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${projectNumber || projectName || "Project"}_v${projectVersion}_Estimate.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    const fileName = `${projectNumber || projectName || "Project"}_v${projectVersion}_Estimate.xlsx`;
+    // Upload to backend, get download ID, then navigate to download URL
+    const uploadRes = await fetch(`${API}/download-file`, {
+      method: 'POST',
+      headers: {
+        'X-Filename': fileName,
+        'X-Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+      body: buffer,
+    });
+    const { download_id } = await uploadRes.json();
+    // Navigate to the GET endpoint — triggers a real browser download
+    window.open(`${API}/download-file/${download_id}`, '_blank');
     toast.success("Exported to Excel successfully");
     } catch (err) {
       console.error("Excel export error:", err);
