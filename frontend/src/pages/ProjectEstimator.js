@@ -2066,7 +2066,14 @@ const ProjectEstimator = () => {
     });
 
     const buffer = await wb.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `${projectNumber || projectName || "Project"}_v${projectVersion}_Estimate.xlsx`);
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${projectNumber || projectName || "Project"}_v${projectVersion}_Estimate.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
     toast.success("Exported to Excel successfully");
     } catch (err) {
       console.error("Excel export error:", err);
