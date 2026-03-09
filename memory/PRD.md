@@ -5,12 +5,13 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 
 ## Core Requirements
 - **Wave-based Estimation Grid**: Dynamic monthly phases, editable resources (Skill, Level, Location) with auto salary lookups
-- **Cost Calculation**: Base Cost, Overheads, CTC, Profit Margin, Selling Price, Logistics
+- **Cost Calculation**: Base Cost, Overheads, CTC, Profit Margin, Selling Price, Logistics, Override $/Hr
 - **Project & Version Management**: Full lifecycle with versioning, cloning, version comments
-- **Workflow**: Draft → In Review → Approved → Rejected
+- **Workflow**: Draft > In Review > Approved > Rejected
 - **Master Data**: Full CRUD for Skills, Locations, Technologies, Customers, Proficiency Rates, etc.
 - **Dashboard & Analytics**: KPIs, charts, filtering
-- **Excel Export**: Formula-powered with color coding and color legend
+- **Excel Export**: Formula-powered with color coding, color legend, and override support
+- **Excel Smart Import**: Re-import EstiPro-exported Excel files with auto-creation of missing master data
 - **Authentication**: JWT-based with role-based access (Admin, Approver, User)
 - **Documentation**: In-app User Manual and Support Guide
 
@@ -32,9 +33,9 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 - Auto salary lookup from proficiency rates
 - Cost calculations (Salary, Overhead, CTC, Selling Price)
 - Logistics configuration per wave
-- Formula-powered Excel export with color coding
+- Formula-powered Excel export with color coding & color legend
 - Quick Estimate Calculator
-- Dashboard with analytics & charts
+- Dashboard ("Estimations Overview") with analytics & charts
 - Notification system (in-app + email)
 - Audit logs
 - Master data management (Skills, Locations, Customers, Technologies, Project Types, Sales Managers, Proficiency Rates)
@@ -44,21 +45,22 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 - Settings & profile
 
 ### Recent Additions (March 2026)
-- **5 Bug Fixes**: Excel logistics formula (Travel=YES), Skill hover tooltip, Offshore MM card fix, CTC analytics cards, Excel color legend
-- **Resource Group ID**: Link related rows (same person onsite/offshore split) with colored borders
-- **Frozen Columns**: First 5 grid columns (#, Skill, Level, Location) stay visible during horizontal scroll
-- **Dashboard**: Renamed to "Estimations Overview" with "Project Estimations Analyzer" tagline
-- **User Manual**: Comprehensive 13-section in-app documentation with YASH branding, TOC, search, print/download
-- **Support Guide**: 14-section technical reference covering architecture, troubleshooting, API, deployment, security
+- **Bug Fixes**: Excel logistics formula (Travel=YES), Skill hover tooltip, Offshore MM card fix, CTC analytics, Excel color legend
+- **Resource Group ID**: Link related rows with colored borders
+- **Frozen Columns**: First 5 grid columns stay visible during horizontal scroll
+- **CTC Analytics**: Onsite/Offshore CTC cards in wave & overall summaries
+- **User Manual**: 13-section in-app documentation with YASH branding
+- **Support Guide**: 14-section technical reference for admins/IT support
+- **Custom Selling Price Override (P1)**: "Ovr $/Hr" column overrides calculated selling price per row, shows original with strikethrough, flows into summaries and Excel export
+- **Excel Smart Import (P2)**: Re-import EstiPro-exported Excel files, auto-create missing skills/locations, preview dialog before confirming
 
 ## Prioritized Backlog
 ### P1 - Upcoming
-- Custom Selling Price Override ("Override $/Hr" column)
 - User Profile - Custom theme/background image
 
 ### P2 - Future
-- Excel Round-Trip (Smart Import) - export, edit, re-import
 - Actuals Tracking & Profitability Module (spec in /app/memory/ACTUALS_MODULE_SPEC.md)
+- AI Integration (plan in /app/memory/AI_INTEGRATION_PLAN.md)
 
 ### Refactoring
-- Break down ProjectEstimator.js (4000+ lines) into smaller components (WaveGrid, WaveTabs, QuickEstimateDialog, SummaryCards)
+- Break down ProjectEstimator.js (4500+ lines) into smaller components (WaveGrid, WaveTabs, QuickEstimateDialog, SummaryCards)
