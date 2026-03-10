@@ -608,41 +608,98 @@ const MetricCard = ({ icon, label, oldVal, newVal, prefix = "", suffix = "", for
 // Collapsible Wave-Level Metrics Component
 const WaveLevelMetrics = ({ oldWaveMetrics, newWaveMetrics }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [expandedWaves, setExpandedWaves] = useState({});
+  
+  const toggleWave = (idx) => {
+    setExpandedWaves(prev => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const expandAll = () => {
+    const allExpanded = {};
+    newWaveMetrics.forEach((_, idx) => { allExpanded[idx] = true; });
+    setExpandedWaves(allExpanded);
+  };
+
+  const collapseAll = () => {
+    setExpandedWaves({});
+  };
   
   return (
     <div className="pt-3 border-t">
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-sky-600 transition-colors w-full text-left"
-        data-testid="toggle-wave-metrics"
-      >
-        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        Wave-Level Breakdown
-        <Badge variant="outline" className="ml-1 text-xs">{newWaveMetrics.length} waves</Badge>
-      </button>
+      <div className="flex items-center justify-between mb-3">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-sky-600 transition-colors"
+          data-testid="toggle-wave-metrics"
+        >
+          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Wave-Level Breakdown
+          <Badge variant="outline" className="ml-1 text-xs">{newWaveMetrics.length} waves</Badge>
+        </button>
+        {isExpanded && (
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" className="text-xs h-6" onClick={expandAll}>
+              Expand All
+            </Button>
+            <Button variant="ghost" size="sm" className="text-xs h-6" onClick={collapseAll}>
+              Collapse All
+            </Button>
+          </div>
+        )}
+      </div>
       
       {isExpanded && (
-        <div className="space-y-4 mt-3">
+        <div className="space-y-2">
           {newWaveMetrics.map((newWave, idx) => {
             const oldWave = oldWaveMetrics[idx] || {
               resources: 0, total_mm: 0, onsite_mm: 0, offshore_mm: 0,
               avg_onsite_cost_per_mm: 0, avg_offshore_cost_per_mm: 0,
               avg_onsite_selling_per_mm: 0, avg_offshore_selling_per_mm: 0, logistics: 0
             };
+            const isWaveExpanded = expandedWaves[idx];
+            
+            // Calculate if this wave has any changes
+            const hasChanges = 
+              oldWave.resources !== newWave.resources ||
+              oldWave.total_mm !== newWave.total_mm ||
+              oldWave.onsite_mm !== newWave.onsite_mm ||
+              oldWave.offshore_mm !== newWave.offshore_mm ||
+              oldWave.logistics !== newWave.logistics;
+            
             return (
-              <div key={idx} className="bg-white/60 rounded-lg p-3 border border-sky-100">
-                <h5 className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">{newWave.wave_name}</h5>
-                <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-2">
-                  <MetricCard icon={<Users className="w-3 h-3" />} label="Resources" oldVal={oldWave.resources} newVal={newWave.resources} />
-                  <MetricCard icon={<Calendar className="w-3 h-3" />} label="Total MM" oldVal={oldWave.total_mm} newVal={newWave.total_mm} />
-                  <MetricCard icon={<Calendar className="w-3 h-3" />} label="Onsite MM" oldVal={oldWave.onsite_mm} newVal={newWave.onsite_mm} />
-                  <MetricCard icon={<Calendar className="w-3 h-3" />} label="Offshore MM" oldVal={oldWave.offshore_mm} newVal={newWave.offshore_mm} />
-                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Onsite $/MM" oldVal={oldWave.avg_onsite_cost_per_mm} newVal={newWave.avg_onsite_cost_per_mm} prefix="$" format="currency" />
-                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Offshore $/MM" oldVal={oldWave.avg_offshore_cost_per_mm} newVal={newWave.avg_offshore_cost_per_mm} prefix="$" format="currency" />
-                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Onsite Sell/MM" oldVal={oldWave.avg_onsite_selling_per_mm} newVal={newWave.avg_onsite_selling_per_mm} prefix="$" format="currency" inverseColor />
-                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Offshore Sell/MM" oldVal={oldWave.avg_offshore_selling_per_mm} newVal={newWave.avg_offshore_selling_per_mm} prefix="$" format="currency" inverseColor />
-                  <MetricCard icon={<Truck className="w-3 h-3" />} label="Logistics" oldVal={oldWave.logistics} newVal={newWave.logistics} prefix="$" format="currency" />
-                </div>
+              <div key={idx} className={`bg-white/60 rounded-lg border ${hasChanges ? 'border-amber-200' : 'border-sky-100'}`}>
+                <button
+                  onClick={() => toggleWave(idx)}
+                  className="w-full flex items-center justify-between p-3 hover:bg-sky-50/50 transition-colors rounded-lg"
+                  data-testid={`toggle-wave-${idx}`}
+                >
+                  <div className="flex items-center gap-3">
+                    {isWaveExpanded ? <ChevronDown className="w-4 h-4 text-sky-600" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">{newWave.wave_name}</span>
+                    {hasChanges && <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">Changed</Badge>}
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <span>{newWave.resources} resources</span>
+                    <span>{newWave.total_mm} MM</span>
+                    <span>${(newWave.logistics / 1000).toFixed(0)}K logistics</span>
+                  </div>
+                </button>
+                
+                {isWaveExpanded && (
+                  <div className="px-3 pb-3">
+                    <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-2">
+                      <MetricCard icon={<Users className="w-3 h-3" />} label="Resources" oldVal={oldWave.resources} newVal={newWave.resources} />
+                      <MetricCard icon={<Calendar className="w-3 h-3" />} label="Total MM" oldVal={oldWave.total_mm} newVal={newWave.total_mm} />
+                      <MetricCard icon={<Calendar className="w-3 h-3" />} label="Onsite MM" oldVal={oldWave.onsite_mm} newVal={newWave.onsite_mm} />
+                      <MetricCard icon={<Calendar className="w-3 h-3" />} label="Offshore MM" oldVal={oldWave.offshore_mm} newVal={newWave.offshore_mm} />
+                      <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Onsite $/MM" oldVal={oldWave.avg_onsite_cost_per_mm} newVal={newWave.avg_onsite_cost_per_mm} prefix="$" format="currency" />
+                      <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Offshore $/MM" oldVal={oldWave.avg_offshore_cost_per_mm} newVal={newWave.avg_offshore_cost_per_mm} prefix="$" format="currency" />
+                      <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Onsite Sell/MM" oldVal={oldWave.avg_onsite_selling_per_mm} newVal={newWave.avg_onsite_selling_per_mm} prefix="$" format="currency" inverseColor />
+                      <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Offshore Sell/MM" oldVal={oldWave.avg_offshore_selling_per_mm} newVal={newWave.avg_offshore_selling_per_mm} prefix="$" format="currency" inverseColor />
+                      <MetricCard icon={<Truck className="w-3 h-3" />} label="Logistics" oldVal={oldWave.logistics} newVal={newWave.logistics} prefix="$" format="currency" />
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
