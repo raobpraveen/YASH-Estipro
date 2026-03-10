@@ -1,15 +1,95 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import Joyride, { STATUS, ACTIONS, EVENTS } from "react-joyride";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
-  Play, BookOpen, Search, ChevronRight, Clock, FileSpreadsheet,
+  Play, BookOpen, Search, ChevronRight, ChevronLeft, Clock, FileSpreadsheet,
   BarChart3, GitCompare, Upload, Shield, Settings, Users, Layers,
-  Video, ExternalLink, Monitor
+  Video, ExternalLink, Monitor, Pause, SkipForward, SkipBack, Maximize2,
+  X, CirclePlay, MapPin
 } from "lucide-react";
+
+// Tutorial slide images mapping
+const TUTORIAL_IMAGES = {
+  "create-project": [
+    { src: "/tutorial_slides/dashboard.jpg", caption: "Start from the Dashboard - your command center" },
+    { src: "/tutorial_slides/estimator.jpg", caption: "Navigate to Estimator and fill project details" },
+    { src: "/tutorial_slides/wave_grid.jpg", caption: "Configure waves and add resources to the grid" },
+  ],
+  "wave-grid": [
+    { src: "/tutorial_slides/estimator.jpg", caption: "The Project Estimator with wave configuration" },
+    { src: "/tutorial_slides/wave_grid.jpg", caption: "Wave grid with frozen columns and resource management" },
+  ],
+  "excel-export": [
+    { src: "/tutorial_slides/wave_grid.jpg", caption: "Click Export Excel in the toolbar" },
+    { src: "/tutorial_slides/projects.jpg", caption: "View exported projects in the list" },
+  ],
+  "version-comparison": [
+    { src: "/tutorial_slides/projects.jpg", caption: "Go to Saved Projects and select a project" },
+    { src: "/tutorial_slides/compare_versions.jpg", caption: "Compare any two versions side-by-side" },
+  ],
+  "approval-workflow": [
+    { src: "/tutorial_slides/estimator.jpg", caption: "Set approver email and submit for review" },
+    { src: "/tutorial_slides/projects.jpg", caption: "Track status changes in the projects list" },
+  ],
+  "dashboard-analytics": [
+    { src: "/tutorial_slides/dashboard.jpg", caption: "View KPIs and analytics on the Dashboard" },
+    { src: "/tutorial_slides/projects.jpg", caption: "Click through to drill down into project details" },
+  ],
+  "master-data": [
+    { src: "/tutorial_slides/skills.jpg", caption: "Manage Skills in the Master Data section" },
+    { src: "/tutorial_slides/proficiency_rates.jpg", caption: "Configure Proficiency Rates for salary lookups" },
+  ],
+};
+
+// Interactive tour steps for each feature
+const TOUR_STEPS = {
+  "create-project": [
+    {
+      target: 'a[data-testid="nav-estimator"]',
+      content: 'Click here to open the Project Estimator where you can create new estimation projects.',
+      disableBeacon: true,
+      placement: 'right',
+    },
+  ],
+  "dashboard-analytics": [
+    {
+      target: 'a[data-testid="nav-dashboard"]',
+      content: 'The Dashboard shows your key metrics and analytics. Click to explore.',
+      disableBeacon: true,
+      placement: 'right',
+    },
+  ],
+  "wave-grid": [
+    {
+      target: 'a[data-testid="nav-estimator"]',
+      content: 'Open the Estimator to work with the wave grid and resource management.',
+      disableBeacon: true,
+      placement: 'right',
+    },
+  ],
+  "version-comparison": [
+    {
+      target: 'a[data-testid="nav-projects"]',
+      content: 'Go to Saved Projects to compare versions. Look for the compare icon in project actions.',
+      disableBeacon: true,
+      placement: 'right',
+    },
+  ],
+  "master-data": [
+    {
+      target: 'a[data-testid="nav-skills"]',
+      content: 'Skills are one of the key master data entities. Click to manage your technology skills catalog.',
+      disableBeacon: true,
+      placement: 'right',
+    },
+  ],
+};
 
 const TUTORIALS = [
   {
@@ -32,7 +112,8 @@ const TUTORIALS = [
       { target: "Set monthly FTE allocations.", action: "Enter values (0-1) for each month column to define resource utilization." },
       { target: "Save the project with Ctrl+S or click Save.", action: "Your project is saved with version 1 and a unique project number." },
     ],
-    videoPlaceholder: true,
+    hasSlideshow: true,
+    hasTour: true,
   },
   {
     id: "wave-grid",
@@ -50,7 +131,8 @@ const TUTORIALS = [
       { target: "Group related resources.", action: "Assign a Group ID to link related resources — they'll share a colored border for visual grouping." },
       { target: "Apply a skill to all months at once.", action: "Use the 'Apply to All Months' option to set the same FTE allocation across all phases." },
     ],
-    videoPlaceholder: true,
+    hasSlideshow: true,
+    hasTour: true,
   },
   {
     id: "excel-export",
@@ -68,7 +150,8 @@ const TUTORIALS = [
       { target: "Choose 'Replace Current' or 'Import as New Version'.", action: "'Replace' overwrites locally. 'New Version' creates a new version and suspends the old one." },
       { target: "Logistics data is parsed from formulas.", action: "If you modified per-diem, accommodation, or flight costs in the Excel formulas, those changes are imported." },
     ],
-    videoPlaceholder: true,
+    hasSlideshow: true,
+    hasTour: false,
   },
   {
     id: "version-comparison",
@@ -86,7 +169,8 @@ const TUTORIALS = [
       { target: "Expand wave sections for details.", action: "Each wave shows resource-level and cell-level diffs (e.g., 'Phase 3: 1.0 → 0.5')." },
       { target: "Switch to Change History tab.", action: "See auto-recorded change logs with timestamp, user, and expandable field-level details for every save." },
     ],
-    videoPlaceholder: true,
+    hasSlideshow: true,
+    hasTour: true,
   },
   {
     id: "approval-workflow",
@@ -103,7 +187,8 @@ const TUTORIALS = [
       { target: "On approval, other Draft versions are auto-obsoleted.", action: "Only the approved version remains active." },
       { target: "Use 'Mark Obsolete' for cleanup.", action: "Project creators can manually obsolete Draft or Suspended versions they no longer need." },
     ],
-    videoPlaceholder: true,
+    hasSlideshow: true,
+    hasTour: false,
   },
   {
     id: "dashboard-analytics",
@@ -119,7 +204,8 @@ const TUTORIALS = [
       { target: "Use filters to drill down.", action: "Filter by status, customer, technology, date range, and sales manager." },
       { target: "Export the project list to Excel.", action: "Click 'Export to Excel' on the Projects page to get all versions with full details." },
     ],
-    videoPlaceholder: true,
+    hasSlideshow: true,
+    hasTour: true,
   },
   {
     id: "master-data",
@@ -136,11 +222,130 @@ const TUTORIALS = [
       { target: "Proficiency Rates drive salary lookups.", action: "Set rates by Skill + Level + Location to auto-populate the $/Month column in the grid." },
       { target: "Use search and filters.", action: "All master data screens support search and filtering." },
     ],
-    videoPlaceholder: true,
+    hasSlideshow: true,
+    hasTour: true,
   },
 ];
 
 const CATEGORIES = [...new Set(TUTORIALS.map(t => t.category))];
+
+// Slideshow Component
+const TutorialSlideshow = ({ tutorial, isOpen, onClose }) => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const slides = TUTORIAL_IMAGES[tutorial?.id] || [];
+
+  useEffect(() => {
+    let interval;
+    if (isPlaying && slides.length > 0) {
+      interval = setInterval(() => {
+        setCurrentSlide((prev) => (prev + 1) % slides.length);
+      }, 4000); // 4 seconds per slide
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, slides.length]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentSlide(0);
+      setIsPlaying(false);
+    }
+  }, [isOpen, tutorial?.id]);
+
+  if (!tutorial || slides.length === 0) return null;
+
+  const Icon = tutorial.icon;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl p-0 overflow-hidden" data-testid="slideshow-dialog">
+        <div className="bg-slate-900 text-white">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+            <div className="flex items-center gap-3">
+              <div className={`${tutorial.color} rounded-lg p-2 text-white`}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold">{tutorial.title}</h3>
+                <p className="text-xs text-slate-400">Slide {currentSlide + 1} of {slides.length}</p>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => onClose(false)} className="text-slate-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+
+          {/* Slide Content */}
+          <div className="relative aspect-video bg-black">
+            <img
+              src={slides[currentSlide]?.src}
+              alt={`Slide ${currentSlide + 1}`}
+              className="w-full h-full object-contain"
+              onError={(e) => { e.target.src = '/tutorial_slides/dashboard.jpg'; }}
+            />
+            {/* Caption overlay */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+              <p className="text-white text-center">{slides[currentSlide]?.caption}</p>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className="flex items-center justify-between px-4 py-3 bg-slate-800">
+            {/* Progress dots */}
+            <div className="flex gap-1.5">
+              {slides.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentSlide(idx)}
+                  className={`w-2 h-2 rounded-full transition-all ${idx === currentSlide ? 'bg-sky-500 w-4' : 'bg-slate-600 hover:bg-slate-500'}`}
+                  data-testid={`slide-dot-${idx}`}
+                />
+              ))}
+            </div>
+
+            {/* Playback controls */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
+                className="text-slate-400 hover:text-white"
+                data-testid="prev-slide-btn"
+              >
+                <SkipBack className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsPlaying(!isPlaying)}
+                className="text-white bg-sky-600 hover:bg-sky-700 rounded-full w-10 h-10"
+                data-testid="play-pause-btn"
+              >
+                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
+                className="text-slate-400 hover:text-white"
+                data-testid="next-slide-btn"
+              >
+                <SkipForward className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Duration */}
+            <div className="flex items-center gap-1 text-xs text-slate-400">
+              <Clock className="w-3 h-3" />
+              <span>{tutorial.duration}</span>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const Tutorials = () => {
   const navigate = useNavigate();
@@ -148,17 +353,96 @@ const Tutorials = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [expandedTutorial, setExpandedTutorial] = useState(null);
   const [activeTab, setActiveTab] = useState("walkthroughs");
+  
+  // Slideshow state
+  const [slideshowOpen, setSlideshowOpen] = useState(false);
+  const [slideshowTutorial, setSlideshowTutorial] = useState(null);
+  
+  // Interactive tour state
+  const [runTour, setRunTour] = useState(false);
+  const [tourSteps, setTourSteps] = useState([]);
+  const [tourTutorialId, setTourTutorialId] = useState(null);
 
   const filtered = TUTORIALS
     .filter(t => selectedCategory === "all" || t.category === selectedCategory)
     .filter(t => !searchTerm || t.title.toLowerCase().includes(searchTerm.toLowerCase()) || t.description.toLowerCase().includes(searchTerm.toLowerCase()));
 
+  const openSlideshow = (tutorial) => {
+    setSlideshowTutorial(tutorial);
+    setSlideshowOpen(true);
+  };
+
+  const startTour = (tutorialId) => {
+    const steps = TOUR_STEPS[tutorialId];
+    if (steps && steps.length > 0) {
+      setTourSteps(steps);
+      setTourTutorialId(tutorialId);
+      setRunTour(true);
+    }
+  };
+
+  const handleJoyrideCallback = useCallback((data) => {
+    const { status, action, type, index, step } = data;
+    
+    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
+      setRunTour(false);
+      setTourSteps([]);
+      setTourTutorialId(null);
+    }
+    
+    // Navigate based on tour step if needed
+    if (type === EVENTS.STEP_AFTER && action === ACTIONS.NEXT) {
+      // Could add navigation logic here
+    }
+  }, []);
+
+  const joyrideStyles = {
+    options: {
+      primaryColor: '#0EA5E9',
+      zIndex: 10000,
+    },
+    tooltip: {
+      borderRadius: 8,
+    },
+    buttonNext: {
+      backgroundColor: '#0EA5E9',
+    },
+    buttonBack: {
+      color: '#64748B',
+    },
+  };
+
   return (
     <div data-testid="tutorials-page" className="max-w-[1200px] mx-auto space-y-6">
+      {/* Joyride Tour */}
+      <Joyride
+        steps={tourSteps}
+        run={runTour}
+        continuous
+        showSkipButton
+        showProgress
+        callback={handleJoyrideCallback}
+        styles={joyrideStyles}
+        locale={{
+          back: 'Back',
+          close: 'Close',
+          last: 'Finish',
+          next: 'Next',
+          skip: 'Skip Tour',
+        }}
+      />
+      
+      {/* Slideshow Dialog */}
+      <TutorialSlideshow
+        tutorial={slideshowTutorial}
+        isOpen={slideshowOpen}
+        onClose={setSlideshowOpen}
+      />
+
       {/* Header */}
       <div>
         <h1 className="text-4xl sm:text-5xl font-extrabold text-[#0F172A] tracking-tight">Tutorials</h1>
-        <p className="text-base text-gray-600 mt-2">Guided walkthroughs and video tutorials to help you get the most out of YASH EstPro</p>
+        <p className="text-base text-gray-600 mt-2">Guided walkthroughs, video slideshows, and interactive tours to help you master YASH EstPro</p>
       </div>
 
       {/* Tabs */}
@@ -168,7 +452,10 @@ const Tutorials = () => {
             <BookOpen className="w-4 h-4 mr-1" /> Guided Walkthroughs
           </TabsTrigger>
           <TabsTrigger value="videos" data-testid="tab-videos">
-            <Video className="w-4 h-4 mr-1" /> Video Tutorials
+            <Video className="w-4 h-4 mr-1" /> Video Slideshows
+          </TabsTrigger>
+          <TabsTrigger value="tours" data-testid="tab-tours">
+            <MapPin className="w-4 h-4 mr-1" /> Interactive Tours
           </TabsTrigger>
         </TabsList>
 
@@ -262,7 +549,7 @@ const Tutorials = () => {
                             </div>
                           ))}
                         </div>
-                        <div className="flex gap-2 pt-2 border-t mt-4">
+                        <div className="flex gap-2 pt-2 border-t mt-4 flex-wrap">
                           <Button
                             size="sm"
                             variant="outline"
@@ -283,6 +570,27 @@ const Tutorials = () => {
                           >
                             <Monitor className="w-3 h-3 mr-1" /> Open in App
                           </Button>
+                          {tutorial.hasSlideshow && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs"
+                              onClick={() => openSlideshow(tutorial)}
+                              data-testid={`slideshow-${tutorial.id}`}
+                            >
+                              <CirclePlay className="w-3 h-3 mr-1" /> Watch Slideshow
+                            </Button>
+                          )}
+                          {tutorial.hasTour && TOUR_STEPS[tutorial.id] && (
+                            <Button
+                              size="sm"
+                              className="text-xs bg-sky-500 hover:bg-sky-600"
+                              onClick={() => startTour(tutorial.id)}
+                              data-testid={`tour-${tutorial.id}`}
+                            >
+                              <MapPin className="w-3 h-3 mr-1" /> Start Tour
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -296,33 +604,48 @@ const Tutorials = () => {
           </div>
         </TabsContent>
 
-        {/* ===== VIDEO TUTORIALS TAB ===== */}
+        {/* ===== VIDEO SLIDESHOWS TAB ===== */}
         <TabsContent value="videos" className="space-y-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-            <Video className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+          <div className="bg-sky-50 border border-sky-200 rounded-lg p-4 flex items-start gap-3">
+            <Video className="w-5 h-5 text-sky-600 mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-amber-800">Video tutorials are coming soon</p>
-              <p className="text-xs text-amber-600 mt-1">We are preparing professional video walkthroughs for each feature. In the meantime, use the guided walkthroughs above.</p>
+              <p className="text-sm font-medium text-sky-800">Screenshot-based video slideshows</p>
+              <p className="text-xs text-sky-600 mt-1">Click any tutorial card to watch an auto-playing slideshow of the feature in action.</p>
             </div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
-            {TUTORIALS.map((tutorial) => {
+            {TUTORIALS.filter(t => t.hasSlideshow).map((tutorial) => {
               const Icon = tutorial.icon;
+              const slides = TUTORIAL_IMAGES[tutorial.id] || [];
+              const previewImage = slides[0]?.src || '/tutorial_slides/dashboard.jpg';
+              
               return (
-                <Card key={tutorial.id} className="border shadow-sm" data-testid={`video-slot-${tutorial.id}`}>
+                <Card 
+                  key={tutorial.id} 
+                  className="border shadow-sm hover:shadow-md transition-shadow cursor-pointer group" 
+                  data-testid={`video-card-${tutorial.id}`}
+                  onClick={() => openSlideshow(tutorial)}
+                >
                   <CardContent className="pt-6">
-                    {/* Video placeholder */}
-                    <div className="relative bg-slate-900 rounded-lg aspect-video flex items-center justify-center group cursor-not-allowed mb-4">
-                      <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg" />
-                      <div className="relative flex flex-col items-center gap-2 text-slate-400">
-                        <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center">
-                          <Play className="w-6 h-6 text-white/40" />
+                    {/* Video preview with play overlay */}
+                    <div className="relative rounded-lg overflow-hidden aspect-video mb-4 bg-slate-900">
+                      <img 
+                        src={previewImage} 
+                        alt={tutorial.title}
+                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                        onError={(e) => { e.target.src = '/tutorial_slides/dashboard.jpg'; }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-14 h-14 rounded-full bg-sky-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <Play className="w-6 h-6 text-white ml-1" />
                         </div>
-                        <span className="text-xs">Video Coming Soon</span>
                       </div>
-                      <Badge className="absolute top-2 right-2 bg-slate-700 text-slate-300 text-[10px]">
+                      <Badge className="absolute top-2 right-2 bg-black/60 text-white text-[10px]">
                         <Clock className="w-2.5 h-2.5 mr-0.5" /> {tutorial.duration}
+                      </Badge>
+                      <Badge className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px]">
+                        {slides.length} slides
                       </Badge>
                     </div>
                     <div className="flex items-start gap-3">
@@ -339,6 +662,62 @@ const Tutorials = () => {
               );
             })}
           </div>
+        </TabsContent>
+
+        {/* ===== INTERACTIVE TOURS TAB ===== */}
+        <TabsContent value="tours" className="space-y-4">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start gap-3">
+            <MapPin className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-emerald-800">Interactive guided tours</p>
+              <p className="text-xs text-emerald-600 mt-1">Click "Start Tour" to get step-by-step guidance with highlighted elements directly in the app interface.</p>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {TUTORIALS.filter(t => t.hasTour && TOUR_STEPS[t.id]).map((tutorial) => {
+              const Icon = tutorial.icon;
+              const tourStepsCount = TOUR_STEPS[tutorial.id]?.length || 0;
+              
+              return (
+                <Card 
+                  key={tutorial.id} 
+                  className="border shadow-sm hover:shadow-md transition-shadow" 
+                  data-testid={`tour-card-${tutorial.id}`}
+                >
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className={`${tutorial.color} rounded-lg p-2.5 text-white shrink-0`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-[#0F172A]">{tutorial.title}</h3>
+                        <p className="text-xs text-gray-500 mt-1">{tutorial.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-3 border-t">
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <MapPin className="w-3 h-3" />
+                        <span>{tourStepsCount} tour step{tourStepsCount !== 1 ? 's' : ''}</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="text-xs bg-emerald-500 hover:bg-emerald-600"
+                        onClick={() => startTour(tutorial.id)}
+                        data-testid={`start-tour-${tutorial.id}`}
+                      >
+                        <MapPin className="w-3 h-3 mr-1" /> Start Tour
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {TUTORIALS.filter(t => t.hasTour && TOUR_STEPS[t.id]).length === 0 && (
+            <div className="text-center py-12 text-gray-400">No interactive tours available yet.</div>
+          )}
         </TabsContent>
       </Tabs>
 
