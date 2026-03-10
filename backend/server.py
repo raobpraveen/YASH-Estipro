@@ -1904,9 +1904,26 @@ async def delete_project(project_id: str, user: dict = Depends(get_current_user)
     if not existing:
         raise HTTPException(status_code=404, detail="Project not found")
     
+    project_number = existing.get("project_number")
+    was_latest = existing.get("is_latest_version", True)
+    
     result = await db.projects.delete_one({"id": project_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Project not found")
+    
+    # If we deleted the latest version, promote the next highest version to be latest
+    if was_latest and project_number:
+        # Find the remaining version with highest version number
+        next_latest = await db.projects.find_one(
+            {"project_number": project_number},
+            {"_id": 0},
+            sort=[("version", -1)]
+        )
+        if next_latest:
+            await db.projects.update_one(
+                {"id": next_latest["id"]},
+                {"$set": {"is_latest_version": True}}
+            )
     
     # Create audit log for delete
     current_user = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
