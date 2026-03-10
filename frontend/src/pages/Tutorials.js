@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import {
   Play, BookOpen, Search, ChevronRight, ChevronLeft, Clock, FileSpreadsheet,
   BarChart3, GitCompare, Upload, Shield, Settings, Users, Layers,
@@ -259,6 +260,9 @@ const TutorialSlideshow = ({ tutorial, isOpen, onClose }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl p-0 overflow-hidden" data-testid="slideshow-dialog">
+        <VisuallyHidden.Root>
+          <DialogTitle>{tutorial?.title} Slideshow</DialogTitle>
+        </VisuallyHidden.Root>
         <div className="bg-slate-900 text-white">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">

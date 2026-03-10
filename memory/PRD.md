@@ -58,9 +58,11 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 
 ### Latest Additions (March 10, 2026)
 - **Ctrl+S Save Shortcut**: Press Ctrl+S (or Cmd+S) in the Estimator to save immediately without scrolling to the Save button
-- **Tutorials Page**: New /tutorials page with two tabs:
-  - Guided Walkthroughs: 7 interactive step-by-step tutorials covering all features (Creating Projects, Wave Grid, Excel Export/Import, Version Comparison, Approval Workflow, Dashboard, Master Data) with category filters, search, and "Open in App" buttons
-  - Video Tutorials: Placeholder slots for future YouTube/external video embeds with professional dark player UI
+- **Tutorials Page with Video Slideshows & Interactive Tours**: Complete tutorial system at /tutorials with three tabs:
+  - **Guided Walkthroughs**: 7 interactive step-by-step tutorials covering all features (Creating Projects, Wave Grid, Excel Export/Import, Version Comparison, Approval Workflow, Dashboard, Master Data) with category filters, search, and "Open in App" buttons
+  - **Video Slideshows**: Screenshot-based slideshows for each tutorial with play/pause auto-advance (4s per slide), next/prev navigation, progress dots, captions, and duration display
+  - **Interactive Tours**: react-joyride (v3.0.0-7) integration for in-app guided tours that highlight UI elements with tooltips
+- **Tutorial Screenshots**: Real application screenshots stored in `/frontend/public/tutorial_slides/` (dashboard, projects, estimator, wave grid, skills, proficiency rates, compare versions, login)
 - **Keyboard Shortcuts section**: Quick reference for Ctrl+S, Tab, Esc shortcuts
 
 ## Backend API Endpoints (New)
@@ -78,6 +80,7 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 - What-If Scenario Comparison (plan in /app/memory/WHAT_IF_SCENARIO_PLAN.md)
 - AI Integration (plan in /app/memory/AI_INTEGRATION_PLAN.md)
 - User Profile - Custom theme/background image
+- Add more interactive tour steps for deeper in-app guidance
 
 ### P2 - Future
 - Actuals Tracking & Profitability Module (spec in /app/memory/ACTUALS_MODULE_SPEC.md)
