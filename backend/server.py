@@ -441,6 +441,21 @@ class TechnologyCreate(BaseModel):
     description: Optional[str] = ""
 
 
+# Models for Sub Technologies
+class SubTechnology(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    technology_id: str
+    technology_name: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SubTechnologyCreate(BaseModel):
+    name: str
+    technology_id: str
+    technology_name: str
+
+
 # Models for Project Types
 class ProjectType(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -564,10 +579,13 @@ class Project(BaseModel):
     technology_name: str = ""
     technology_ids: List[str] = []  # Multiple technologies
     technology_names: List[str] = []
+    sub_technology_ids: List[str] = []
+    sub_technology_names: List[str] = []
     project_type_id: str = ""
     project_type_name: str = ""
     project_type_ids: List[str] = []  # Multiple project types
     project_type_names: List[str] = []
+    crm_id: str = ""
     description: Optional[str] = ""
     profit_margin_percentage: float = 35.0
     nego_buffer_percentage: float = 0.0
@@ -608,10 +626,13 @@ class ProjectCreate(BaseModel):
     technology_name: str = ""
     technology_ids: List[str] = []
     technology_names: List[str] = []
+    sub_technology_ids: List[str] = []
+    sub_technology_names: List[str] = []
     project_type_id: str = ""
     project_type_name: str = ""
     project_type_ids: List[str] = []
     project_type_names: List[str] = []
+    crm_id: str = ""
     description: Optional[str] = ""
     profit_margin_percentage: float = 35.0
     nego_buffer_percentage: float = 0.0
@@ -634,10 +655,13 @@ class ProjectUpdate(BaseModel):
     technology_name: Optional[str] = None
     technology_ids: Optional[List[str]] = None
     technology_names: Optional[List[str]] = None
+    sub_technology_ids: Optional[List[str]] = None
+    sub_technology_names: Optional[List[str]] = None
     project_type_id: Optional[str] = None
     project_type_name: Optional[str] = None
     project_type_ids: Optional[List[str]] = None
     project_type_names: Optional[List[str]] = None
+    crm_id: Optional[str] = None
     description: Optional[str] = None
     profit_margin_percentage: Optional[float] = None
     nego_buffer_percentage: Optional[float] = None
@@ -738,11 +762,11 @@ def compute_detailed_diff(old_project: dict, new_project: dict) -> dict:
         ("name", "Project Name"), ("customer_name", "Customer"), ("description", "Description"),
         ("profit_margin_percentage", "Profit Margin %"), ("nego_buffer_percentage", "Nego Buffer %"),
         ("sales_manager_name", "Sales Manager"), ("approver_email", "Approver Email"),
-        ("status", "Status"),
+        ("status", "Status"), ("crm_id", "CRM ID"),
     ]
     list_fields = [
-        ("technology_names", "Technologies"), ("project_type_names", "Project Types"),
-        ("project_location_names", "Locations"),
+        ("technology_names", "Technologies"), ("sub_technology_names", "Sub Technologies"),
+        ("project_type_names", "Project Types"), ("project_location_names", "Locations"),
     ]
     for key, label in header_fields:
         ov, nv = old_project.get(key, ""), new_project.get(key, "")
@@ -1233,6 +1257,32 @@ async def delete_technology(tech_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Technology not found")
     return {"message": "Technology deleted successfully"}
+
+
+# Sub-Technology Routes
+@api_router.post("/sub-technologies", response_model=SubTechnology)
+async def create_sub_technology(input: SubTechnologyCreate):
+    sub_tech = SubTechnology(**input.model_dump())
+    doc = sub_tech.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.sub_technologies.insert_one(doc)
+    return sub_tech
+
+@api_router.get("/sub-technologies", response_model=List[SubTechnology])
+async def get_sub_technologies():
+    items = await db.sub_technologies.find({}, {"_id": 0}).to_list(1000)
+    for item in items:
+        if isinstance(item.get('created_at'), str):
+            item['created_at'] = datetime.fromisoformat(item['created_at'])
+    return items
+
+@api_router.delete("/sub-technologies/{sub_tech_id}")
+async def delete_sub_technology(sub_tech_id: str):
+    result = await db.sub_technologies.delete_one({"id": sub_tech_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Sub-technology not found")
+    return {"message": "Sub-technology deleted successfully"}
+
 
 
 # Project Types Routes

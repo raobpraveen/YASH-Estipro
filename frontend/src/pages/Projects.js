@@ -14,9 +14,10 @@ import {
   Trash2, Edit2, Copy, FileText, GitCompare, 
   ChevronDown, ChevronRight, Clock, CheckCircle, XCircle, FileEdit,
   Bookmark, BookmarkCheck, Plus, Filter, Search, X, User, Calendar,
-  Eye, Archive, ArchiveRestore, FolderKanban, History
+  Eye, Archive, ArchiveRestore, FolderKanban, History, Download
 } from "lucide-react";
 import { toast } from "sonner";
+import ExcelJS from "exceljs";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -714,6 +715,76 @@ const Projects = () => {
     );
   };
 
+  const handleExportProjectList = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+      // Fetch ALL projects (including all versions) for the export
+      const res = await axios.get(`${API}/projects?latest_only=false`, { headers });
+      const allProjects = res.data;
+      // Group by project_number
+      const grouped = {};
+      allProjects.forEach(p => {
+        const pn = p.project_number || p.id;
+        if (!grouped[pn]) grouped[pn] = [];
+        grouped[pn].push(p);
+      });
+      // Sort versions within each group
+      Object.values(grouped).forEach(versions => versions.sort((a, b) => (a.version || 1) - (b.version || 1)));
+
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Projects List");
+      const headerRow = ws.addRow([
+        "Project #", "Version", "Project Name", "Customer", "Status",
+        "Technologies", "Sub Technologies", "Project Types", "Sales Manager",
+        "CRM ID", "Locations", "Profit Margin %", "Nego Buffer %",
+        "Created By", "Created Date", "Updated Date", "Approver", "Description"
+      ]);
+      headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      headerRow.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0EA5E9" } }; c.alignment = { horizontal: "center" }; });
+
+      Object.values(grouped).forEach(versions => {
+        versions.forEach(p => {
+          ws.addRow([
+            p.project_number || "", p.version || 1, p.name || "",
+            p.customer_name || "", (p.status || "").toUpperCase(),
+            (p.technology_names || []).join(", "), (p.sub_technology_names || []).join(", "),
+            (p.project_type_names || []).join(", "), p.sales_manager_name || "",
+            p.crm_id || "", (p.project_location_names || []).join(", "),
+            p.profit_margin_percentage || 0, p.nego_buffer_percentage || 0,
+            p.created_by_name || "", p.created_at ? new Date(p.created_at).toLocaleDateString() : "",
+            p.updated_at ? new Date(p.updated_at).toLocaleDateString() : "",
+            p.approver_email || "", p.description || ""
+          ]);
+        });
+      });
+
+      // Auto-fit columns
+      ws.columns.forEach(col => { col.width = 18; });
+      ws.getColumn(1).width = 12;
+      ws.getColumn(2).width = 8;
+      ws.getColumn(3).width = 30;
+
+      const buffer = await wb.xlsx.writeBuffer();
+      const fileName = `YASH_EstPro_Projects_List_${new Date().toISOString().slice(0,10)}.xlsx`;
+      const uploadRes = await fetch(`${API}/download-file`, {
+        method: 'POST',
+        headers: { 'X-Filename': fileName, 'X-Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+        body: buffer,
+      });
+      const { download_id } = await uploadRes.json();
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = `${API}/download-file/${download_id}`;
+      document.body.appendChild(iframe);
+      setTimeout(() => document.body.removeChild(iframe), 30000);
+      toast.success("Projects list exported successfully");
+    } catch (err) {
+      toast.error("Export failed: " + (err.message || "Unknown error"));
+    }
+  };
+
+
   return (
     <div data-testid="projects">
       <div className="flex items-center justify-between mb-8">
@@ -732,6 +803,14 @@ const Projects = () => {
           >
             <Filter className="w-4 h-4 mr-2" />
             Filters
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleExportProjectList}
+            data-testid="export-projects-excel"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export to Excel
           </Button>
           <Button
             variant="outline"

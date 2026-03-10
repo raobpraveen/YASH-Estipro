@@ -422,7 +422,12 @@ Response: { "token": "eyJ...", "user": { "id", "name", "email", "role" } }`}
                   <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/proficiency-rates</td><td className="p-2">List proficiency rates</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/notifications</td><td className="p-2">Get user notifications</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-amber-600">PUT</td><td className="p-2 font-mono">/api/notifications/mark-all-read</td><td className="p-2">Mark all notifications read</td></tr>
-                  <tr><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/audit-logs</td><td className="p-2">Get audit logs (admin)</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/audit-logs</td><td className="p-2">Get audit logs (admin)</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/sub-technologies</td><td className="p-2">List sub-technologies</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/compare-detail?v1=&v2=</td><td className="p-2">Field-level version diff</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/change-logs/{'{pn}'}</td><td className="p-2">Change history by project number</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-amber-600">PUT</td><td className="p-2 font-mono">/api/projects/{'{id}'}/obsolete</td><td className="p-2">Mark project obsolete</td></tr>
+                  <tr><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/download-file</td><td className="p-2">Upload file for download proxy</td></tr>
                 </tbody>
               </table>
             </div>

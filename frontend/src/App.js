@@ -5,6 +5,7 @@ import Layout from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
 import Customers from "@/pages/Customers";
 import Technologies from "@/pages/Technologies";
+import SubTechnologies from "@/pages/SubTechnologies";
 import ProjectTypes from "@/pages/ProjectTypes";
 import BaseLocations from "@/pages/BaseLocations";
 import SkillsManagement from "@/pages/SkillsManagement";
@@ -69,6 +70,7 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="customers" element={<Customers />} />
               <Route path="technologies" element={<Technologies />} />
+              <Route path="sub-technologies" element={<SubTechnologies />} />
               <Route path="project-types" element={<ProjectTypes />} />
               <Route path="base-locations" element={<BaseLocations />} />
               <Route path="skills" element={<SkillsManagement />} />

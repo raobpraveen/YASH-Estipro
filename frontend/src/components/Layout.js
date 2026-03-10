@@ -121,6 +121,7 @@ const Layout = ({ user, onLogout }) => {
   const masterDataItems = [
     { path: "/customers", icon: Users, label: "Customers" },
     { path: "/technologies", icon: Cpu, label: "Technologies" },
+    { path: "/sub-technologies", icon: Cpu, label: "Sub Technologies" },
     { path: "/project-types", icon: BriefcaseIcon, label: "Project Types" },
     { path: "/base-locations", icon: MapPin, label: "Base Locations" },
     { path: "/skills", icon: Layers, label: "Skills" },

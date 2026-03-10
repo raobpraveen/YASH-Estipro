@@ -55,6 +55,7 @@ const ProjectEstimator = () => {
   const [projectTypes, setProjectTypes] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [salesManagers, setSalesManagers] = useState([]);
+  const [subTechnologies, setSubTechnologies] = useState([]);
   
   // Project header
   const [projectId, setProjectId] = useState("");
@@ -64,8 +65,10 @@ const ProjectEstimator = () => {
   const [customerId, setCustomerId] = useState("");
   const [projectLocations, setProjectLocations] = useState([]); // Multiple locations
   const [technologyIds, setTechnologyIds] = useState([]); // Multiple technologies
+  const [subTechnologyIds, setSubTechnologyIds] = useState([]); // Sub technologies
   const [projectTypeIds, setProjectTypeIds] = useState([]); // Multiple project types
   const [projectDescription, setProjectDescription] = useState("");
+  const [crmId, setCrmId] = useState("");
   const [profitMarginPercentage, setProfitMarginPercentage] = useState(35);
   const [negoBufferPercentage, setNegoBufferPercentage] = useState(0);
   const [versionNotes, setVersionNotes] = useState("");
@@ -144,6 +147,7 @@ const ProjectEstimator = () => {
     fetchProjectTypes();
     fetchCustomers();
     fetchSalesManagers();
+    fetchSubTechnologies();
   }, []);
 
   useEffect(() => {
@@ -196,6 +200,8 @@ const ProjectEstimator = () => {
         setProjectTypeIds([]);
       }
       setProjectDescription(project.description || "");
+      setCrmId(project.crm_id || "");
+      setSubTechnologyIds(project.sub_technology_ids || []);
       setProfitMarginPercentage(project.profit_margin_percentage || 35);
       setNegoBufferPercentage(project.nego_buffer_percentage || 0);
       setVersionNotes(project.version_notes || "");
@@ -311,6 +317,15 @@ const ProjectEstimator = () => {
       setSalesManagers(response.data);
     } catch (error) {
       console.error("Failed to fetch sales managers");
+    }
+  };
+
+  const fetchSubTechnologies = async () => {
+    try {
+      const response = await axios.get(`${API}/sub-technologies`);
+      setSubTechnologies(response.data);
+    } catch (error) {
+      console.error("Failed to fetch sub-technologies");
     }
   };
 
@@ -1086,6 +1101,9 @@ const ProjectEstimator = () => {
     const selectedTechNames = technologyIds.map(id => 
       technologies.find(t => t.id === id)?.name || ''
     ).filter(Boolean);
+    const selectedSubTechNames = subTechnologyIds.map(id => 
+      subTechnologies.find(t => t.id === id)?.name || ''
+    ).filter(Boolean);
     const selectedTypeNames = projectTypeIds.map(id => 
       projectTypes.find(t => t.id === id)?.name || ''
     ).filter(Boolean);
@@ -1096,19 +1114,19 @@ const ProjectEstimator = () => {
       customer_name: selectedCustomer?.name || "",
       project_locations: projectLocations,
       project_location_names: selectedLocationNames,
-      // Keep single location for backward compatibility
       project_location: projectLocations[0] || "",
       project_location_name: selectedLocationNames[0] || "",
-      // Multiple technologies
       technology_ids: technologyIds,
       technology_names: selectedTechNames,
       technology_id: technologyIds[0] || "",
       technology_name: selectedTechNames[0] || "",
-      // Multiple project types
+      sub_technology_ids: subTechnologyIds,
+      sub_technology_names: selectedSubTechNames,
       project_type_ids: projectTypeIds,
       project_type_names: selectedTypeNames,
       project_type_id: projectTypeIds[0] || "",
       project_type_name: selectedTypeNames[0] || "",
+      crm_id: crmId,
       description: projectDescription,
       profit_margin_percentage: profitMarginPercentage,
       nego_buffer_percentage: negoBufferPercentage,
@@ -1400,8 +1418,10 @@ const ProjectEstimator = () => {
     setCustomerId("");
     setProjectLocations([]);
     setTechnologyIds([]);
+    setSubTechnologyIds([]);
     setProjectTypeIds([]);
     setProjectDescription("");
+    setCrmId("");
     setProfitMarginPercentage(35);
     setNegoBufferPercentage(0);
     setVersionNotes("");
@@ -1965,8 +1985,10 @@ const ProjectEstimator = () => {
       ["Project Name", projectName],
       ["Project Location(s)", projectLocations.map(code => COUNTRIES.find(c => c.code === code)?.name || code).join(", ") || "—"],
       ["Technology", technologyIds.map(id => technologies.find(t => t.id === id)?.name).filter(Boolean).join(", ") || ""],
+      ["Sub Technology", subTechnologyIds.map(id => subTechnologies.find(t => t.id === id)?.name).filter(Boolean).join(", ") || ""],
       ["Project Type", projectTypeIds.map(id => projectTypes.find(t => t.id === id)?.name).filter(Boolean).join(", ") || ""],
       ["Sales Manager", salesManagers.find(m => m.id === salesManagerId)?.name || "—"],
+      ["CRM ID", crmId || "—"],
       ["Description", projectDescription],
       ["Profit Margin %", `${profitMarginPercentage}%`],
       ["Nego Buffer %", `${negoBufferPercentage}%`],
@@ -2236,26 +2258,36 @@ const ProjectEstimator = () => {
             const cellB = (getCellVal(row.getCell(2)) || "").toString().trim().toLowerCase();
             const cellC = (getCellVal(row.getCell(3)) || "").toString().trim();
             if (!cellB) continue;
-            // Parse description patterns like "Travel MM x $50 x 30d" or "Travel Res x $450 x 6 trips"
+
+            // First try to parse from the formula in column D (most accurate if user edited the formula)
+            const cellD = row.getCell(4);
+            const formulaText = cellD?.value?.formula || "";
+            // Formula patterns: (...)*rate*days  or  (...)*rate*trips
+            const formulaMatch = formulaText.match(/\)\s*\*\s*(\d+(?:\.\d+)?)\s*\*\s*(\d+(?:\.\d+)?)\s*$/);
+            // Fallback: parse from description text in column C
             const dailyMatch = cellC.match(/\$(\d+(?:\.\d+)?)\s*x\s*(\d+)\s*d/i);
             const tripsMatch = cellC.match(/\$(\d+(?:\.\d+)?)\s*x\s*(\d+)\s*trip/i);
             const pctMatch = cellC.match(/^(\d+(?:\.\d+)?)%/);
-            if (cellB.includes("per-diem") && dailyMatch) {
-              parsedLogistics.per_diem_daily = parseFloat(dailyMatch[1]);
-              parsedLogistics.per_diem_days = parseInt(dailyMatch[2]);
-            } else if (cellB.includes("accommodation") && dailyMatch) {
-              parsedLogistics.accommodation_daily = parseFloat(dailyMatch[1]);
-              parsedLogistics.accommodation_days = parseInt(dailyMatch[2]);
-            } else if (cellB.includes("conveyance") && dailyMatch) {
-              parsedLogistics.local_conveyance_daily = parseFloat(dailyMatch[1]);
-              parsedLogistics.local_conveyance_days = parseInt(dailyMatch[2]);
-            } else if (cellB.includes("air fare") && tripsMatch) {
-              parsedLogistics.flight_cost_per_trip = parseFloat(tripsMatch[1]);
-              parsedLogistics.num_trips = parseInt(tripsMatch[2]);
-            } else if ((cellB.includes("visa") || cellB.includes("medical")) && tripsMatch) {
-              parsedLogistics.visa_medical_per_trip = parseFloat(tripsMatch[1]);
-            } else if (cellB.includes("contingency") && pctMatch) {
-              parsedLogistics.contingency_percentage = parseFloat(pctMatch[1]);
+            const pctFormulaMatch = formulaText.match(/\*\s*(\d+(?:\.\d+)?)\s*\/\s*100/);
+
+            if (cellB.includes("per-diem")) {
+              const m = formulaMatch || dailyMatch;
+              if (m) { parsedLogistics.per_diem_daily = parseFloat(m[1]); parsedLogistics.per_diem_days = parseInt(m[2]); }
+            } else if (cellB.includes("accommodation")) {
+              const m = formulaMatch || dailyMatch;
+              if (m) { parsedLogistics.accommodation_daily = parseFloat(m[1]); parsedLogistics.accommodation_days = parseInt(m[2]); }
+            } else if (cellB.includes("conveyance")) {
+              const m = formulaMatch || dailyMatch;
+              if (m) { parsedLogistics.local_conveyance_daily = parseFloat(m[1]); parsedLogistics.local_conveyance_days = parseInt(m[2]); }
+            } else if (cellB.includes("air fare")) {
+              const m = formulaMatch || tripsMatch;
+              if (m) { parsedLogistics.flight_cost_per_trip = parseFloat(m[1]); parsedLogistics.num_trips = parseInt(m[2]); }
+            } else if (cellB.includes("visa") || cellB.includes("medical")) {
+              const m = formulaMatch || tripsMatch;
+              if (m) { parsedLogistics.visa_medical_per_trip = parseFloat(m[1]); }
+            } else if (cellB.includes("contingency")) {
+              const m = pctFormulaMatch || pctMatch;
+              if (m) { parsedLogistics.contingency_percentage = parseFloat(m[1]); }
             }
           }
 
@@ -2787,6 +2819,38 @@ const ProjectEstimator = () => {
               </div>
             </div>
             <div>
+              <Label>Sub Technology</Label>
+              <div className="flex flex-wrap gap-1 min-h-[40px] p-2 border rounded-md bg-white">
+                {subTechnologyIds.map(id => {
+                  const st = subTechnologies.find(t => t.id === id);
+                  return (
+                    <Badge key={id} variant="secondary" className="flex items-center gap-1 bg-indigo-100 text-indigo-700">
+                      {st?.name || id}
+                      {!isReadOnly && (
+                        <button onClick={() => setSubTechnologyIds(subTechnologyIds.filter(t => t !== id))} className="ml-1 hover:text-red-500">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </Badge>
+                  );
+                })}
+                {!isReadOnly && (
+                  <Select value="" onValueChange={(value) => { if (value && !subTechnologyIds.includes(value)) setSubTechnologyIds([...subTechnologyIds, value]); }}>
+                    <SelectTrigger className="w-[130px] h-7 text-xs border-dashed" data-testid="sub-technology-select">
+                      <SelectValue placeholder="+ Add sub-tech" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subTechnologies
+                        .filter(st => technologyIds.includes(st.technology_id) && !subTechnologyIds.includes(st.id))
+                        .map(st => (
+                          <SelectItem key={st.id} value={st.id}>{st.name} ({st.technology_name})</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+            <div>
               <Label>Project Type(s) *</Label>
               <div className="flex flex-wrap gap-1 min-h-[40px] p-2 border rounded-md bg-white">
                 {projectTypeIds.map(id => {
@@ -2882,6 +2946,18 @@ const ProjectEstimator = () => {
                 />
                 <span className="text-sm text-gray-500">% of selling price</span>
               </div>
+            </div>
+            <div>
+              <Label htmlFor="crm-id">CRM ID</Label>
+              <Input
+                id="crm-id"
+                placeholder="CRM Identifier (max 30 chars)"
+                value={crmId}
+                onChange={(e) => setCrmId(e.target.value.slice(0, 30))}
+                maxLength={30}
+                data-testid="crm-id-input"
+                disabled={isReadOnly}
+              />
             </div>
             <div className="md:col-span-2 lg:col-span-3">
               <Label htmlFor="project-description">Description</Label>
@@ -3552,10 +3628,10 @@ const ProjectEstimator = () => {
                             <tr className="border-b-2 border-[#E2E8F0] bg-[#F8FAFC]">
                               <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 0, zIndex: 10, background: '#F8FAFC' }}></th>
                               <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 36, zIndex: 10, background: '#F8FAFC' }}>#</th>
-                              <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 72, zIndex: 10, background: '#F8FAFC', minWidth: 148 }}>Skill</th>
-                              <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 220, zIndex: 10, background: '#F8FAFC', minWidth: 128 }}>Level</th>
-                              <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 348, zIndex: 10, background: '#F8FAFC', minWidth: 140 }}>Location</th>
-                              <th className="text-right p-3 font-semibold text-sm" style={{ position: 'sticky', left: 488, zIndex: 10, background: '#F8FAFC', minWidth: 100, boxShadow: '2px 0 5px rgba(0,0,0,0.08)' }}>$/Month</th>
+                              <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 72, zIndex: 10, background: '#F8FAFC', minWidth: 140 }}>Skill</th>
+                              <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 212, zIndex: 10, background: '#F8FAFC', minWidth: 110 }}>Level</th>
+                              <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 322, zIndex: 10, background: '#F8FAFC', minWidth: 120 }}>Location</th>
+                              <th className="text-right p-3 font-semibold text-sm" style={{ position: 'sticky', left: 442, zIndex: 10, background: '#F8FAFC', minWidth: 90, boxShadow: '2px 0 5px rgba(0,0,0,0.08)' }}>$/Month</th>
                               <th className="text-center p-3 font-semibold text-sm">Onsite</th>
                               <th className="text-center p-3 font-semibold text-sm">Travel</th>
                               <th className="text-center p-2 font-semibold text-xs w-12">Grp</th>
@@ -3620,7 +3696,7 @@ const ProjectEstimator = () => {
                                     {!isReadOnly && <GripVertical className="w-4 h-4 text-gray-300 hover:text-gray-500 cursor-grab mx-auto" />}
                                   </td>
                                   <td className="p-2 text-center text-xs text-gray-400 font-mono" style={{ position: 'sticky', left: 36, zIndex: 2, background: stickyBg }}>{rowIdx + 1}</td>
-                                  <td className="p-2" style={{ position: 'sticky', left: 72, zIndex: 2, background: stickyBg, minWidth: 148 }}>
+                                  <td className="p-2" style={{ position: 'sticky', left: 72, zIndex: 2, background: stickyBg, minWidth: 140 }}>
                                     {isReadOnly ? (
                                       <Tooltip>
                                         <TooltipTrigger asChild>
@@ -3652,7 +3728,7 @@ const ProjectEstimator = () => {
                                       </Tooltip>
                                     )}
                                   </td>
-                                  <td className="p-2" style={{ position: 'sticky', left: 220, zIndex: 2, background: stickyBg, minWidth: 128 }}>
+                                  <td className="p-2" style={{ position: 'sticky', left: 212, zIndex: 2, background: stickyBg, minWidth: 110 }}>
                                     {isReadOnly ? (
                                       <span className="text-sm">{allocation.proficiency_level}</span>
                                     ) : (
@@ -3666,7 +3742,7 @@ const ProjectEstimator = () => {
                                       />
                                     )}
                                   </td>
-                                  <td className="p-2" style={{ position: 'sticky', left: 348, zIndex: 2, background: stickyBg, minWidth: 140 }}>
+                                  <td className="p-2" style={{ position: 'sticky', left: 322, zIndex: 2, background: stickyBg, minWidth: 120 }}>
                                     {isReadOnly ? (
                                       <span className="text-sm">{allocation.base_location_name}</span>
                                     ) : (
@@ -3676,11 +3752,11 @@ const ProjectEstimator = () => {
                                         options={locations.map(l => ({ value: l.id, label: l.name }))}
                                         placeholder="Location..."
                                         searchPlaceholder="Search locations..."
-                                        triggerClassName="w-[120px]"
+                                        triggerClassName="w-[110px]"
                                       />
                                     )}
                                   </td>
-                                  <td className="p-3 text-right" style={{ position: 'sticky', left: 488, zIndex: 2, background: stickyBg, minWidth: 100, boxShadow: '2px 0 5px rgba(0,0,0,0.08)' }}>
+                                  <td className="p-3 text-right" style={{ position: 'sticky', left: 442, zIndex: 2, background: stickyBg, minWidth: 90, boxShadow: '2px 0 5px rgba(0,0,0,0.08)' }}>
                                     <Input
                                       type="number"
                                       className="w-24 text-right font-mono text-sm"

@@ -20,8 +20,9 @@ const TOC = [
   { id: "quick-estimator", title: "9. Quick Estimate Calculator", icon: Calculator },
   { id: "workflow", title: "10. Approval Workflow", icon: CheckCircle },
   { id: "version-mgmt", title: "11. Versioning & Comparison", icon: FolderKanban },
-  { id: "settings", title: "12. Settings & Profile", icon: Settings },
-  { id: "shortcuts", title: "13. Keyboard Shortcuts & Tips", icon: Info },
+  { id: "smart-import", title: "12. Smart Import", icon: FileSpreadsheet },
+  { id: "settings", title: "13. Settings & Profile", icon: Settings },
+  { id: "shortcuts", title: "14. Keyboard Shortcuts & Tips", icon: Info },
 ];
 
 const Section = ({ id, title, children }) => (
@@ -163,7 +164,7 @@ export default function UserManual() {
             <KeyValue label="Dashboard">Estimations overview with analytics and KPIs.</KeyValue>
             <KeyValue label="Estimator">Create or edit project estimations.</KeyValue>
             <KeyValue label="Projects">Browse, filter, and manage all projects.</KeyValue>
-            <KeyValue label="Master Data">Manage Skills, Locations, Technologies, Customers, and more.</KeyValue>
+            <KeyValue label="Master Data">Manage Skills, Locations, Technologies, Sub Technologies, Customers, and more.</KeyValue>
             <KeyValue label="Settings">Personal profile, theme, and date format preferences.</KeyValue>
             <Tip>Use <strong>Ctrl+B</strong> (or <strong>Cmd+B</strong> on Mac) to toggle the sidebar between expanded and collapsed modes.</Tip>
           </Section>
@@ -198,7 +199,7 @@ export default function UserManual() {
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">3.2 Creating a New Project</h3>
             <Step num="1">Click <strong>"Estimator"</strong> in the sidebar.</Step>
-            <Step num="2">Fill in the project details: Name, Customer, Technology, Project Type, Sales Manager, Profit Margin %, and Nego Buffer %.</Step>
+            <Step num="2">Fill in the project details: Name, Customer, Technology, Sub Technology, Project Type, Sales Manager, CRM ID, Profit Margin %, and Nego Buffer %.</Step>
             <Step num="3">Add waves with monthly phases and resource allocations.</Step>
             <Step num="4">Click <strong>"Save"</strong> to create the project as a Draft.</Step>
 
@@ -225,6 +226,8 @@ export default function UserManual() {
             <KeyValue label="Customer">Selected from master data.</KeyValue>
             <KeyValue label="Technology">Primary technology stack.</KeyValue>
             <KeyValue label="Project Type">Category (Fixed Price, T&M, etc.).</KeyValue>
+            <KeyValue label="Sub Technology">Sub-categories linked to parent technologies (e.g., SAP FICO under SAP). Managed in Master Data.</KeyValue>
+            <KeyValue label="CRM ID">External CRM reference identifier (max 30 characters).</KeyValue>
             <KeyValue label="Sales Manager">Assigned sales contact.</KeyValue>
             <KeyValue label="Profit Margin %">Target margin applied to all resources.</KeyValue>
             <KeyValue label="Nego Buffer %">Negotiation buffer applied to the final selling price.</KeyValue>
@@ -431,24 +434,50 @@ export default function UserManual() {
           <Section id="version-mgmt" title="11. Versioning & Comparison">
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">11.1 Version Management</h3>
             <p>Every save creates a new version with a mandatory comment explaining the changes. Previous versions are preserved and accessible from the Project Summary.</p>
+            <KeyValue label="Suspended Status">When a new version is created via Smart Import, the previous version is automatically set to &quot;Suspended&quot;.</KeyValue>
+            <KeyValue label="Obsolete Status">Users can manually mark Draft or Suspended projects as Obsolete. When a version is approved, all other Draft versions are auto-obsoleted.</KeyValue>
 
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">11.2 Comparing Versions</h3>
-            <Step num="1">Navigate to a project's Summary page.</Step>
-            <Step num="2">Click <strong>"Compare Versions"</strong>.</Step>
-            <Step num="3">Select two versions to compare side-by-side.</Step>
-            <p className="text-sm mt-2">The comparison highlights changes in resources, allocations, and pricing between the selected versions.</p>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">11.2 Field-Level Version Comparison</h3>
+            <Step num="1">From the <strong>Projects List</strong>, click the <strong>Compare</strong> icon on any project row.</Step>
+            <Step num="2">Select two versions using the Baseline and Compare dropdowns.</Step>
+            <Step num="3">The diff shows all changes:</Step>
+            <ul className="list-disc pl-6 space-y-1 text-sm ml-4">
+              <li><strong>Header Changes:</strong> Profit Margin, Nego Buffer, Customer, Technologies, Sub Technologies, CRM ID, etc.</li>
+              <li><strong>Wave Changes:</strong> Added/removed waves, config changes, phase additions/removals.</li>
+              <li><strong>Resource Changes:</strong> Added/removed/modified resources with cell-level detail (e.g., &quot;Phase 3: 1.0 → 0.5&quot;).</li>
+              <li><strong>Logistics Changes:</strong> Per-diem, accommodation, flights, visa, contingency diffs.</li>
+            </ul>
+            <p className="text-sm mt-2">A summary banner at the top shows total changes, resources added/removed, and allocation changes at a glance.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">11.3 Change History</h3>
+            <p>Every save automatically records a detailed change log. Access it via the <strong>Change History</strong> tab on the comparison page. Each entry shows the timestamp, user, version, and expandable field-level changes.</p>
           </Section>
 
-          {/* Section 12: Settings */}
-          <Section id="settings" title="12. Settings & Profile">
+          {/* Section 12: Smart Import */}
+          <Section id="smart-import" title="12. Smart Import">
+            <p>Re-import an EstiPro-exported Excel file to update or create project versions.</p>
+            <Step num="1">Click <strong>Smart Import</strong> in the Estimator toolbar.</Step>
+            <Step num="2">Upload an EstiPro-exported Excel file (.xlsx).</Step>
+            <Step num="3">Review the parsed data: waves, resources, missing master data, and logistics.</Step>
+            <Step num="4">Choose an import mode:</Step>
+            <ul className="list-disc pl-6 space-y-1 text-sm ml-4">
+              <li><strong>Replace Current:</strong> Overwrites all waves locally. Save to persist.</li>
+              <li><strong>Import as New Version:</strong> Creates a new project version and suspends the current one.</li>
+            </ul>
+            <KeyValue label="Logistics Parsing">Logistics data (per-diem, accommodation, flights, etc.) is automatically parsed from both the description text and formulas in the Excel file.</KeyValue>
+            <KeyValue label="Missing Master Data">If the Excel contains skills or locations not in the system, they are auto-created during import.</KeyValue>
+          </Section>
+
+          {/* Section 13: Settings */}
+          <Section id="settings" title="13. Settings & Profile">
             <p>Access personal settings from the <strong>Settings</strong> page in the sidebar.</p>
             <KeyValue label="Theme">Choose between light and dark theme preference.</KeyValue>
             <KeyValue label="Date Format">Set your preferred date display format.</KeyValue>
             <KeyValue label="Profile">View and update your display name and email.</KeyValue>
           </Section>
 
-          {/* Section 13: Shortcuts */}
-          <Section id="shortcuts" title="13. Keyboard Shortcuts & Tips">
+          {/* Section 14: Shortcuts */}
+          <Section id="shortcuts" title="14. Keyboard Shortcuts & Tips">
             <div className="rounded-lg border overflow-hidden mt-2">
               <table className="w-full text-sm">
                 <thead className="bg-[#0F172A] text-white">
@@ -471,6 +500,9 @@ export default function UserManual() {
               <li>Use <strong>Resource Group IDs</strong> to track split deployments (e.g., same person 60% onsite, 40% offshore).</li>
               <li>Hover over <strong>Skill</strong> cells to see full descriptions without opening the dropdown.</li>
               <li>The Excel export contains <strong>live formulas</strong> &mdash; you can modify values in Excel and see recalculated results instantly.</li>
+              <li>Use <strong>CRM ID</strong> to link estimations to your external CRM system for traceability.</li>
+              <li>Export the <strong>Projects List</strong> to Excel from the Saved Projects page to get a comprehensive overview of all projects and versions.</li>
+              <li>Click on <strong>Total Projects</strong> in the Dashboard to jump directly to the Projects List.</li>
             </ul>
           </Section>
 

@@ -352,10 +352,11 @@ const Dashboard = () => {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border border-[#E2E8F0] shadow-sm" data-testid="total-projects-card">
+        <Card className="border border-[#E2E8F0] shadow-sm cursor-pointer hover:shadow-md transition-shadow" data-testid="total-projects-card" onClick={() => navigate("/projects")}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
               <FolderKanban className="w-4 h-4 text-[#0EA5E9]" />Total Projects
+              <ArrowRight className="w-3 h-3 ml-auto text-gray-400" />
             </CardTitle>
           </CardHeader>
           <CardContent>
