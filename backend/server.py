@@ -611,6 +611,10 @@ class Project(BaseModel):
     created_by_email: str = ""  # User email who created the project
     is_archived: bool = False  # Whether the project is archived
     archived_at: Optional[datetime] = None  # When the project was archived
+    # Access control fields
+    visibility: str = "public"  # public or restricted
+    restricted_user_ids: List[str] = []  # User IDs who can access restricted projects
+    restricted_user_names: List[str] = []  # User names for display
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -642,6 +646,10 @@ class ProjectCreate(BaseModel):
     approver_email: str = ""
     sales_manager_id: str = ""
     sales_manager_name: str = ""
+    # Access control
+    visibility: str = "public"
+    restricted_user_ids: List[str] = []
+    restricted_user_names: List[str] = []
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
@@ -673,6 +681,10 @@ class ProjectUpdate(BaseModel):
     sales_manager_id: Optional[str] = None
     sales_manager_name: Optional[str] = None
     is_import: Optional[bool] = None  # Flag for smart import version creation
+    # Access control
+    visibility: Optional[str] = None
+    restricted_user_ids: Optional[List[str]] = None
+    restricted_user_names: Optional[List[str]] = None
 
 # Notification model
 class Notification(BaseModel):
@@ -1535,7 +1547,7 @@ async def create_project(input: ProjectCreate, user: dict = Depends(require_auth
     return project_obj
 
 @api_router.get("/projects", response_model=List[Project])
-async def get_projects(latest_only: bool = True):
+async def get_projects(latest_only: bool = True, user: dict = Depends(require_auth)):
     # Handle legacy data: show projects where is_latest_version is True OR not set
     # Exclude archived projects
     if latest_only:
@@ -1548,28 +1560,86 @@ async def get_projects(latest_only: bool = True):
     else:
         query = {"$or": [{"is_archived": False}, {"is_archived": {"$exists": False}}]}
     projects = await db.projects.find(query, {"_id": 0}).to_list(1000)
+    
+    # Get current user details
+    current_user = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
+    user_id = user["user_id"]
+    user_email = current_user.get("email", "") if current_user else ""
+    user_role = current_user.get("role", "user") if current_user else "user"
+    
+    # Filter projects based on access control
+    filtered_projects = []
     for project in projects:
         if isinstance(project.get('created_at'), str):
             project['created_at'] = datetime.fromisoformat(project['created_at'])
         if isinstance(project.get('updated_at'), str):
             project['updated_at'] = datetime.fromisoformat(project['updated_at'])
-    return projects
+        
+        # Check access
+        visibility = project.get("visibility", "public")
+        if visibility == "public":
+            # Public projects are visible to all
+            filtered_projects.append(project)
+        else:
+            # Restricted project - check access
+            has_access = False
+            
+            # Admin always has access
+            if user_role == "admin":
+                has_access = True
+            # Creator has access
+            elif project.get("created_by_id") == user_id:
+                has_access = True
+            # Users in restricted list have access
+            elif user_id in project.get("restricted_user_ids", []):
+                has_access = True
+            # Approver has access when project is in_review
+            elif project.get("status") == "in_review" and project.get("approver_email") == user_email:
+                has_access = True
+            
+            if has_access:
+                filtered_projects.append(project)
+    
+    return filtered_projects
 
 
 @api_router.get("/projects/archived")
-async def get_archived_projects():
+async def get_archived_projects(user: dict = Depends(require_auth)):
     """Get all archived projects"""
     projects = await db.projects.find(
         {"is_archived": True, "is_latest_version": True},
         {"_id": 0}
     ).sort("archived_at", -1).to_list(500)
     
+    # Get current user details
+    current_user = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
+    user_id = user["user_id"]
+    user_email = current_user.get("email", "") if current_user else ""
+    user_role = current_user.get("role", "user") if current_user else "user"
+    
+    # Filter based on access control
+    filtered_projects = []
     for p in projects:
         if isinstance(p.get('created_at'), str):
             p['created_at'] = datetime.fromisoformat(p['created_at'])
         if isinstance(p.get('updated_at'), str):
             p['updated_at'] = datetime.fromisoformat(p['updated_at'])
-    return projects
+        
+        visibility = p.get("visibility", "public")
+        if visibility == "public":
+            filtered_projects.append(p)
+        else:
+            # Check restricted access
+            has_access = (
+                user_role == "admin" or
+                p.get("created_by_id") == user_id or
+                user_id in p.get("restricted_user_ids", []) or
+                (p.get("status") == "in_review" and p.get("approver_email") == user_email)
+            )
+            if has_access:
+                filtered_projects.append(p)
+    
+    return filtered_projects
 
 
 @api_router.get("/projects/compare-detail")
@@ -1596,7 +1666,7 @@ async def get_change_logs(project_number: str):
 
 
 @api_router.get("/projects/{project_id}", response_model=Project)
-async def get_project(project_id: str):
+async def get_project(project_id: str, user: dict = Depends(get_current_user)):
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -1604,6 +1674,24 @@ async def get_project(project_id: str):
         project['created_at'] = datetime.fromisoformat(project['created_at'])
     if isinstance(project.get('updated_at'), str):
         project['updated_at'] = datetime.fromisoformat(project['updated_at'])
+    
+    # Check access for restricted projects
+    visibility = project.get("visibility", "public")
+    if visibility == "restricted":
+        current_user = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
+        user_id = user["user_id"]
+        user_email = current_user.get("email", "") if current_user else ""
+        user_role = current_user.get("role", "user") if current_user else "user"
+        
+        has_access = (
+            user_role == "admin" or
+            project.get("created_by_id") == user_id or
+            user_id in project.get("restricted_user_ids", []) or
+            (project.get("status") == "in_review" and project.get("approver_email") == user_email)
+        )
+        if not has_access:
+            raise HTTPException(status_code=403, detail="You don't have access to this project")
+    
     return project
 
 @api_router.get("/projects/{project_id}/versions", response_model=List[Project])
@@ -1636,6 +1724,23 @@ async def update_project(project_id: str, input: ProjectUpdate, user: dict = Dep
     existing = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Check access for restricted projects
+    visibility = existing.get("visibility", "public")
+    if visibility == "restricted":
+        current_user = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
+        user_id = user["user_id"]
+        user_email = current_user.get("email", "") if current_user else ""
+        user_role = current_user.get("role", "user") if current_user else "user"
+        
+        has_access = (
+            user_role == "admin" or
+            existing.get("created_by_id") == user_id or
+            user_id in existing.get("restricted_user_ids", []) or
+            (existing.get("status") == "in_review" and existing.get("approver_email") == user_email)
+        )
+        if not has_access:
+            raise HTTPException(status_code=403, detail="You don't have access to edit this project")
     
     update_data = input.model_dump(exclude_unset=True)
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()

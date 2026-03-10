@@ -101,7 +101,10 @@ const Projects = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await axios.get(`${API}/projects`);
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/projects`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setProjects(response.data);
     } catch (error) {
       toast.error("Failed to fetch projects");
@@ -110,7 +113,10 @@ const Projects = () => {
 
   const fetchArchivedProjects = async () => {
     try {
-      const response = await axios.get(`${API}/projects/archived`);
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/projects/archived`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setArchivedProjects(response.data);
     } catch (error) {
       console.error("Failed to fetch archived projects");

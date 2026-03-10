@@ -86,6 +86,12 @@ const ProjectEstimator = () => {
   const [approvalAction, setApprovalAction] = useState("");
   const [approversList, setApproversList] = useState([]);
   
+  // Access control
+  const [visibility, setVisibility] = useState("public");
+  const [restrictedUserIds, setRestrictedUserIds] = useState([]);
+  const [restrictedUserNames, setRestrictedUserNames] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
+  
   // Waves
   const [waves, setWaves] = useState([]);
   const [activeWaveId, setActiveWaveId] = useState("");
@@ -148,6 +154,7 @@ const ProjectEstimator = () => {
     fetchCustomers();
     fetchSalesManagers();
     fetchSubTechnologies();
+    fetchAllUsers();
   }, []);
 
   useEffect(() => {
@@ -176,6 +183,18 @@ const ProjectEstimator = () => {
       setSkills(response.data);
     } catch (error) {
       console.error("Failed to fetch skills");
+    }
+  };
+
+  const fetchAllUsers = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAllUsers(response.data.filter(u => u.is_active));
+    } catch (error) {
+      console.error("Failed to fetch users");
     }
   };
 
@@ -225,6 +244,11 @@ const ProjectEstimator = () => {
       setSalesManagerId(project.sales_manager_id || "");
       setIsLatestVersion(project.is_latest_version !== false);
       setProjectCreatorId(project.created_by_id || "");
+      
+      // Access control
+      setVisibility(project.visibility || "public");
+      setRestrictedUserIds(project.restricted_user_ids || []);
+      setRestrictedUserNames(project.restricted_user_names || []);
       
       if (project.waves && project.waves.length > 0) {
         setWaves(project.waves);
@@ -1159,6 +1183,10 @@ const ProjectEstimator = () => {
       approver_email: approverEmail,
       sales_manager_id: salesManagerId,
       sales_manager_name: salesManagers.find(m => m.id === salesManagerId)?.name || "",
+      // Access control
+      visibility: visibility,
+      restricted_user_ids: restrictedUserIds,
+      restricted_user_names: restrictedUserNames,
     };
   };
 
@@ -2976,6 +3004,83 @@ const ProjectEstimator = () => {
                 disabled={isReadOnly}
               />
             </div>
+            {/* Access Control */}
+            <div>
+              <Label htmlFor="visibility">Visibility</Label>
+              <Select
+                value={visibility}
+                onValueChange={(val) => {
+                  setVisibility(val);
+                  if (val === "public") {
+                    setRestrictedUserIds([]);
+                    setRestrictedUserNames([]);
+                  }
+                }}
+                disabled={isReadOnly}
+              >
+                <SelectTrigger id="visibility" data-testid="visibility-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Public (All users)</SelectItem>
+                  <SelectItem value="restricted">Restricted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {visibility === "restricted" && (
+              <div className="md:col-span-2">
+                <Label>Restricted Users (can view & edit)</Label>
+                <div className="flex flex-wrap gap-2 p-2 border rounded-md min-h-[40px] bg-white">
+                  {restrictedUserIds.map((userId, idx) => {
+                    const user = allUsers.find(u => u.id === userId);
+                    return (
+                      <Badge key={userId} variant="secondary" className="flex items-center gap-1">
+                        {user?.name || restrictedUserNames[idx] || userId}
+                        {!isReadOnly && (
+                          <X 
+                            className="w-3 h-3 cursor-pointer" 
+                            onClick={() => {
+                              setRestrictedUserIds(prev => prev.filter(id => id !== userId));
+                              setRestrictedUserNames(prev => prev.filter((_, i) => i !== idx));
+                            }}
+                          />
+                        )}
+                      </Badge>
+                    );
+                  })}
+                  {!isReadOnly && (
+                    <Select
+                      value=""
+                      onValueChange={(userId) => {
+                        if (userId && !restrictedUserIds.includes(userId)) {
+                          const user = allUsers.find(u => u.id === userId);
+                          if (user) {
+                            setRestrictedUserIds(prev => [...prev, userId]);
+                            setRestrictedUserNames(prev => [...prev, user.name]);
+                          }
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-[180px] h-8 text-xs" data-testid="add-restricted-user">
+                        <SelectValue placeholder="+ Add user..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allUsers
+                          .filter(u => u.id !== currentUser.id && !restrictedUserIds.includes(u.id))
+                          .map(u => (
+                            <SelectItem key={u.id} value={u.id}>
+                              {u.name} ({u.email})
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  You (creator) and the approver always have access
+                </p>
+              </div>
+            )}
             <div className="md:col-span-2 lg:col-span-3">
               <Label htmlFor="project-description">Description</Label>
               <Textarea
