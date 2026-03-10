@@ -923,51 +923,118 @@ def compute_detailed_diff(old_project: dict, new_project: dict) -> dict:
     total_changes = len(header_diff) + total_res_added + total_res_removed + total_res_modified + total_alloc_changes + total_logistics_changes
     
     # Calculate key metrics for summary comparison
-    def calculate_metrics(project):
+    def calculate_metrics(project, include_wave_metrics=False):
         waves = project.get("waves") or []
         total_resources = 0
         total_mm = 0.0
         onsite_mm = 0.0
         offshore_mm = 0.0
-        total_cost = 0.0
-        selling_price = 0.0
+        onsite_cost = 0.0
+        offshore_cost = 0.0
+        onsite_selling = 0.0
+        offshore_selling = 0.0
+        total_logistics = 0.0
         profit_margin = project.get("profit_margin_percentage", 0)
         
+        wave_metrics = []
+        
         for wave in waves:
+            wave_name = wave.get("name", "Wave")
+            wave_resources = 0
+            wave_mm = 0.0
+            wave_onsite_mm = 0.0
+            wave_offshore_mm = 0.0
+            wave_onsite_cost = 0.0
+            wave_offshore_cost = 0.0
+            wave_onsite_selling = 0.0
+            wave_offshore_selling = 0.0
+            wave_logistics = 0.0
+            
             allocs = wave.get("grid_allocations") or []
-            total_resources += len(allocs)
+            wave_resources = len(allocs)
+            total_resources += wave_resources
+            
             for alloc in allocs:
                 phase_allocs = alloc.get("phase_allocations") or {}
                 mm = sum(float(v) for v in phase_allocs.values() if v)
+                wave_mm += mm
                 total_mm += mm
                 is_onsite = alloc.get("is_onsite", False)
-                if is_onsite:
-                    onsite_mm += mm
-                else:
-                    offshore_mm += mm
                 
                 # Calculate cost
                 salary = alloc.get("avg_monthly_salary", 0) or 0
                 overhead_pct = alloc.get("overhead_percentage", 0) or 0
                 base_cost = salary * mm
                 overhead_cost = base_cost * (overhead_pct / 100)
+                resource_cost = base_cost + overhead_cost
                 margin = profit_margin / 100 if profit_margin else 0
-                resource_selling = (base_cost + overhead_cost) * (1 + margin)
-                total_cost += base_cost + overhead_cost
-                selling_price += resource_selling
+                resource_selling = resource_cost * (1 + margin)
+                
+                if is_onsite:
+                    onsite_mm += mm
+                    onsite_cost += resource_cost
+                    onsite_selling += resource_selling
+                    wave_onsite_mm += mm
+                    wave_onsite_cost += resource_cost
+                    wave_onsite_selling += resource_selling
+                else:
+                    offshore_mm += mm
+                    offshore_cost += resource_cost
+                    offshore_selling += resource_selling
+                    wave_offshore_mm += mm
+                    wave_offshore_cost += resource_cost
+                    wave_offshore_selling += resource_selling
+            
+            # Calculate logistics for wave
+            lc = wave.get("logistics_config") or {}
+            duration = wave.get("duration_months", 0) or 0
+            travel_resources = sum(1 for a in allocs if a.get("travel_required"))
+            if travel_resources > 0 and duration > 0:
+                per_diem = (lc.get("per_diem_daily", 0) or 0) * (lc.get("per_diem_days", 0) or 0) * duration * travel_resources
+                accommodation = (lc.get("accommodation_daily", 0) or 0) * (lc.get("accommodation_days", 0) or 0) * duration * travel_resources
+                conveyance = (lc.get("local_conveyance_daily", 0) or 0) * (lc.get("local_conveyance_days", 0) or 0) * duration * travel_resources
+                flights = (lc.get("flight_cost_per_trip", 0) or 0) * (lc.get("num_trips", 0) or 0) * travel_resources
+                visa = (lc.get("visa_medical_per_trip", 0) or 0) * (lc.get("num_trips", 0) or 0) * travel_resources
+                wave_logistics = per_diem + accommodation + conveyance + flights + visa
+                contingency = wave_logistics * ((lc.get("contingency_percentage", 0) or 0) / 100)
+                wave_logistics += contingency
+            
+            total_logistics += wave_logistics
+            
+            if include_wave_metrics:
+                wave_metrics.append({
+                    "wave_name": wave_name,
+                    "resources": wave_resources,
+                    "total_mm": round(wave_mm, 2),
+                    "onsite_mm": round(wave_onsite_mm, 2),
+                    "offshore_mm": round(wave_offshore_mm, 2),
+                    "avg_onsite_cost_per_mm": round(wave_onsite_cost / wave_onsite_mm, 0) if wave_onsite_mm > 0 else 0,
+                    "avg_offshore_cost_per_mm": round(wave_offshore_cost / wave_offshore_mm, 0) if wave_offshore_mm > 0 else 0,
+                    "avg_onsite_selling_per_mm": round(wave_onsite_selling / wave_onsite_mm, 0) if wave_onsite_mm > 0 else 0,
+                    "avg_offshore_selling_per_mm": round(wave_offshore_selling / wave_offshore_mm, 0) if wave_offshore_mm > 0 else 0,
+                    "logistics": round(wave_logistics, 0),
+                })
         
-        return {
+        result = {
             "total_resources": total_resources,
             "total_mm": round(total_mm, 2),
             "onsite_mm": round(onsite_mm, 2),
             "offshore_mm": round(offshore_mm, 2),
-            "total_cost": round(total_cost, 0),
-            "selling_price": round(selling_price, 0),
+            "avg_onsite_cost_per_mm": round(onsite_cost / onsite_mm, 0) if onsite_mm > 0 else 0,
+            "avg_offshore_cost_per_mm": round(offshore_cost / offshore_mm, 0) if offshore_mm > 0 else 0,
+            "avg_onsite_selling_per_mm": round(onsite_selling / onsite_mm, 0) if onsite_mm > 0 else 0,
+            "avg_offshore_selling_per_mm": round(offshore_selling / offshore_mm, 0) if offshore_mm > 0 else 0,
+            "total_cost": round(onsite_cost + offshore_cost, 0),
+            "selling_price": round(onsite_selling + offshore_selling, 0),
+            "logistics": round(total_logistics, 0),
             "profit_margin": profit_margin,
         }
+        if include_wave_metrics:
+            result["wave_metrics"] = wave_metrics
+        return result
     
-    old_metrics = calculate_metrics(old_project)
-    new_metrics = calculate_metrics(new_project)
+    old_metrics = calculate_metrics(old_project, include_wave_metrics=True)
+    new_metrics = calculate_metrics(new_project, include_wave_metrics=True)
     
     return {
         "summary": {

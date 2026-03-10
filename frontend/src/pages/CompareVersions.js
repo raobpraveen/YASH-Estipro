@@ -196,11 +196,11 @@ const CompareVersions = () => {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-800">
                       <TrendingUp className="w-5 h-5 text-sky-600" /> Key Metrics Summary
-                      <Badge variant="outline" className="ml-2 text-xs">For Reviewer</Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                  <CardContent className="space-y-4">
+                    {/* Project-Level Metrics */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                       <MetricCard 
                         icon={<Users className="w-4 h-4" />}
                         label="Total Resources"
@@ -230,6 +230,40 @@ const CompareVersions = () => {
                       />
                       <MetricCard 
                         icon={<DollarSign className="w-4 h-4" />}
+                        label="Avg Onsite Cost/MM"
+                        oldVal={diff.metrics.old.avg_onsite_cost_per_mm}
+                        newVal={diff.metrics.new.avg_onsite_cost_per_mm}
+                        prefix="$"
+                        format="currency"
+                      />
+                      <MetricCard 
+                        icon={<DollarSign className="w-4 h-4" />}
+                        label="Avg Offshore Cost/MM"
+                        oldVal={diff.metrics.old.avg_offshore_cost_per_mm}
+                        newVal={diff.metrics.new.avg_offshore_cost_per_mm}
+                        prefix="$"
+                        format="currency"
+                      />
+                      <MetricCard 
+                        icon={<DollarSign className="w-4 h-4" />}
+                        label="Avg Onsite Sell/MM"
+                        oldVal={diff.metrics.old.avg_onsite_selling_per_mm}
+                        newVal={diff.metrics.new.avg_onsite_selling_per_mm}
+                        prefix="$"
+                        format="currency"
+                        inverseColor
+                      />
+                      <MetricCard 
+                        icon={<DollarSign className="w-4 h-4" />}
+                        label="Avg Offshore Sell/MM"
+                        oldVal={diff.metrics.old.avg_offshore_selling_per_mm}
+                        newVal={diff.metrics.new.avg_offshore_selling_per_mm}
+                        prefix="$"
+                        format="currency"
+                        inverseColor
+                      />
+                      <MetricCard 
+                        icon={<DollarSign className="w-4 h-4" />}
                         label="Total Cost"
                         oldVal={diff.metrics.old.total_cost}
                         newVal={diff.metrics.new.total_cost}
@@ -243,6 +277,15 @@ const CompareVersions = () => {
                         newVal={diff.metrics.new.selling_price}
                         prefix="$"
                         format="currency"
+                        inverseColor
+                      />
+                      <MetricCard 
+                        icon={<Truck className="w-4 h-4" />}
+                        label="Logistics"
+                        oldVal={diff.metrics.old.logistics}
+                        newVal={diff.metrics.new.logistics}
+                        prefix="$"
+                        format="currency"
                       />
                       <MetricCard 
                         icon={<TrendingUp className="w-4 h-4" />}
@@ -252,6 +295,38 @@ const CompareVersions = () => {
                         suffix="%"
                       />
                     </div>
+                    
+                    {/* Wave-Level Metrics */}
+                    {diff.metrics.old.wave_metrics && diff.metrics.new.wave_metrics && (
+                      <div className="pt-3 border-t">
+                        <h4 className="text-sm font-semibold text-slate-700 mb-3">Wave-Level Breakdown</h4>
+                        <div className="space-y-4">
+                          {diff.metrics.new.wave_metrics.map((newWave, idx) => {
+                            const oldWave = diff.metrics.old.wave_metrics[idx] || {
+                              resources: 0, total_mm: 0, onsite_mm: 0, offshore_mm: 0,
+                              avg_onsite_cost_per_mm: 0, avg_offshore_cost_per_mm: 0,
+                              avg_onsite_selling_per_mm: 0, avg_offshore_selling_per_mm: 0, logistics: 0
+                            };
+                            return (
+                              <div key={idx} className="bg-white/60 rounded-lg p-3 border border-sky-100">
+                                <h5 className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">{newWave.wave_name}</h5>
+                                <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-2">
+                                  <MetricCard icon={<Users className="w-3 h-3" />} label="Resources" oldVal={oldWave.resources} newVal={newWave.resources} />
+                                  <MetricCard icon={<Calendar className="w-3 h-3" />} label="Total MM" oldVal={oldWave.total_mm} newVal={newWave.total_mm} />
+                                  <MetricCard icon={<Calendar className="w-3 h-3" />} label="Onsite MM" oldVal={oldWave.onsite_mm} newVal={newWave.onsite_mm} />
+                                  <MetricCard icon={<Calendar className="w-3 h-3" />} label="Offshore MM" oldVal={oldWave.offshore_mm} newVal={newWave.offshore_mm} />
+                                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Onsite $/MM" oldVal={oldWave.avg_onsite_cost_per_mm} newVal={newWave.avg_onsite_cost_per_mm} prefix="$" format="currency" />
+                                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Offshore $/MM" oldVal={oldWave.avg_offshore_cost_per_mm} newVal={newWave.avg_offshore_cost_per_mm} prefix="$" format="currency" />
+                                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Onsite Sell/MM" oldVal={oldWave.avg_onsite_selling_per_mm} newVal={newWave.avg_onsite_selling_per_mm} prefix="$" format="currency" inverseColor />
+                                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Offshore Sell/MM" oldVal={oldWave.avg_offshore_selling_per_mm} newVal={newWave.avg_offshore_selling_per_mm} prefix="$" format="currency" inverseColor />
+                                  <MetricCard icon={<Truck className="w-3 h-3" />} label="Logistics" oldVal={oldWave.logistics} newVal={newWave.logistics} prefix="$" format="currency" />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -514,7 +589,7 @@ const SummaryPill = ({ icon, count, label, color }) => (
   </div>
 );
 
-const MetricCard = ({ icon, label, oldVal, newVal, prefix = "", suffix = "", format = "number" }) => {
+const MetricCard = ({ icon, label, oldVal, newVal, prefix = "", suffix = "", format = "number", inverseColor = false }) => {
   const formatValue = (val) => {
     if (format === "currency" && val >= 1000) {
       return val >= 1000000 ? `${(val / 1000000).toFixed(1)}M` : `${(val / 1000).toFixed(0)}K`;
@@ -523,6 +598,8 @@ const MetricCard = ({ icon, label, oldVal, newVal, prefix = "", suffix = "", for
   };
   const changed = oldVal !== newVal;
   const increased = newVal > oldVal;
+  // For selling price, decrease is good (green), increase is bad (red) - use inverseColor prop
+  const isPositive = inverseColor ? !increased : increased;
   const changePercent = oldVal > 0 ? Math.round(((newVal - oldVal) / oldVal) * 100) : (newVal > 0 ? 100 : 0);
   
   return (
@@ -532,14 +609,18 @@ const MetricCard = ({ icon, label, oldVal, newVal, prefix = "", suffix = "", for
         <span className="text-xs font-medium">{label}</span>
       </div>
       <div className="flex items-baseline gap-1">
-        <span className="text-xs text-gray-400 line-through">{prefix}{formatValue(oldVal)}{suffix}</span>
-        <ArrowRight className="w-3 h-3 text-gray-300" />
-        <span className={`text-sm font-bold ${changed ? (increased ? "text-emerald-600" : "text-red-600") : "text-gray-700"}`}>
+        {changed ? (
+          <>
+            <span className="text-xs text-gray-400 line-through">{prefix}{formatValue(oldVal)}{suffix}</span>
+            <ArrowRight className="w-3 h-3 text-gray-300" />
+          </>
+        ) : null}
+        <span className={`text-sm font-bold ${changed ? (isPositive ? "text-emerald-600" : "text-red-600") : "text-gray-700"}`}>
           {prefix}{formatValue(newVal)}{suffix}
         </span>
       </div>
       {changed && (
-        <div className={`text-xs mt-1 flex items-center gap-0.5 ${increased ? "text-emerald-600" : "text-red-600"}`}>
+        <div className={`text-xs mt-1 flex items-center gap-0.5 ${isPositive ? "text-emerald-600" : "text-red-600"}`}>
           {increased ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
           {changePercent > 0 ? "+" : ""}{changePercent}%
         </div>
