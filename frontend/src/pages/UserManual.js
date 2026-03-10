@@ -288,7 +288,19 @@ export default function UserManual() {
             </div>
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.2 Frozen Columns</h3>
-            <p>The first five columns (<strong>#, Skill, Level, Location</strong>) are frozen and remain visible when you scroll the grid horizontally. This allows you to always identify which resource you're viewing even when scrolling to the Selling Price or Hourly columns on the right.</p>
+            <p>The following columns are <strong>frozen</strong> (sticky) and remain visible when scrolling the grid horizontally:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm ml-4">
+              <li><strong>#</strong> - Row number</li>
+              <li><strong>Skill</strong> - Resource skill/role</li>
+              <li><strong>Level</strong> - Proficiency level (Junior, Mid, Senior, Lead)</li>
+              <li><strong>Location</strong> - Base location</li>
+              <li><strong>$/Month</strong> - Monthly salary</li>
+              <li><strong>Onsite</strong> - ON/OFF toggle for onsite status</li>
+              <li><strong>Travel</strong> - YES/NO toggle for travel logistics</li>
+              <li><strong>Grp</strong> - Resource Group ID</li>
+            </ul>
+            <p className="text-sm mt-2">A shadow separator appears after the Grp column, visually distinguishing the frozen identification columns from the scrollable phase allocation and cost columns.</p>
+            <Tip>This design allows you to always identify which resource you're viewing while scrolling to the monthly allocations, Selling Price, or Override Hourly columns on the right.</Tip>
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.3 Row Operations</h3>
             <KeyValue label="Add Resource">Opens a dialog to select Skill, Level, Location. Salary is auto-populated.</KeyValue>
@@ -474,19 +486,35 @@ export default function UserManual() {
             <KeyValue label="Suspended Status">When a new version is created via Smart Import, the previous version is automatically set to &quot;Suspended&quot;.</KeyValue>
             <KeyValue label="Obsolete Status">Users can manually mark Draft or Suspended projects as Obsolete. When a version is approved, all other Draft versions are auto-obsoleted.</KeyValue>
 
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">12.2 Version Comparison Summary</h3>
-            <p>The version comparison page shows a <strong>Key Metrics Summary</strong> at the top, ideal for reviewers to quickly assess what changed:</p>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">12.2 Key Metrics Summary</h3>
+            <p>The version comparison page displays a <strong>Key Metrics Summary</strong> card showing project-level changes at a glance:</p>
             <ul className="list-disc pl-6 space-y-1 text-sm ml-4">
               <li><strong>Total Resources:</strong> Change in total number of resources across all waves.</li>
-              <li><strong>Total Man-Months:</strong> Overall effort change (e.g., "45 → 52 MM").</li>
+              <li><strong>Total Man-Months:</strong> Overall effort change (e.g., "564.75 → 549.25 MM").</li>
               <li><strong>Onsite MM / Offshore MM:</strong> Breakdown by location type.</li>
-              <li><strong>Total Cost:</strong> Base salary cost comparison.</li>
-              <li><strong>Selling Price:</strong> Final price before nego buffer.</li>
+              <li><strong>Avg Onsite Cost/MM:</strong> Average cost per man-month for onsite resources.</li>
+              <li><strong>Avg Offshore Cost/MM:</strong> Average cost per man-month for offshore resources.</li>
+              <li><strong>Avg Onsite Sell/MM:</strong> Average selling price per man-month for onsite resources.</li>
+              <li><strong>Avg Offshore Sell/MM:</strong> Average selling price per man-month for offshore resources.</li>
+              <li><strong>Total Cost:</strong> Base salary + overhead cost comparison.</li>
+              <li><strong>Selling Price:</strong> Final price (decrease shown in <span className="text-green-600 font-bold">green</span> as savings).</li>
+              <li><strong>Logistics:</strong> Total logistics cost across all waves.</li>
               <li><strong>Profit Margin %:</strong> Margin percentage change.</li>
             </ul>
-            <Tip>The summary metrics help approvers quickly identify financial impact without reviewing every resource change.</Tip>
+            <Tip>When values are unchanged between versions, no strikethrough is shown. For selling price, a decrease appears in green (cost savings are positive!).</Tip>
 
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">12.3 Field-Level Version Comparison</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">12.3 Wave-Level Breakdown</h3>
+            <p>Below the project summary, a collapsible <strong>Wave-Level Breakdown</strong> section shows metrics for each wave individually:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm ml-4">
+              <li>Click <strong>"Wave-Level Breakdown"</strong> to expand the section.</li>
+              <li>Each wave has its own <strong>collapse/expand toggle</strong> for detailed metrics.</li>
+              <li>Waves with changes display a <strong>"Changed"</strong> badge and amber border.</li>
+              <li>Quick summary on each row: Resources, MM, Logistics cost.</li>
+              <li>Use <strong>"Expand All"</strong> / <strong>"Collapse All"</strong> buttons for bulk control.</li>
+            </ul>
+            <p className="text-sm mt-2">Per-wave metrics include: Resources, Total MM, Onsite MM, Offshore MM, Onsite $/MM, Offshore $/MM, Onsite Sell/MM, Offshore Sell/MM, and Logistics.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">12.4 Field-Level Version Comparison</h3>
             <Step num="1">From the <strong>Projects List</strong>, click the <strong>Compare</strong> icon on any project row.</Step>
             <Step num="2">Select two versions using the Baseline and Compare dropdowns.</Step>
             <Step num="3">The diff shows all changes:</Step>
@@ -498,7 +526,7 @@ export default function UserManual() {
             </ul>
             <p className="text-sm mt-2">A summary banner at the top shows total changes, resources added/removed, and allocation changes at a glance.</p>
 
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">12.4 Change History</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">12.5 Change History</h3>
             <p>Every save automatically records a detailed change log. Access it via the <strong>Change History</strong> tab on the comparison page. Each entry shows the timestamp, user, version, and expandable field-level changes.</p>
           </Section>
 

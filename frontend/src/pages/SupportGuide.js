@@ -432,6 +432,8 @@ Response: { "token": "eyJ...", "user": { "id", "name", "email", "role" } }`}
                   <tr className="border-b"><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/projects</td><td className="p-2">Create new project</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-amber-600">PUT</td><td className="p-2 font-mono">/api/projects/{'{id}'}</td><td className="p-2">Update project</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-red-600">DELETE</td><td className="p-2 font-mono">/api/projects/{'{id}'}</td><td className="p-2">Delete project</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/compare-detail</td><td className="p-2">Compare two versions (returns metrics + diff)</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/changelog</td><td className="p-2">Get project change history</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/projects/{'{id}'}/submit</td><td className="p-2">Submit for review</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/projects/{'{id}'}/approve</td><td className="p-2">Approve project</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/projects/{'{id}'}/reject</td><td className="p-2">Reject project</td></tr>
@@ -450,6 +452,42 @@ Response: { "token": "eyJ...", "user": { "id", "name", "email", "role" } }`}
               </table>
             </div>
             <Tip>All API responses follow a consistent JSON format. Error responses include a <code className="bg-gray-100 px-1 rounded">detail</code> field with a human-readable error message.</Tip>
+            
+            <h3 className="text-lg font-semibold text-[#10B981] mt-6">9.3 Version Comparison Response</h3>
+            <p>The <code className="bg-gray-100 px-1 rounded">/api/projects/compare-detail</code> endpoint returns comprehensive metrics for version comparison:</p>
+            <CodeBlock title="GET /api/projects/compare-detail?left_id=xxx&right_id=yyy">
+{`{
+  "summary": {
+    "total_changes": 15,
+    "header_changes": 2,
+    "resources_added": 3,
+    "resources_removed": 1,
+    "resources_modified": 5,
+    "allocation_changes": 10,
+    "logistics_changes": 2
+  },
+  "metrics": {
+    "old": {
+      "total_resources": 84,
+      "total_mm": 564.75,
+      "onsite_mm": 150.5,
+      "offshore_mm": 414.25,
+      "avg_onsite_cost_per_mm": 8000,
+      "avg_offshore_cost_per_mm": 4000,
+      "avg_onsite_selling_per_mm": 10000,
+      "avg_offshore_selling_per_mm": 5000,
+      "total_cost": 2700000,
+      "selling_price": 3700000,
+      "logistics": 448000,
+      "profit_margin": 35,
+      "wave_metrics": [ /* per-wave breakdown */ ]
+    },
+    "new": { /* same structure as old */ }
+  },
+  "header_diff": [ /* field-level diffs */ ],
+  "wave_diffs": [ /* per-wave resource/allocation diffs */ ]
+}`}
+            </CodeBlock>
           </Section>
 
           {/* Section 10: Deployment */}
