@@ -8,13 +8,13 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 - **Cost Calculation**: Base Cost, Overheads, CTC, Profit Margin, Selling Price, Logistics, Override $/Hr
 - **Project & Version Management**: Full lifecycle with versioning, cloning, version comments
 - **Workflow**: Draft > In Review > Approved > Rejected > Suspended > Obsolete
-- **Master Data**: Full CRUD for Skills, Locations, Technologies, Customers, Proficiency Rates, etc.
-- **Dashboard & Analytics**: KPIs, charts, filtering
-- **Excel Export**: Formula-powered with color coding, color legend, and override support
-- **Excel Smart Import**: Re-import EstiPro-exported Excel files with auto-creation of missing master data, logistics parsing, and "Import as New Version" capability
-- **Authentication**: JWT-based with role-based access (Admin, Approver, User)
-- **Documentation**: In-app User Manual and Support Guide
+- **Master Data**: Full CRUD for Skills, Locations, Technologies, Sub Technologies, Customers, Proficiency Rates, etc.
+- **Dashboard & Analytics**: KPIs, charts, filtering, clickable Total Projects card
+- **Excel Export**: Formula-powered with color coding, color legend, override support, CRM ID, Sub Technologies
+- **Excel Smart Import**: Re-import Excel files with logistics parsing from formulas, "Import as New Version"
 - **Version Comparison**: Field-level diff between any two versions + automated change history log
+- **Authentication**: JWT-based with role-based access (Admin, Approver, User)
+- **Documentation**: In-app User Manual and Support Guide (updated with all features)
 
 ## Architecture
 - **Frontend**: React 18 + Tailwind CSS + Shadcn UI
@@ -26,6 +26,7 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 - Email: admin@yash.com / Password: password
 
 ## What's Been Implemented
+
 ### Core Features (Complete)
 - JWT Authentication & Role-based access control
 - Project CRUD with versioning
@@ -34,49 +35,36 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 - Auto salary lookup from proficiency rates
 - Cost calculations (Salary, Overhead, CTC, Selling Price)
 - Logistics configuration per wave
-- Formula-powered Excel export with color coding & color legend
+- Formula-powered Excel export
 - Quick Estimate Calculator
-- Dashboard ("Estimations Overview") with analytics & charts
+- Dashboard with analytics & charts
 - Notification system (in-app + email)
-- Audit logs
-- Master data management (Skills, Locations, Customers, Technologies, Project Types, Sales Managers, Proficiency Rates)
-- User management (admin)
-- Project cloning & archiving
-- Settings & profile
+- Audit logs, Master data management, User management
+- Project cloning, archiving, version comparison
 
-### Recent Additions (March 2026)
-- Resource Group ID feature with grid coloring
-- Frozen columns (first 5 + $/Month) for grid navigation
-- CTC Analytics cards
-- User Manual & Support Guide pages
-- Custom Selling Price Override (Ovr $/Hr)
-- Smart Import with logistics parsing and "Import as New Version"
-- Suspended & Obsolete project statuses
-- Mark Obsolete button with confirmation dialog
-- Auto-obsolete Draft versions on approval
+### Session Additions (March 2026)
+- **CRM ID**: New field (max 30 chars) in project info area, included in Excel export
+- **Sub Technologies**: New master data entity linked to parent Technology, multi-select in project form, CRUD page with filter
+- **Grid Column Overlap Fix**: Reduced sticky column widths (total frozen: 532px vs 588px), Onsite/Travel now fully visible
+- **Projects List Excel Export**: "Export to Excel" button on Projects page, includes all versions with Technologies, Sub Tech, Project Types, Sales Manager, CRM ID columns
+- **Dashboard Navigation**: Total Projects card clickable → navigates to /projects
+- **Smart Import Logistics Fix**: Now reads from Excel formula column D (not just description text column C)
+- **Version Comparison**: Field-level diff with summary banner, header/wave/resource/allocation/logistics diffs
+- **Change History**: Auto-records field-level changes on every save in change_logs collection
+- **Suspended & Obsolete Statuses**: New project statuses with auto-obsolete on approval
+- **Mark Obsolete Button**: Confirmation dialog for project creators
+- **Excel Export Fix**: Backend download proxy (POST + GET) bypasses iframe/popup blockers
+- **Documentation Updated**: UserManual.js and SupportGuide.js reflect all new features
 
-### Latest Additions (March 9, 2026)
-- **Version Comparison (Field-Level Diff)**: Complete rewrite of CompareVersions.js with:
-  - Summary banner showing total changes, header/resource/allocation/logistics counts
-  - Header diff table (profit margin, nego buffer, customer, technologies, locations, etc.)
-  - Wave-by-wave diff with expandable sections
-  - Resource-level diff showing added/removed/modified resources
-  - Cell-level allocation diff (Phase X: 1.0 → 0.5)
-  - Logistics config diff per wave
-  - Unchanged resources hidden with count
-- **Change History (Audit Log)**: Auto-records every save with detailed field-level diffs
-  - Stored in `change_logs` MongoDB collection
-  - Accessible via "Change History" tab on the comparison page
-  - Shows timestamp, user, version, expandable details
-  - Backend API: GET /api/change-logs/{project_number}
-- **Excel Export Fix**: Replaced client-side blob download with backend download proxy (POST buffer → GET with Content-Disposition)
-
-## Backend API Endpoints (Key)
-- POST /api/download-file → Upload file buffer, returns download_id
-- GET /api/download-file/{download_id} → Serve file as HTTP download
-- GET /api/projects/compare-detail?v1={id}&v2={id} → Field-level diff
-- GET /api/change-logs/{project_number} → Change history
-- PUT /api/projects/{project_id}/obsolete → Mark project obsolete
+## Backend API Endpoints (New)
+- POST /api/sub-technologies — Create sub-technology
+- GET /api/sub-technologies — List all sub-technologies
+- DELETE /api/sub-technologies/{id} — Delete sub-technology
+- GET /api/projects/compare-detail?v1={id}&v2={id} — Field-level version diff
+- GET /api/change-logs/{project_number} — Change history
+- PUT /api/projects/{project_id}/obsolete — Mark project obsolete
+- POST /api/download-file — Upload file buffer, returns download_id
+- GET /api/download-file/{download_id} — Serve file as HTTP download
 
 ## Prioritized Backlog
 ### P1 - Upcoming
