@@ -96,6 +96,10 @@ const ProjectEstimator = () => {
   const [waves, setWaves] = useState([]);
   const [activeWaveId, setActiveWaveId] = useState("");
   
+  // Grid split pane width
+  const [leftPaneWidth, setLeftPaneWidth] = useState(620);
+  const [isResizing, setIsResizing] = useState(false);
+  
   // Dialog states
   const [addWaveDialogOpen, setAddWaveDialogOpen] = useState(false);
   const [addResourceDialogOpen, setAddResourceDialogOpen] = useState(false);
@@ -688,6 +692,34 @@ const ProjectEstimator = () => {
         : w
     ));
   };
+
+  // Split pane resize handlers
+  const handleResizeStart = (e) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  useEffect(() => {
+    const handleResizeMove = (e) => {
+      if (!isResizing) return;
+      const container = document.getElementById('grid-split-container');
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const newWidth = Math.min(Math.max(400, e.clientX - rect.left), 900);
+        setLeftPaneWidth(newWidth);
+      }
+    };
+    const handleResizeEnd = () => setIsResizing(false);
+    
+    if (isResizing) {
+      document.addEventListener('mousemove', handleResizeMove);
+      document.addEventListener('mouseup', handleResizeEnd);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleResizeMove);
+      document.removeEventListener('mouseup', handleResizeEnd);
+    };
+  }, [isResizing]);
 
   const handleAllocationCommentChange = (waveId, allocationId, comment) => {
     const words = comment.split(/\s+/).filter(w => w.length > 0);
@@ -3745,40 +3777,42 @@ const ProjectEstimator = () => {
                       </div>
                     ) : (
                       <DragDropContext onDragEnd={(result) => handleDragEnd(result, wave.id)}>
-                      <div className="overflow-x-auto border border-[#E2E8F0] rounded">
+                      <div className="overflow-x-auto border border-[#E2E8F0] rounded" id="grid-split-container">
                         <table className="w-full border-collapse">
                           <thead>
                             <tr className="border-b-2 border-[#E2E8F0] bg-[#F8FAFC]">
+                              {/* Frozen columns: Drag, #, Skill, Level, Location, $/Month, Onsite, Travel, Grp */}
                               <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 0, zIndex: 10, background: '#F8FAFC' }}></th>
-                              <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 36, zIndex: 10, background: '#F8FAFC' }}>#</th>
-                              <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 72, zIndex: 10, background: '#F8FAFC', minWidth: 140 }}>Skill</th>
-                              <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 212, zIndex: 10, background: '#F8FAFC', minWidth: 110 }}>Level</th>
-                              <th className="text-left p-3 font-semibold text-sm" style={{ position: 'sticky', left: 322, zIndex: 10, background: '#F8FAFC', minWidth: 120 }}>Location</th>
-                              <th className="text-right p-3 font-semibold text-sm" style={{ position: 'sticky', left: 442, zIndex: 10, background: '#F8FAFC', minWidth: 90, boxShadow: '2px 0 5px rgba(0,0,0,0.08)' }}>$/Month</th>
-                              <th className="text-center p-3 font-semibold text-sm">Onsite</th>
-                              <th className="text-center p-3 font-semibold text-sm">Travel</th>
-                              <th className="text-center p-2 font-semibold text-xs w-12">Grp</th>
+                              <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 32, zIndex: 10, background: '#F8FAFC' }}>#</th>
+                              <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 64, zIndex: 10, background: '#F8FAFC', minWidth: 120, maxWidth: 120 }}>Skill</th>
+                              <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 184, zIndex: 10, background: '#F8FAFC', minWidth: 90, maxWidth: 90 }}>Level</th>
+                              <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 274, zIndex: 10, background: '#F8FAFC', minWidth: 90, maxWidth: 90 }}>Location</th>
+                              <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', left: 364, zIndex: 10, background: '#F8FAFC', minWidth: 70, maxWidth: 70 }}>$/Month</th>
+                              <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 434, zIndex: 10, background: '#F8FAFC', minWidth: 50, maxWidth: 50 }}>Onsite</th>
+                              <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 484, zIndex: 10, background: '#F8FAFC', minWidth: 50, maxWidth: 50 }}>Travel</th>
+                              <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 534, zIndex: 10, background: '#F8FAFC', minWidth: 40, maxWidth: 40, boxShadow: '3px 0 6px rgba(0,0,0,0.1)' }}>Grp</th>
+                              {/* Scrollable columns: Phases + Calculations */}
                               {wave.phase_names.map((phaseName, index) => (
                                 <th key={index} className="text-center p-2 bg-[#E0F2FE]">
                                   <Input
                                     value={phaseName}
                                     onChange={(e) => handleUpdatePhaseName(wave.id, index, e.target.value)}
-                                    className="w-24 text-center font-semibold text-xs border-0 bg-transparent focus:bg-white"
+                                    className="w-20 text-center font-semibold text-xs border-0 bg-transparent focus:bg-white"
                                     data-testid={`phase-name-${index}`}
                                     disabled={isReadOnly}
                                   />
                                 </th>
                               ))}
-                              <th className="text-right p-3 font-semibold text-sm">Total MM</th>
-                              <th className="text-right p-3 font-semibold text-sm">Salary Cost</th>
-                              <th className="text-right p-3 font-semibold text-sm">Overhead</th>
-                              <th className="text-right p-3 font-semibold text-sm bg-gray-100">Total Cost</th>
-                              <th className="text-right p-3 font-semibold text-sm bg-green-50">Selling Price</th>
-                              <th className="text-right p-3 font-semibold text-sm bg-blue-50">SP/MM</th>
-                              <th className="text-right p-3 font-semibold text-sm bg-blue-50">Hourly</th>
-                              <th className="text-right p-2 font-semibold text-xs bg-purple-50 w-20">Ovr $/Hr</th>
-                              <th className="text-left p-3 font-semibold text-sm">Comments</th>
-                              <th className="text-center p-3 font-semibold text-sm">Actions</th>
+                              <th className="text-right p-2 font-semibold text-xs">Total MM</th>
+                              <th className="text-right p-2 font-semibold text-xs">Salary Cost</th>
+                              <th className="text-right p-2 font-semibold text-xs">Overhead</th>
+                              <th className="text-right p-2 font-semibold text-xs bg-gray-100">Total Cost</th>
+                              <th className="text-right p-2 font-semibold text-xs bg-green-50">Selling Price</th>
+                              <th className="text-right p-2 font-semibold text-xs bg-blue-50">SP/MM</th>
+                              <th className="text-right p-2 font-semibold text-xs bg-blue-50">Hourly</th>
+                              <th className="text-right p-2 font-semibold text-xs bg-purple-50 w-16">Ovr $/Hr</th>
+                              <th className="text-left p-2 font-semibold text-xs">Comments</th>
+                              <th className="text-center p-2 font-semibold text-xs">Actions</th>
                             </tr>
                           </thead>
                           <Droppable droppableId={`wave-${wave.id}`}>
@@ -3815,15 +3849,16 @@ const ProjectEstimator = () => {
                                   style={{ ...dragProvided.draggableProps.style, borderLeft: groupColor ? `4px solid ${groupColor}` : undefined }}
                                   data-testid={`allocation-row-${allocation.id}`}
                                 >
+                                  {/* Frozen columns: Drag, #, Skill, Level, Location, $/Month, Onsite, Travel, Grp */}
                                   <td className="p-1 text-center" style={{ position: 'sticky', left: 0, zIndex: 2, background: stickyBg }} {...dragProvided.dragHandleProps}>
                                     {!isReadOnly && <GripVertical className="w-4 h-4 text-gray-300 hover:text-gray-500 cursor-grab mx-auto" />}
                                   </td>
-                                  <td className="p-2 text-center text-xs text-gray-400 font-mono" style={{ position: 'sticky', left: 36, zIndex: 2, background: stickyBg }}>{rowIdx + 1}</td>
-                                  <td className="p-2" style={{ position: 'sticky', left: 72, zIndex: 2, background: stickyBg, minWidth: 140 }}>
+                                  <td className="p-1 text-center text-xs text-gray-400 font-mono" style={{ position: 'sticky', left: 32, zIndex: 2, background: stickyBg }}>{rowIdx + 1}</td>
+                                  <td className="p-1" style={{ position: 'sticky', left: 64, zIndex: 2, background: stickyBg, minWidth: 120, maxWidth: 120 }}>
                                     {isReadOnly ? (
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <span className="font-medium text-sm cursor-help">{allocation.skill_name}</span>
+                                          <span className="font-medium text-xs cursor-help truncate block">{allocation.skill_name}</span>
                                         </TooltipTrigger>
                                         <TooltipContent side="bottom" className="max-w-xs p-2">
                                           <p className="font-semibold">{allocation.skill_name}</p>
@@ -3840,7 +3875,7 @@ const ProjectEstimator = () => {
                                               options={skills.map(s => ({ value: s.id, label: s.name }))}
                                               placeholder="Skill..."
                                               searchPlaceholder="Search skills..."
-                                              triggerClassName="w-[130px]"
+                                              triggerClassName="w-[110px] text-xs"
                                             />
                                           </div>
                                         </TooltipTrigger>
@@ -3851,9 +3886,9 @@ const ProjectEstimator = () => {
                                       </Tooltip>
                                     )}
                                   </td>
-                                  <td className="p-2" style={{ position: 'sticky', left: 212, zIndex: 2, background: stickyBg, minWidth: 110 }}>
+                                  <td className="p-1" style={{ position: 'sticky', left: 184, zIndex: 2, background: stickyBg, minWidth: 90, maxWidth: 90 }}>
                                     {isReadOnly ? (
-                                      <span className="text-sm">{allocation.proficiency_level}</span>
+                                      <span className="text-xs">{allocation.proficiency_level}</span>
                                     ) : (
                                       <SearchableSelect
                                         value={allocation.proficiency_level}
@@ -3861,13 +3896,13 @@ const ProjectEstimator = () => {
                                         options={PROFICIENCY_LEVELS.map(l => ({ value: l, label: l }))}
                                         placeholder="Level..."
                                         searchPlaceholder="Search levels..."
-                                        triggerClassName="w-[110px]"
+                                        triggerClassName="w-[80px] text-xs"
                                       />
                                     )}
                                   </td>
-                                  <td className="p-2" style={{ position: 'sticky', left: 322, zIndex: 2, background: stickyBg, minWidth: 120 }}>
+                                  <td className="p-1" style={{ position: 'sticky', left: 274, zIndex: 2, background: stickyBg, minWidth: 90, maxWidth: 90 }}>
                                     {isReadOnly ? (
-                                      <span className="text-sm">{allocation.base_location_name}</span>
+                                      <span className="text-xs">{allocation.base_location_name}</span>
                                     ) : (
                                       <SearchableSelect
                                         value={allocation.base_location_id}
@@ -3875,25 +3910,25 @@ const ProjectEstimator = () => {
                                         options={locations.map(l => ({ value: l.id, label: l.name }))}
                                         placeholder="Location..."
                                         searchPlaceholder="Search locations..."
-                                        triggerClassName="w-[110px]"
+                                        triggerClassName="w-[80px] text-xs"
                                       />
                                     )}
                                   </td>
-                                  <td className="p-3 text-right" style={{ position: 'sticky', left: 442, zIndex: 2, background: stickyBg, minWidth: 90, boxShadow: '2px 0 5px rgba(0,0,0,0.08)' }}>
+                                  <td className="p-1 text-right" style={{ position: 'sticky', left: 364, zIndex: 2, background: stickyBg, minWidth: 70, maxWidth: 70 }}>
                                     <Input
                                       type="number"
-                                      className="w-24 text-right font-mono text-sm"
+                                      className="w-16 text-right font-mono text-xs h-7"
                                       value={allocation.avg_monthly_salary}
                                       onChange={(e) => handleSalaryChange(wave.id, allocation.id, e.target.value)}
                                       data-testid={`salary-${allocation.id}`}
                                       disabled={isReadOnly}
                                     />
                                   </td>
-                                  <td className="p-3 text-center">
+                                  <td className="p-1 text-center" style={{ position: 'sticky', left: 434, zIndex: 2, background: stickyBg, minWidth: 50, maxWidth: 50 }}>
                                     <button
                                       onClick={() => !isReadOnly && handleToggleOnsite(wave.id, allocation.id)}
                                       disabled={isReadOnly}
-                                      className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${
                                         allocation.is_onsite 
                                           ? "bg-amber-500 text-white" 
                                           : "bg-gray-200 text-gray-600"
@@ -3903,13 +3938,13 @@ const ProjectEstimator = () => {
                                       {allocation.is_onsite ? "ON" : "OFF"}
                                     </button>
                                   </td>
-                                  <td className="p-3 text-center">
+                                  <td className="p-1 text-center" style={{ position: 'sticky', left: 484, zIndex: 2, background: stickyBg, minWidth: 50, maxWidth: 50 }}>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <button
                                           onClick={() => !isReadOnly && handleToggleTravelRequired(wave.id, allocation.id)}
                                           disabled={isReadOnly}
-                                          className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${
                                             allocation.travel_required 
                                               ? "bg-purple-500 text-white" 
                                               : "bg-gray-200 text-gray-600"
@@ -3940,7 +3975,7 @@ const ProjectEstimator = () => {
                                       </TooltipContent>
                                     </Tooltip>
                                   </td>
-                                  <td className="p-1 text-center">
+                                  <td className="p-1 text-center" style={{ position: 'sticky', left: 534, zIndex: 2, background: stickyBg, minWidth: 40, maxWidth: 40, boxShadow: '3px 0 6px rgba(0,0,0,0.1)' }}>
                                     <Input
                                       type="text"
                                       placeholder=""

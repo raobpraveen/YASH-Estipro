@@ -298,34 +298,10 @@ const CompareVersions = () => {
                     
                     {/* Wave-Level Metrics */}
                     {diff.metrics.old.wave_metrics && diff.metrics.new.wave_metrics && (
-                      <div className="pt-3 border-t">
-                        <h4 className="text-sm font-semibold text-slate-700 mb-3">Wave-Level Breakdown</h4>
-                        <div className="space-y-4">
-                          {diff.metrics.new.wave_metrics.map((newWave, idx) => {
-                            const oldWave = diff.metrics.old.wave_metrics[idx] || {
-                              resources: 0, total_mm: 0, onsite_mm: 0, offshore_mm: 0,
-                              avg_onsite_cost_per_mm: 0, avg_offshore_cost_per_mm: 0,
-                              avg_onsite_selling_per_mm: 0, avg_offshore_selling_per_mm: 0, logistics: 0
-                            };
-                            return (
-                              <div key={idx} className="bg-white/60 rounded-lg p-3 border border-sky-100">
-                                <h5 className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">{newWave.wave_name}</h5>
-                                <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-2">
-                                  <MetricCard icon={<Users className="w-3 h-3" />} label="Resources" oldVal={oldWave.resources} newVal={newWave.resources} />
-                                  <MetricCard icon={<Calendar className="w-3 h-3" />} label="Total MM" oldVal={oldWave.total_mm} newVal={newWave.total_mm} />
-                                  <MetricCard icon={<Calendar className="w-3 h-3" />} label="Onsite MM" oldVal={oldWave.onsite_mm} newVal={newWave.onsite_mm} />
-                                  <MetricCard icon={<Calendar className="w-3 h-3" />} label="Offshore MM" oldVal={oldWave.offshore_mm} newVal={newWave.offshore_mm} />
-                                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Onsite $/MM" oldVal={oldWave.avg_onsite_cost_per_mm} newVal={newWave.avg_onsite_cost_per_mm} prefix="$" format="currency" />
-                                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Offshore $/MM" oldVal={oldWave.avg_offshore_cost_per_mm} newVal={newWave.avg_offshore_cost_per_mm} prefix="$" format="currency" />
-                                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Onsite Sell/MM" oldVal={oldWave.avg_onsite_selling_per_mm} newVal={newWave.avg_onsite_selling_per_mm} prefix="$" format="currency" inverseColor />
-                                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Offshore Sell/MM" oldVal={oldWave.avg_offshore_selling_per_mm} newVal={newWave.avg_offshore_selling_per_mm} prefix="$" format="currency" inverseColor />
-                                  <MetricCard icon={<Truck className="w-3 h-3" />} label="Logistics" oldVal={oldWave.logistics} newVal={newWave.logistics} prefix="$" format="currency" />
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                      <WaveLevelMetrics 
+                        oldWaveMetrics={diff.metrics.old.wave_metrics}
+                        newWaveMetrics={diff.metrics.new.wave_metrics}
+                      />
                     )}
                   </CardContent>
                 </Card>
@@ -623,6 +599,53 @@ const MetricCard = ({ icon, label, oldVal, newVal, prefix = "", suffix = "", for
         <div className={`text-xs mt-1 flex items-center gap-0.5 ${isPositive ? "text-emerald-600" : "text-red-600"}`}>
           {increased ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
           {changePercent > 0 ? "+" : ""}{changePercent}%
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Collapsible Wave-Level Metrics Component
+const WaveLevelMetrics = ({ oldWaveMetrics, newWaveMetrics }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  return (
+    <div className="pt-3 border-t">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-sky-600 transition-colors w-full text-left"
+        data-testid="toggle-wave-metrics"
+      >
+        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        Wave-Level Breakdown
+        <Badge variant="outline" className="ml-1 text-xs">{newWaveMetrics.length} waves</Badge>
+      </button>
+      
+      {isExpanded && (
+        <div className="space-y-4 mt-3">
+          {newWaveMetrics.map((newWave, idx) => {
+            const oldWave = oldWaveMetrics[idx] || {
+              resources: 0, total_mm: 0, onsite_mm: 0, offshore_mm: 0,
+              avg_onsite_cost_per_mm: 0, avg_offshore_cost_per_mm: 0,
+              avg_onsite_selling_per_mm: 0, avg_offshore_selling_per_mm: 0, logistics: 0
+            };
+            return (
+              <div key={idx} className="bg-white/60 rounded-lg p-3 border border-sky-100">
+                <h5 className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">{newWave.wave_name}</h5>
+                <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-2">
+                  <MetricCard icon={<Users className="w-3 h-3" />} label="Resources" oldVal={oldWave.resources} newVal={newWave.resources} />
+                  <MetricCard icon={<Calendar className="w-3 h-3" />} label="Total MM" oldVal={oldWave.total_mm} newVal={newWave.total_mm} />
+                  <MetricCard icon={<Calendar className="w-3 h-3" />} label="Onsite MM" oldVal={oldWave.onsite_mm} newVal={newWave.onsite_mm} />
+                  <MetricCard icon={<Calendar className="w-3 h-3" />} label="Offshore MM" oldVal={oldWave.offshore_mm} newVal={newWave.offshore_mm} />
+                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Onsite $/MM" oldVal={oldWave.avg_onsite_cost_per_mm} newVal={newWave.avg_onsite_cost_per_mm} prefix="$" format="currency" />
+                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Offshore $/MM" oldVal={oldWave.avg_offshore_cost_per_mm} newVal={newWave.avg_offshore_cost_per_mm} prefix="$" format="currency" />
+                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Onsite Sell/MM" oldVal={oldWave.avg_onsite_selling_per_mm} newVal={newWave.avg_onsite_selling_per_mm} prefix="$" format="currency" inverseColor />
+                  <MetricCard icon={<DollarSign className="w-3 h-3" />} label="Offshore Sell/MM" oldVal={oldWave.avg_offshore_selling_per_mm} newVal={newWave.avg_offshore_selling_per_mm} prefix="$" format="currency" inverseColor />
+                  <MetricCard icon={<Truck className="w-3 h-3" />} label="Logistics" oldVal={oldWave.logistics} newVal={newWave.logistics} prefix="$" format="currency" />
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
