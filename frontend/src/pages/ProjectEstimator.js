@@ -1730,7 +1730,7 @@ const ProjectEstimator = () => {
           original_monthly_salary: matchingRate?.avg_monthly_salary || avgSalary,
           base_location_id: matchingRate?.base_location_id || location?.id || "",
           base_location_name: locationName,
-          overhead_percentage: !isNaN(overheadPct) ? overheadPct : (location?.overhead_percentage || 30),
+          overhead_percentage: !isNaN(overheadPct) ? overheadPct : (location?.overhead_percentage ?? 0),
           is_onsite: isOnsite,
           travel_required: travelRequired,
           phase_allocations: phaseAllocations,
@@ -2275,7 +2275,8 @@ const ProjectEstimator = () => {
             r.proficiency_level?.toLowerCase() === level.toLowerCase() &&
             r.location_name?.toLowerCase() === location.toLowerCase()
           );
-          const ohPct = matchedRate?.overhead_percentage || 15;
+          // Get overhead from matched location (Base Location master), default to 0 if not set
+          const ohPct = matchedLocation?.overhead_percentage ?? matchedRate?.overhead_percentage ?? 0;
 
           allocations.push({
             id: `imp_${Date.now()}_${r}`,
