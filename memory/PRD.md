@@ -56,6 +56,13 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 - **Excel Export Fix**: Backend download proxy (POST + GET) bypasses iframe/popup blockers
 - **Documentation Updated**: UserManual.js and SupportGuide.js reflect all new features
 
+### Latest Additions (March 10, 2026)
+- **Ctrl+S Save Shortcut**: Press Ctrl+S (or Cmd+S) in the Estimator to save immediately without scrolling to the Save button
+- **Tutorials Page**: New /tutorials page with two tabs:
+  - Guided Walkthroughs: 7 interactive step-by-step tutorials covering all features (Creating Projects, Wave Grid, Excel Export/Import, Version Comparison, Approval Workflow, Dashboard, Master Data) with category filters, search, and "Open in App" buttons
+  - Video Tutorials: Placeholder slots for future YouTube/external video embeds with professional dark player UI
+- **Keyboard Shortcuts section**: Quick reference for Ctrl+S, Tab, Esc shortcuts
+
 ## Backend API Endpoints (New)
 - POST /api/sub-technologies — Create sub-technology
 - GET /api/sub-technologies — List all sub-technologies

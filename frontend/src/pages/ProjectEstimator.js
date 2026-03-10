@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
@@ -155,6 +155,20 @@ const ProjectEstimator = () => {
       loadProject(projectIdToLoad);
     }
   }, [projectIdToLoad]);
+
+  // Ctrl+S save shortcut
+  const saveRef = useRef(null);
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (saveRef.current) saveRef.current();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
 
   const fetchSkills = async () => {
     try {
@@ -1256,6 +1270,9 @@ const ProjectEstimator = () => {
       console.error(error);
     }
   };
+  // Update Ctrl+S ref to always point to latest save function
+  saveRef.current = isReadOnly ? null : handleSaveProject;
+
 
   const handleSaveAsNewVersion = async () => {
     if (!projectId) {

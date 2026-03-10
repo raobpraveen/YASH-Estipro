@@ -22,7 +22,8 @@ import {
   Bell,
   UserCircle,
   BookOpen,
-  LifeBuoy
+  LifeBuoy,
+  Video
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -139,6 +140,7 @@ const Layout = ({ user, onLogout }) => {
     { path: "/settings", icon: Settings, label: "Settings" },
     { path: "/user-manual", icon: BookOpen, label: "User Manual" },
     { path: "/support-guide", icon: LifeBuoy, label: "Support Guide" },
+    { path: "/tutorials", icon: Video, label: "Tutorials" },
   ];
 
   const getRoleBadge = (role) => {

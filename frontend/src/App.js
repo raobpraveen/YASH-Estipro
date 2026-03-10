@@ -21,6 +21,7 @@ import Settings from "@/pages/Settings";
 import AuditLogs from "@/pages/AuditLogs";
 import UserManual from "@/pages/UserManual";
 import SupportGuide from "@/pages/SupportGuide";
+import Tutorials from "@/pages/Tutorials";
 import { Toaster } from "@/components/ui/sonner";
 
 function App() {
@@ -85,6 +86,7 @@ function App() {
               <Route path="audit-logs" element={<AuditLogs />} />
               <Route path="user-manual" element={<UserManual />} />
               <Route path="support-guide" element={<SupportGuide />} />
+              <Route path="tutorials" element={<Tutorials />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
           )}
