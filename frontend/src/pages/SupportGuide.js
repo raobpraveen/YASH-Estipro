@@ -231,6 +231,7 @@ Password: password`}
 
           {/* Section 4: Roles & Access */}
           <Section id="roles-access" title="4. Roles & Access Control">
+            <h3 className="text-lg font-semibold text-[#10B981] mt-2">4.1 Role-Based Permissions</h3>
             <div className="rounded-lg border overflow-hidden mt-2">
               <table className="w-full text-sm">
                 <thead className="bg-[#0F172A] text-white">
@@ -245,10 +246,27 @@ Password: password`}
                   <tr className="border-b"><td className="p-2">Manage Users</td><td className="p-2 text-center text-green-600 font-bold">Yes</td><td className="p-2 text-center text-red-500 font-bold">No</td><td className="p-2 text-center text-red-500 font-bold">No</td></tr>
                   <tr className="border-b"><td className="p-2">View Audit Logs</td><td className="p-2 text-center text-green-600 font-bold">Yes</td><td className="p-2 text-center text-red-500 font-bold">No</td><td className="p-2 text-center text-red-500 font-bold">No</td></tr>
                   <tr className="border-b"><td className="p-2">Export to Excel</td><td className="p-2 text-center text-green-600 font-bold">Yes</td><td className="p-2 text-center text-green-600 font-bold">Yes</td><td className="p-2 text-center text-green-600 font-bold">Yes</td></tr>
-                  <tr><td className="p-2">View All Projects</td><td className="p-2 text-center text-green-600 font-bold">Yes</td><td className="p-2 text-center text-green-600 font-bold">Yes</td><td className="p-2 text-center text-green-600 font-bold">Yes</td></tr>
+                  <tr className="border-b"><td className="p-2">View All Public Projects</td><td className="p-2 text-center text-green-600 font-bold">Yes</td><td className="p-2 text-center text-green-600 font-bold">Yes</td><td className="p-2 text-center text-green-600 font-bold">Yes</td></tr>
+                  <tr><td className="p-2">View Restricted Projects</td><td className="p-2 text-center text-green-600 font-bold">All</td><td className="p-2 text-center text-amber-600 font-bold">If Listed</td><td className="p-2 text-center text-amber-600 font-bold">If Listed</td></tr>
                 </tbody>
               </table>
             </div>
+
+            <h3 className="text-lg font-semibold text-[#10B981] mt-6">4.2 Project-Level Access Control (Access Level)</h3>
+            <p>Projects can have an <strong>Access Level</strong> setting that restricts visibility:</p>
+            <KeyValue label="Public (Default)">Visible and editable by all users based on role permissions.</KeyValue>
+            <KeyValue label="Restricted">Only visible to: Project Creator, users in the Restricted Users list, the Approver (when in review), and Admins.</KeyValue>
+            
+            <h3 className="text-lg font-semibold text-[#10B981] mt-6">4.3 Access Control Database Fields</h3>
+            <CodeBlock title="Project Collection - Access Fields">
+{`{
+  "visibility": "public" | "restricted",
+  "restricted_user_ids": ["user_id_1", "user_id_2"],
+  "restricted_user_names": ["User Name 1", "User Name 2"]
+}`}
+            </CodeBlock>
+            
+            <Tip>Admins bypass all access restrictions and can view/edit all projects in the system for administrative purposes.</Tip>
           </Section>
 
           {/* Section 5: Audit Logs */}

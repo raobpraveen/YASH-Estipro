@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   ArrowLeft, GitCompare, Plus, Minus, RefreshCw, ChevronDown, ChevronRight,
-  FileText, Settings, Truck, History, AlertCircle
+  FileText, Settings, Truck, History, AlertCircle, Users, Calendar, DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, ArrowRight
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -189,6 +189,72 @@ const CompareVersions = () => {
                   <SummaryPill icon={<Truck className="w-3 h-3" />} count={diff.summary.logistics_changes} label="Logistics" color="text-purple-300" />
                 </div>
               </div>
+
+              {/* Key Metrics Summary Card */}
+              {diff.metrics && (
+                <Card className="border-2 border-sky-200 bg-gradient-to-r from-sky-50 to-indigo-50" data-testid="metrics-summary">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-800">
+                      <TrendingUp className="w-5 h-5 text-sky-600" /> Key Metrics Summary
+                      <Badge variant="outline" className="ml-2 text-xs">For Reviewer</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                      <MetricCard 
+                        icon={<Users className="w-4 h-4" />}
+                        label="Total Resources"
+                        oldVal={diff.metrics.old.total_resources}
+                        newVal={diff.metrics.new.total_resources}
+                      />
+                      <MetricCard 
+                        icon={<Calendar className="w-4 h-4" />}
+                        label="Total Man-Months"
+                        oldVal={diff.metrics.old.total_mm}
+                        newVal={diff.metrics.new.total_mm}
+                        suffix=" MM"
+                      />
+                      <MetricCard 
+                        icon={<Calendar className="w-4 h-4" />}
+                        label="Onsite MM"
+                        oldVal={diff.metrics.old.onsite_mm}
+                        newVal={diff.metrics.new.onsite_mm}
+                        suffix=" MM"
+                      />
+                      <MetricCard 
+                        icon={<Calendar className="w-4 h-4" />}
+                        label="Offshore MM"
+                        oldVal={diff.metrics.old.offshore_mm}
+                        newVal={diff.metrics.new.offshore_mm}
+                        suffix=" MM"
+                      />
+                      <MetricCard 
+                        icon={<DollarSign className="w-4 h-4" />}
+                        label="Total Cost"
+                        oldVal={diff.metrics.old.total_cost}
+                        newVal={diff.metrics.new.total_cost}
+                        prefix="$"
+                        format="currency"
+                      />
+                      <MetricCard 
+                        icon={<DollarSign className="w-4 h-4" />}
+                        label="Selling Price"
+                        oldVal={diff.metrics.old.selling_price}
+                        newVal={diff.metrics.new.selling_price}
+                        prefix="$"
+                        format="currency"
+                      />
+                      <MetricCard 
+                        icon={<TrendingUp className="w-4 h-4" />}
+                        label="Profit Margin"
+                        oldVal={diff.metrics.old.profit_margin}
+                        newVal={diff.metrics.new.profit_margin}
+                        suffix="%"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Header Diff */}
               {diff.header_diff.length > 0 && (
@@ -447,6 +513,40 @@ const SummaryPill = ({ icon, count, label, color }) => (
     {icon} <span className="font-bold">{count}</span> <span className="opacity-70">{label}</span>
   </div>
 );
+
+const MetricCard = ({ icon, label, oldVal, newVal, prefix = "", suffix = "", format = "number" }) => {
+  const formatValue = (val) => {
+    if (format === "currency" && val >= 1000) {
+      return val >= 1000000 ? `${(val / 1000000).toFixed(1)}M` : `${(val / 1000).toFixed(0)}K`;
+    }
+    return val;
+  };
+  const changed = oldVal !== newVal;
+  const increased = newVal > oldVal;
+  const changePercent = oldVal > 0 ? Math.round(((newVal - oldVal) / oldVal) * 100) : (newVal > 0 ? 100 : 0);
+  
+  return (
+    <div className={`bg-white rounded-lg p-3 border ${changed ? "border-amber-300 shadow-sm" : "border-gray-200"}`}>
+      <div className="flex items-center gap-1.5 text-gray-500 mb-1">
+        {icon}
+        <span className="text-xs font-medium">{label}</span>
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className="text-xs text-gray-400 line-through">{prefix}{formatValue(oldVal)}{suffix}</span>
+        <ArrowRight className="w-3 h-3 text-gray-300" />
+        <span className={`text-sm font-bold ${changed ? (increased ? "text-emerald-600" : "text-red-600") : "text-gray-700"}`}>
+          {prefix}{formatValue(newVal)}{suffix}
+        </span>
+      </div>
+      {changed && (
+        <div className={`text-xs mt-1 flex items-center gap-0.5 ${increased ? "text-emerald-600" : "text-red-600"}`}>
+          {increased ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+          {changePercent > 0 ? "+" : ""}{changePercent}%
+        </div>
+      )}
+    </div>
+  );
+};
 
 const DiffValue = ({ value, type }) => {
   if (!value && value !== 0) return <span className="text-gray-300">—</span>;

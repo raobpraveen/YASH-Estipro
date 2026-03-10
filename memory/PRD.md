@@ -58,13 +58,20 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 
 ### Latest Additions (March 10, 2026)
 - **Project Access Control**: Projects can be set to "Public" (all users) or "Restricted" (only selected users):
-  - Visibility dropdown in Project Information section
+  - Access Level dropdown in Project Information section (renamed from "Visibility")
   - Multi-select user dropdown when "Restricted" is chosen
   - Admins always have access to all projects
   - Creator always has access to their own projects
   - Approver has access when project is "In Review"
   - Restricted users list is displayed on the project
   - Non-authorized users cannot see restricted projects in the list
+- **Version Comparison Key Metrics Summary**: New "Key Metrics Summary" card for reviewers showing:
+  - Total Resources (old → new with % change)
+  - Total Man-Months, Onsite MM, Offshore MM
+  - Total Cost, Selling Price, Profit Margin %
+  - Color-coded indicators (green for increase, red for decrease)
+- **Smart Import Overhead Fix**: Overhead % now correctly looked up from Base Locations (was defaulting to 15%)
+- **Updated Documentation**: User Manual & Support Guide updated with Access Level, Tutorials, and Version Comparison sections
 - **Ctrl+S Save Shortcut**: Press Ctrl+S (or Cmd+S) in the Estimator to save immediately without scrolling to the Save button
 - **Tutorials Page with Video Slideshows & Interactive Tours**: Complete tutorial system at /tutorials with three tabs:
   - **Guided Walkthroughs**: 7 interactive step-by-step tutorials covering all features (Creating Projects, Wave Grid, Excel Export/Import, Version Comparison, Approval Workflow, Dashboard, Master Data) with category filters, search, and "Open in App" buttons

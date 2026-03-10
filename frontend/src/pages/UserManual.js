@@ -19,10 +19,12 @@ const TOC = [
   { id: "excel-export", title: "8. Excel Export", icon: FileSpreadsheet },
   { id: "quick-estimator", title: "9. Quick Estimate Calculator", icon: Calculator },
   { id: "workflow", title: "10. Approval Workflow", icon: CheckCircle },
-  { id: "version-mgmt", title: "11. Versioning & Comparison", icon: FolderKanban },
-  { id: "smart-import", title: "12. Smart Import", icon: FileSpreadsheet },
-  { id: "settings", title: "13. Settings & Profile", icon: Settings },
-  { id: "shortcuts", title: "14. Keyboard Shortcuts & Tips", icon: Info },
+  { id: "access-control", title: "11. Access Level (Project Visibility)", icon: Settings },
+  { id: "version-mgmt", title: "12. Versioning & Comparison", icon: FolderKanban },
+  { id: "smart-import", title: "13. Smart Import", icon: FileSpreadsheet },
+  { id: "tutorials", title: "14. Tutorials & Help", icon: BookOpen },
+  { id: "settings", title: "15. Settings & Profile", icon: Settings },
+  { id: "shortcuts", title: "16. Keyboard Shortcuts & Tips", icon: Info },
 ];
 
 const Section = ({ id, title, children }) => (
@@ -430,14 +432,61 @@ export default function UserManual() {
             <Warning>Once a project is approved, it becomes read-only. To make changes, clone the project or create a new version.</Warning>
           </Section>
 
-          {/* Section 11: Versioning */}
-          <Section id="version-mgmt" title="11. Versioning & Comparison">
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">11.1 Version Management</h3>
+          {/* Section 11: Access Level */}
+          <Section id="access-control" title="11. Access Level (Project Visibility)">
+            <p>Control who can view and edit your projects using the <strong>Access Level</strong> setting in Project Information.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">11.1 Access Level Options</h3>
+            <KeyValue label="Public (All Users)">Default setting. All users in the system can view and edit the project.</KeyValue>
+            <KeyValue label="Restricted">Only selected users can view and edit the project. The project is hidden from other users' project lists.</KeyValue>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">11.2 Setting Up Restricted Access</h3>
+            <Step num="1">In Project Information, change <strong>Access Level</strong> from "Public" to "Restricted".</Step>
+            <Step num="2">A <strong>Restricted Users</strong> dropdown appears below.</Step>
+            <Step num="3">Click <strong>"+ Add user..."</strong> to select users who should have access.</Step>
+            <Step num="4">Selected users appear as badges. Click the X to remove a user.</Step>
+            <Step num="5">Save the project to apply the access restrictions.</Step>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">11.3 Who Can Access Restricted Projects</h3>
+            <div className="rounded-lg border overflow-hidden mt-2">
+              <table className="w-full text-sm">
+                <thead className="bg-[#0F172A] text-white">
+                  <tr><th className="p-2 text-left">User Type</th><th className="p-2 text-center">Access</th><th className="p-2 text-left">Notes</th></tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b"><td className="p-2">Project Creator</td><td className="p-2 text-center text-green-600 font-bold">Always</td><td className="p-2 text-gray-600 text-xs">Automatic access to own projects.</td></tr>
+                  <tr className="border-b"><td className="p-2">Restricted Users List</td><td className="p-2 text-center text-green-600 font-bold">Always</td><td className="p-2 text-gray-600 text-xs">Users explicitly granted access.</td></tr>
+                  <tr className="border-b"><td className="p-2">Designated Approver</td><td className="p-2 text-center text-green-600 font-bold">When In Review</td><td className="p-2 text-gray-600 text-xs">Access granted when project is submitted for approval.</td></tr>
+                  <tr className="border-b"><td className="p-2">Admin Users</td><td className="p-2 text-center text-green-600 font-bold">Always</td><td className="p-2 text-gray-600 text-xs">Admins have access to all projects.</td></tr>
+                  <tr><td className="p-2">Other Users</td><td className="p-2 text-center text-red-500 font-bold">Never</td><td className="p-2 text-gray-600 text-xs">Project is hidden from their view.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <Tip>You can change the access level at any time, even after project creation. Switching from Restricted to Public makes the project visible to everyone again.</Tip>
+            <Warning>When a restricted project is "In Review", the designated approver automatically gains access, even if not in the restricted users list.</Warning>
+          </Section>
+
+          {/* Section 12: Versioning */}
+          <Section id="version-mgmt" title="12. Versioning & Comparison">
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">12.1 Version Management</h3>
             <p>Every save creates a new version with a mandatory comment explaining the changes. Previous versions are preserved and accessible from the Project Summary.</p>
             <KeyValue label="Suspended Status">When a new version is created via Smart Import, the previous version is automatically set to &quot;Suspended&quot;.</KeyValue>
             <KeyValue label="Obsolete Status">Users can manually mark Draft or Suspended projects as Obsolete. When a version is approved, all other Draft versions are auto-obsoleted.</KeyValue>
 
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">11.2 Field-Level Version Comparison</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">12.2 Version Comparison Summary</h3>
+            <p>The version comparison page shows a <strong>Key Metrics Summary</strong> at the top, ideal for reviewers to quickly assess what changed:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm ml-4">
+              <li><strong>Total Resources:</strong> Change in total number of resources across all waves.</li>
+              <li><strong>Total Man-Months:</strong> Overall effort change (e.g., "45 → 52 MM").</li>
+              <li><strong>Onsite MM / Offshore MM:</strong> Breakdown by location type.</li>
+              <li><strong>Total Cost:</strong> Base salary cost comparison.</li>
+              <li><strong>Selling Price:</strong> Final price before nego buffer.</li>
+              <li><strong>Profit Margin %:</strong> Margin percentage change.</li>
+            </ul>
+            <Tip>The summary metrics help approvers quickly identify financial impact without reviewing every resource change.</Tip>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">12.3 Field-Level Version Comparison</h3>
             <Step num="1">From the <strong>Projects List</strong>, click the <strong>Compare</strong> icon on any project row.</Step>
             <Step num="2">Select two versions using the Baseline and Compare dropdowns.</Step>
             <Step num="3">The diff shows all changes:</Step>
@@ -449,12 +498,12 @@ export default function UserManual() {
             </ul>
             <p className="text-sm mt-2">A summary banner at the top shows total changes, resources added/removed, and allocation changes at a glance.</p>
 
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">11.3 Change History</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">12.4 Change History</h3>
             <p>Every save automatically records a detailed change log. Access it via the <strong>Change History</strong> tab on the comparison page. Each entry shows the timestamp, user, version, and expandable field-level changes.</p>
           </Section>
 
-          {/* Section 12: Smart Import */}
-          <Section id="smart-import" title="12. Smart Import">
+          {/* Section 13: Smart Import */}
+          <Section id="smart-import" title="13. Smart Import">
             <p>Re-import an EstiPro-exported Excel file to update or create project versions.</p>
             <Step num="1">Click <strong>Smart Import</strong> in the Estimator toolbar.</Step>
             <Step num="2">Upload an EstiPro-exported Excel file (.xlsx).</Step>
@@ -466,18 +515,35 @@ export default function UserManual() {
             </ul>
             <KeyValue label="Logistics Parsing">Logistics data (per-diem, accommodation, flights, etc.) is automatically parsed from both the description text and formulas in the Excel file.</KeyValue>
             <KeyValue label="Missing Master Data">If the Excel contains skills or locations not in the system, they are auto-created during import.</KeyValue>
+            <KeyValue label="Overhead Percentage">Overhead is looked up from the Base Location master data. If not set, defaults to 0%.</KeyValue>
           </Section>
 
-          {/* Section 13: Settings */}
-          <Section id="settings" title="13. Settings & Profile">
+          {/* Section 14: Tutorials */}
+          <Section id="tutorials" title="14. Tutorials & Help">
+            <p>Access the <strong>Tutorials</strong> page from the sidebar for guided learning resources.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">14.1 Guided Walkthroughs</h3>
+            <p>Step-by-step text instructions for key features: Creating Projects, Wave Grid, Excel Export, Version Comparison, Approval Workflow, Dashboard Analytics, and Master Data Management.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">14.2 Video Slideshows</h3>
+            <p>Screenshot-based slideshows that auto-play through key application screens. Click any tutorial card to watch the slideshow with play/pause controls.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">14.3 Interactive Tours</h3>
+            <p>Click <strong>"Start Tour"</strong> on any tutorial to get guided tooltips highlighting UI elements directly in the application. Tours help new users learn by doing.</p>
+            
+            <Tip>Use the <strong>Interactive Tours</strong> when onboarding new team members - they provide hands-on guidance within the actual application interface.</Tip>
+          </Section>
+
+          {/* Section 15: Settings */}
+          <Section id="settings" title="15. Settings & Profile">
             <p>Access personal settings from the <strong>Settings</strong> page in the sidebar.</p>
             <KeyValue label="Theme">Choose between light and dark theme preference.</KeyValue>
             <KeyValue label="Date Format">Set your preferred date display format.</KeyValue>
             <KeyValue label="Profile">View and update your display name and email.</KeyValue>
           </Section>
 
-          {/* Section 14: Shortcuts */}
-          <Section id="shortcuts" title="14. Keyboard Shortcuts & Tips">
+          {/* Section 16: Shortcuts */}
+          <Section id="shortcuts" title="16. Keyboard Shortcuts & Tips">
             <div className="rounded-lg border overflow-hidden mt-2">
               <table className="w-full text-sm">
                 <thead className="bg-[#0F172A] text-white">

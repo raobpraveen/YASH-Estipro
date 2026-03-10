@@ -921,12 +921,64 @@ def compute_detailed_diff(old_project: dict, new_project: dict) -> dict:
         })
 
     total_changes = len(header_diff) + total_res_added + total_res_removed + total_res_modified + total_alloc_changes + total_logistics_changes
+    
+    # Calculate key metrics for summary comparison
+    def calculate_metrics(project):
+        waves = project.get("waves") or []
+        total_resources = 0
+        total_mm = 0.0
+        onsite_mm = 0.0
+        offshore_mm = 0.0
+        total_cost = 0.0
+        selling_price = 0.0
+        profit_margin = project.get("profit_margin_percentage", 0)
+        
+        for wave in waves:
+            allocs = wave.get("grid_allocations") or []
+            total_resources += len(allocs)
+            for alloc in allocs:
+                phase_allocs = alloc.get("phase_allocations") or {}
+                mm = sum(float(v) for v in phase_allocs.values() if v)
+                total_mm += mm
+                is_onsite = alloc.get("is_onsite", False)
+                if is_onsite:
+                    onsite_mm += mm
+                else:
+                    offshore_mm += mm
+                
+                # Calculate cost
+                salary = alloc.get("avg_monthly_salary", 0) or 0
+                overhead_pct = alloc.get("overhead_percentage", 0) or 0
+                base_cost = salary * mm
+                overhead_cost = base_cost * (overhead_pct / 100)
+                margin = profit_margin / 100 if profit_margin else 0
+                resource_selling = (base_cost + overhead_cost) * (1 + margin)
+                total_cost += base_cost + overhead_cost
+                selling_price += resource_selling
+        
+        return {
+            "total_resources": total_resources,
+            "total_mm": round(total_mm, 2),
+            "onsite_mm": round(onsite_mm, 2),
+            "offshore_mm": round(offshore_mm, 2),
+            "total_cost": round(total_cost, 0),
+            "selling_price": round(selling_price, 0),
+            "profit_margin": profit_margin,
+        }
+    
+    old_metrics = calculate_metrics(old_project)
+    new_metrics = calculate_metrics(new_project)
+    
     return {
         "summary": {
             "total_changes": total_changes, "header_changes": len(header_diff),
             "resources_added": total_res_added, "resources_removed": total_res_removed,
             "resources_modified": total_res_modified, "allocation_changes": total_alloc_changes,
             "logistics_changes": total_logistics_changes,
+        },
+        "metrics": {
+            "old": old_metrics,
+            "new": new_metrics,
         },
         "header_diff": header_diff,
         "wave_diffs": wave_diffs,
