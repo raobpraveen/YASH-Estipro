@@ -124,16 +124,15 @@ const CashflowStatement = () => {
 
       // Combined Summary sheet
       const sws = wb.addWorksheet("Combined Summary");
-      sws.columns = [{ width: 10 }, { width: 20 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }];
+      sws.columns = [{ width: 10 }, { width: 20 }, { width: 18 }, { width: 18 }, { width: 18 }];
       sws.addRow([`${cashflow.project_number} — Combined Cashflow Statement`]).font = { bold: true, size: 14 };
       sws.addRow([`Project: ${cashflow.project_name}`]).font = { size: 11, color: { argb: "FF6B7280" } };
       sws.addRow([]);
-      const shRow = sws.addRow(["Month", "Phase", "Cash-Out (Cost)", "Cash-In (Revenue)", "Net", "Cumulative"]);
+      const shRow = sws.addRow(["Month", "Phase", "Cash-Out (Cost)", "Cash-In (Revenue)", "Net"]);
       shRow.eachCell((c) => { c.fill = headerFill; c.font = headerFont; c.border = thinBorder; });
       const sDataStart = 5;
       (cashflow.combined_data || []).forEach((m, idx) => {
         const rn = sDataStart + idx;
-        // Build SUM formulas across wave sheets for this month
         const costParts = [];
         const revParts = [];
         for (const ref of waveSheetRefs) {
@@ -144,26 +143,23 @@ const CashflowStatement = () => {
         }
         const costFormula = costParts.length > 0 ? costParts.join("+") : "0";
         const revFormula = revParts.length > 0 ? revParts.join("+") : "0";
-        const prevCumCell = idx > 0 ? `F${rn - 1}` : "0";
         const r = sws.addRow([
           `M${m.month}`,
           m.phase || "",
           { formula: costFormula, result: m.cost },
           { formula: revFormula, result: m.revenue },
           { formula: `D${rn}-C${rn}`, result: m.net },
-          { formula: `${prevCumCell}+E${rn}`, result: m.cumulative },
         ]);
         r.getCell(3).numFmt = moneyFmt;
         r.getCell(4).numFmt = moneyFmt;
         r.getCell(5).numFmt = moneyFmt;
-        r.getCell(6).numFmt = moneyFmt;
         r.eachCell((c) => { c.border = thinBorder; });
         if (m.net >= 0) r.getCell(5).fill = greenFill; else r.getCell(5).fill = redFill;
       });
       sws.addRow([]);
       const cd = cashflow.combined_data || [];
       const sLastRow = sDataStart + cd.length - 1;
-      const stRow = sws.addRow(["", "TOTALS", { formula: `SUM(C${sDataStart}:C${sLastRow})`, result: cashflow.summary.total_cost }, { formula: `SUM(D${sDataStart}:D${sLastRow})`, result: cashflow.summary.total_revenue }, { formula: `SUM(E${sDataStart}:E${sLastRow})`, result: cashflow.summary.net_cashflow }, ""]);
+      const stRow = sws.addRow(["", "TOTALS", { formula: `SUM(C${sDataStart}:C${sLastRow})`, result: cashflow.summary.total_cost }, { formula: `SUM(D${sDataStart}:D${sLastRow})`, result: cashflow.summary.total_revenue }, { formula: `SUM(E${sDataStart}:E${sLastRow})`, result: cashflow.summary.net_cashflow }]);
       stRow.font = { bold: true };
       stRow.getCell(3).numFmt = moneyFmt;
       stRow.getCell(4).numFmt = moneyFmt;
@@ -397,7 +393,6 @@ const CashflowStatement = () => {
                     <TableHead className="text-right">Cash-Out (Cost)</TableHead>
                     <TableHead className="text-right">Cash-In (Revenue)</TableHead>
                     <TableHead className="text-right">Net</TableHead>
-                    <TableHead className="text-right">Cumulative</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -408,7 +403,6 @@ const CashflowStatement = () => {
                       <TableCell className="text-right font-mono text-red-600">{fmt(m.cost)}</TableCell>
                       <TableCell className="text-right font-mono text-[#10B981]">{fmt(m.revenue)}</TableCell>
                       <TableCell className={`text-right font-mono font-semibold ${m.net >= 0 ? "text-[#10B981]" : "text-red-600"}`}>{fmt(m.net)}</TableCell>
-                      <TableCell className={`text-right font-mono font-semibold ${m.cumulative >= 0 ? "text-[#0EA5E9]" : "text-[#F59E0B]"}`}>{fmt(m.cumulative)}</TableCell>
                     </TableRow>
                   ))}
                   <TableRow className="border-t-2 bg-[#F8FAFC] font-bold">
@@ -417,7 +411,6 @@ const CashflowStatement = () => {
                     <TableCell className="text-right font-mono text-red-600">{fmt(summary.total_cost)}</TableCell>
                     <TableCell className="text-right font-mono text-[#10B981]">{fmt(summary.total_revenue)}</TableCell>
                     <TableCell className={`text-right font-mono ${summary.net_cashflow >= 0 ? "text-[#10B981]" : "text-red-600"}`}>{fmt(summary.net_cashflow)}</TableCell>
-                    <TableCell></TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -434,38 +427,6 @@ const CashflowStatement = () => {
                       "Cash-Out": m.cost,
                       "Cash-In": m.revenue,
                       Net: m.net,
-                      Cumulative: m.cumulative,
-                    }))}
-                    margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#64748B" }} />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: "#64748B" }}
-                      tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v}`}
-                    />
-                    <Tooltip
-                      formatter={(value, name) => [`$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, name]}
-                      contentStyle={{ backgroundColor: "#0F172A", borderRadius: 8, border: "none", color: "#fff", fontSize: 12 }}
-                      labelStyle={{ color: "#94A3B8", marginBottom: 4 }}
-                      itemStyle={{ color: "#F8FAFC" }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <ReferenceLine y={0} stroke="#94A3B8" strokeDasharray="3 3" />
-                    <Bar dataKey="Cash-Out" fill="#EF4444" radius={[4, 4, 0, 0]} barSize={24} />
-                    <Bar dataKey="Cash-In" fill="#10B981" radius={[4, 4, 0, 0]} barSize={24} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Net & Cumulative line area */}
-              <div className="mt-6 h-[250px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={combined_data.map((m) => ({
-                      name: `M${m.month}`,
-                      Net: m.net,
-                      Cumulative: m.cumulative,
                     }))}
                     margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
                   >
@@ -483,8 +444,9 @@ const CashflowStatement = () => {
                     />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
                     <ReferenceLine y={0} stroke="#94A3B8" strokeDasharray="3 3" />
-                    <Bar dataKey="Net" fill="#F59E0B" radius={[4, 4, 0, 0]} barSize={20} />
-                    <Bar dataKey="Cumulative" fill="#0EA5E9" radius={[4, 4, 0, 0]} barSize={20} />
+                    <Bar dataKey="Cash-Out" fill="#EF4444" radius={[4, 4, 0, 0]} barSize={24} />
+                    <Bar dataKey="Cash-In" fill="#10B981" radius={[4, 4, 0, 0]} barSize={24} />
+                    <Bar dataKey="Net" fill="#F59E0B" radius={[4, 4, 0, 0]} barSize={24} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
