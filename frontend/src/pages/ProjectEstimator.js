@@ -13,7 +13,7 @@ import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Trash2, Plane, Save, FileDown, X, Settings, Copy, History, RefreshCw, Send, CheckCircle, XCircle, Clock, Calculator, Upload, FileSpreadsheet, Minus, MessageSquare, GripVertical, Download, Zap } from "lucide-react";
+import { Plus, Trash2, Plane, Save, FileDown, X, Settings, Copy, History, RefreshCw, Send, CheckCircle, XCircle, Clock, Calculator, Upload, FileSpreadsheet, Minus, MessageSquare, GripVertical, Download, Zap, ChevronDown, ChevronRight } from "lucide-react";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -125,6 +125,10 @@ const ProjectEstimator = () => {
   const [ganttChart, setGanttChart] = useState(null); // { filename, uploaded_at }
   const [ganttLoading, setGanttLoading] = useState(false);
   const ganttInputRef = useRef(null);
+
+  // Section collapse/expand
+  const [collapsedSections, setCollapsedSections] = useState({});
+  const toggleSection = (key) => setCollapsedSections((p) => ({ ...p, [key]: !p[key] }));
 
   // Get current user role
   const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
@@ -2281,6 +2285,23 @@ const ProjectEstimator = () => {
       const missingSkills = new Set();
       const missingLocations = new Set();
 
+      // Parse Summary sheet for Profit Margin and Nego Buffer
+      let importedPM = null;
+      let importedNB = null;
+      const summaryWs = wb.getWorksheet("Summary");
+      if (summaryWs) {
+        const pmCell = summaryWs.getRow(5).getCell(2);
+        const nbCell = summaryWs.getRow(6).getCell(2);
+        const pmVal = getCellVal(pmCell);
+        const nbVal = getCellVal(nbCell);
+        if (pmVal !== "" && pmVal !== null && pmVal !== undefined) {
+          importedPM = typeof pmVal === "number" ? (pmVal < 1 ? pmVal * 100 : pmVal) : parseFloat(pmVal) || null;
+        }
+        if (nbVal !== "" && nbVal !== null && nbVal !== undefined) {
+          importedNB = typeof nbVal === "number" ? (nbVal < 1 ? nbVal * 100 : nbVal) : parseFloat(nbVal) || null;
+        }
+      }
+
       wb.eachSheet((ws) => {
         const name = ws.name;
         if (name.toLowerCase() === "summary") return;
@@ -2432,6 +2453,9 @@ const ProjectEstimator = () => {
             } else if (cellB.includes("visa") || cellB.includes("medical")) {
               const m = formulaMatch || tripsMatch;
               if (m) { parsedLogistics.visa_medical_per_trip = parseFloat(m[1]); }
+            } else if (cellB.includes("contingency") && cellB.includes("absolute")) {
+              const absVal = parseFloat(getCellVal(cellD)) || 0;
+              if (absVal > 0) parsedLogistics.contingency_absolute = absVal;
             } else if (cellB.includes("contingency")) {
               const m = pctFormulaMatch || pctMatch;
               if (m) { parsedLogistics.contingency_percentage = parseFloat(m[1]); }
@@ -2452,6 +2476,8 @@ const ProjectEstimator = () => {
         missingSkills: [...missingSkills],
         missingLocations: [...missingLocations],
         totalResources: parsedWaves.reduce((s, w) => s + w.allocations.length, 0),
+        profitMargin: importedPM,
+        negoBuffer: importedNB,
       });
       setSmartImportDialog(true);
     } catch (err) {
@@ -2511,6 +2537,13 @@ const ProjectEstimator = () => {
         payload.waves = newWaves;
         payload.is_import = true;
         payload.version_notes = `Smart Import: re-imported from Excel file`;
+        // Apply imported PM and NB
+        if (smartImportData.profitMargin !== null && smartImportData.profitMargin !== undefined) {
+          payload.profit_margin_percentage = smartImportData.profitMargin;
+        }
+        if (smartImportData.negoBuffer !== null && smartImportData.negoBuffer !== undefined) {
+          payload.nego_buffer_percentage = smartImportData.negoBuffer;
+        }
         try {
           const response = await axios.post(`${API}/projects/${projectId}/new-version`, payload, { headers: apiHeaders });
           setProjectId(response.data.id);
@@ -2531,6 +2564,13 @@ const ProjectEstimator = () => {
         // Replace current waves locally (user must save)
         setWaves(newWaves);
         if (newWaves.length > 0) setActiveWaveId(newWaves[0].id);
+        // Apply imported Profit Margin and Nego Buffer from Summary sheet
+        if (smartImportData.profitMargin !== null && smartImportData.profitMargin !== undefined) {
+          setProfitMarginPercentage(smartImportData.profitMargin);
+        }
+        if (smartImportData.negoBuffer !== null && smartImportData.negoBuffer !== undefined) {
+          setNegoBufferPercentage(smartImportData.negoBuffer);
+        }
         toast.success(`Imported ${newWaves.length} wave(s) with ${smartImportData.totalResources} resource(s). Save the project to persist.`);
       }
 
@@ -2851,8 +2891,11 @@ const ProjectEstimator = () => {
 
       {/* Project Header */}
       <Card className={`border ${isReadOnly ? 'border-amber-300 bg-amber-50/30' : 'border-[#E2E8F0]'} shadow-sm`}>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-xl font-bold text-[#0F172A]">Project Information</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between cursor-pointer select-none" onClick={() => toggleSection("projectInfo")}>
+          <div className="flex items-center gap-2">
+            {collapsedSections.projectInfo ? <ChevronRight className="w-5 h-5 text-gray-500" /> : <ChevronDown className="w-5 h-5 text-gray-500" />}
+            <CardTitle className="text-xl font-bold text-[#0F172A]">Project Information</CardTitle>
+          </div>
           {isReadOnly && (
             <Badge className="bg-amber-100 text-amber-800">
               {!isLatestVersion ? "Read-only: Older Version" : 
@@ -2863,6 +2906,7 @@ const ProjectEstimator = () => {
             </Badge>
           )}
         </CardHeader>
+        {!collapsedSections.projectInfo && (
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
@@ -3219,14 +3263,18 @@ const ProjectEstimator = () => {
             </div>
           </div>
         </CardContent>
+        )}
       </Card>
 
       {/* Gantt Chart / Timeline Image */}
       {projectId && (
         <Card className="border border-[#E2E8F0] shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg font-bold text-[#0F172A]">Timeline / Gantt Chart</CardTitle>
-            <div className="flex gap-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 cursor-pointer select-none" onClick={() => toggleSection("gantt")}>
+            <div className="flex items-center gap-2">
+              {collapsedSections.gantt ? <ChevronRight className="w-5 h-5 text-gray-500" /> : <ChevronDown className="w-5 h-5 text-gray-500" />}
+              <CardTitle className="text-lg font-bold text-[#0F172A]">Timeline / Gantt Chart</CardTitle>
+            </div>
+            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
               {!isReadOnly && (
                 <>
                   <input type="file" ref={ganttInputRef} accept="image/*" onChange={handleGanttUpload} className="hidden" />
@@ -3242,6 +3290,7 @@ const ProjectEstimator = () => {
               )}
             </div>
           </CardHeader>
+          {!collapsedSections.gantt && (
           <CardContent>
             {ganttChart ? (
               <div className="relative">
@@ -3255,10 +3304,18 @@ const ProjectEstimator = () => {
               </div>
             )}
           </CardContent>
+          )}
         </Card>
       )}
 
       {/* Overall Summary Cards */}
+      <Card className="border border-[#E2E8F0] shadow-sm">
+        <CardHeader className="flex flex-row items-center gap-2 cursor-pointer select-none py-3" onClick={() => toggleSection("summary")}>
+          {collapsedSections.summary ? <ChevronRight className="w-5 h-5 text-gray-500" /> : <ChevronDown className="w-5 h-5 text-gray-500" />}
+          <CardTitle className="text-xl font-bold text-[#0F172A]">Overall Summary</CardTitle>
+        </CardHeader>
+        {!collapsedSections.summary && (
+        <CardContent className="space-y-4 pt-0">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Card className="border border-[#E2E8F0] shadow-sm">
           <CardHeader className="pb-2">
@@ -3490,6 +3547,9 @@ const ProjectEstimator = () => {
           </div>
         </div>
       )}
+        </CardContent>
+        )}
+      </Card>
 
       {/* Wave Management */}
       <Card className="border border-[#E2E8F0] shadow-sm">
