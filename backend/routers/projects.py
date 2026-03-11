@@ -11,6 +11,14 @@ from email_service import send_email, get_review_request_email, get_approval_ema
 router = APIRouter()
 
 
+def _strip_gantt_data(project: dict):
+    """Remove heavy base64 data from gantt_chart, keep only metadata."""
+    gc = project.get("gantt_chart")
+    if gc and isinstance(gc, dict) and "data" in gc:
+        project["gantt_chart"] = {k: v for k, v in gc.items() if k != "data"}
+    return project
+
+
 async def generate_project_number():
     last_project = await db.projects.find_one(
         {"project_number": {"$regex": "^PRJ-"}},
@@ -77,6 +85,7 @@ async def get_projects(latest_only: bool = True, user: dict = Depends(require_au
             project['created_at'] = datetime.fromisoformat(project['created_at'])
         if isinstance(project.get('updated_at'), str):
             project['updated_at'] = datetime.fromisoformat(project['updated_at'])
+        _strip_gantt_data(project)
         visibility = project.get("visibility", "public")
         if visibility == "public":
             filtered_projects.append(project)
@@ -151,6 +160,7 @@ async def get_project(project_id: str, user: dict = Depends(get_current_user)):
         project['created_at'] = datetime.fromisoformat(project['created_at'])
     if isinstance(project.get('updated_at'), str):
         project['updated_at'] = datetime.fromisoformat(project['updated_at'])
+    _strip_gantt_data(project)
     visibility = project.get("visibility", "public")
     if visibility == "restricted":
         current_user = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
@@ -237,6 +247,7 @@ async def update_project(project_id: str, input: ProjectUpdate, user: dict = Dep
         updated['created_at'] = datetime.fromisoformat(updated['created_at'])
     if isinstance(updated.get('updated_at'), str):
         updated['updated_at'] = datetime.fromisoformat(updated['updated_at'])
+    _strip_gantt_data(updated)
     return updated
 
 

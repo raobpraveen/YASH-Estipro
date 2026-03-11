@@ -280,6 +280,7 @@ class Project(BaseModel):
     created_by_email: str = ""
     is_archived: bool = False
     archived_at: Optional[datetime] = None
+    gantt_chart: Optional[Dict] = None
     visibility: str = "public"
     restricted_user_ids: List[str] = []
     restricted_user_names: List[str] = []
