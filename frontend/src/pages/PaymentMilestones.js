@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
@@ -164,6 +164,19 @@ const PaymentMilestones = () => {
       setSaving(false);
     }
   };
+
+  // Ctrl+S keyboard shortcut
+  useEffect(() => {
+    if (!projectId) return;
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [projectId, milestones]);
 
   const toggleWave = (waveName) => setCollapsedWaves((prev) => ({ ...prev, [waveName]: !prev[waveName] }));
 
@@ -340,7 +353,7 @@ const PaymentMilestones = () => {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate(`/estimator?project=${projectId}`)} className="border-[#0F172A] text-[#0F172A]" data-testid="open-estimator-btn">
+          <Button variant="outline" size="sm" onClick={() => navigate(`/estimator?edit=${projectId}`)} className="border-[#0F172A] text-[#0F172A]" data-testid="open-estimator-btn">
             <ExternalLink className="w-4 h-4 mr-1" /> Open Estimator
           </Button>
           <Button onClick={handleExportExcel} variant="outline" size="sm" className="border-[#10B981] text-[#10B981]" data-testid="export-milestones-btn">

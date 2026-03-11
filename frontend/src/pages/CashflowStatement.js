@@ -263,7 +263,7 @@ const CashflowStatement = () => {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate(`/estimator?project=${projectId}`)} className="border-[#0F172A] text-[#0F172A]" data-testid="open-estimator-btn">
+          <Button variant="outline" size="sm" onClick={() => navigate(`/estimator?edit=${projectId}`)} className="border-[#0F172A] text-[#0F172A]" data-testid="open-estimator-btn">
             <ExternalLink className="w-4 h-4 mr-1" /> Open Estimator
           </Button>
           <Button onClick={exportToExcel} variant="outline" className="border-[#10B981] text-[#10B981]" data-testid="export-cashflow-btn">
