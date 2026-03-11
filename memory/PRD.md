@@ -20,7 +20,6 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 - **Frontend**: React 18 + Tailwind CSS + Shadcn UI
 - **Backend**: Python FastAPI (modular routers)
 - **Database**: MongoDB
-- **Deployment**: Docker + Docker Compose + Nginx
 
 ## Credentials
 - Email: admin@yash.com / Password: password
@@ -46,12 +45,14 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 
 /app/frontend/src/
   pages/
-    ProjectEstimator.js  (4311 lines, down from 5165)
+    ProjectEstimator.js  (4427 lines)
   utils/
-    estimatorCalcs.js    (215 lines - calculation functions)
-    excelExport.js       (374 lines - Excel workbook builder)
-    excelImport.js       (211 lines - Smart Import parser)
+    estimatorCalcs.js    (calculation functions)
+    excelExport.js       (Excel workbook builder)
+    excelImport.js       (Smart Import parser)
     constants.js         (countries, logistics defaults)
+  components/
+    Layout.js            (sidebar with Help group)
 ```
 
 ## What's Been Implemented
@@ -81,17 +82,14 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 - Collapsible sections on Project Estimator page
 - Smart Import parsing of Profit Margin %, Nego Buffer %, Contingency Absolute
 
+### UI/UX Improvements (March 11, 2026)
+- **Sidebar**: Created "Help" group containing User Manual, Support Guide, Tutorials. Settings is separate.
+- **Estimator Toolbar**: Buttons grouped into logical clusters (Project Actions, Utilities, Financial Links, Workflow, Save) with visual group borders and tooltips
+- **Wave Grid**: Added hover tooltips on Level (shows proficiency level), Location (shows name + overhead %), and $/Month (shows formatted salary + master rate if different). Increased column widths by ~16px each.
+
 ### Refactoring (March 11, 2026)
 - **Backend**: Split monolithic server.py (3403 lines) into modular routers (14 files, 2859 total lines)
-- **Frontend**: Extracted calculation functions, Excel export, and Smart Import parsing into utility modules (800 lines extracted from ProjectEstimator.js)
-
-## Backend API Endpoints
-- POST /api/projects/{id}/gantt - Upload Gantt chart image
-- GET /api/projects/{id}/gantt - Get Gantt chart image
-- DELETE /api/projects/{id}/gantt - Delete Gantt chart
-- GET /api/projects/{id}/milestones - Get payment milestones
-- PUT /api/projects/{id}/milestones - Save payment milestones
-- GET /api/projects/{id}/cashflow - Get cashflow statement (computed)
+- **Frontend**: Extracted calculation functions, Excel export, and Smart Import parsing into utility modules
 
 ## Prioritized Backlog
 ### P1 - Upcoming

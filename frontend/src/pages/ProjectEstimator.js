@@ -3186,12 +3186,12 @@ const ProjectEstimator = () => {
                               <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 0, zIndex: 10, background: '#F8FAFC' }}></th>
                               <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 32, zIndex: 10, background: '#F8FAFC' }}>#</th>
                               <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 64, zIndex: 10, background: '#F8FAFC', minWidth: 120, maxWidth: 120 }}>Skill</th>
-                              <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 184, zIndex: 10, background: '#F8FAFC', minWidth: 90, maxWidth: 90 }}>Level</th>
-                              <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 274, zIndex: 10, background: '#F8FAFC', minWidth: 90, maxWidth: 90 }}>Location</th>
-                              <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', left: 364, zIndex: 10, background: '#F8FAFC', minWidth: 70, maxWidth: 70 }}>$/Month</th>
-                              <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 434, zIndex: 10, background: '#F8FAFC', minWidth: 50, maxWidth: 50 }}>Onsite</th>
-                              <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 484, zIndex: 10, background: '#F8FAFC', minWidth: 50, maxWidth: 50 }}>Travel</th>
-                              <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 534, zIndex: 10, background: '#F8FAFC', minWidth: 40, maxWidth: 40, boxShadow: '3px 0 6px rgba(0,0,0,0.1)' }}>Grp</th>
+                              <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 184, zIndex: 10, background: '#F8FAFC', minWidth: 106, maxWidth: 106 }}>Level</th>
+                              <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 290, zIndex: 10, background: '#F8FAFC', minWidth: 106, maxWidth: 106 }}>Location</th>
+                              <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', left: 396, zIndex: 10, background: '#F8FAFC', minWidth: 86, maxWidth: 86 }}>$/Month</th>
+                              <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 482, zIndex: 10, background: '#F8FAFC', minWidth: 50, maxWidth: 50 }}>Onsite</th>
+                              <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 532, zIndex: 10, background: '#F8FAFC', minWidth: 50, maxWidth: 50 }}>Travel</th>
+                              <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 582, zIndex: 10, background: '#F8FAFC', minWidth: 40, maxWidth: 40, boxShadow: '3px 0 6px rgba(0,0,0,0.1)' }}>Grp</th>
                               {/* Scrollable columns: Phases + Calculations */}
                               {wave.phase_names.map((phaseName, index) => (
                                 <th key={index} className="text-center p-2 bg-[#E0F2FE]">
@@ -3287,45 +3287,84 @@ const ProjectEstimator = () => {
                                       </Tooltip>
                                     )}
                                   </td>
-                                  <td className="p-1" style={{ position: 'sticky', left: 184, zIndex: 2, background: stickyBg, minWidth: 90, maxWidth: 90 }}>
+                                  <td className="p-1" style={{ position: 'sticky', left: 184, zIndex: 2, background: stickyBg, minWidth: 106, maxWidth: 106 }}>
                                     {isReadOnly ? (
-                                      <span className="text-xs">{allocation.proficiency_level}</span>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="text-xs cursor-default truncate block">{allocation.proficiency_level}</span>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom"><p className="text-xs font-medium">{allocation.proficiency_level}</p></TooltipContent>
+                                      </Tooltip>
                                     ) : (
-                                      <SearchableSelect
-                                        value={allocation.proficiency_level}
-                                        onValueChange={(value) => handleGridFieldChange(wave.id, allocation.id, 'proficiency_level', value)}
-                                        options={PROFICIENCY_LEVELS.map(l => ({ value: l, label: l }))}
-                                        placeholder="Level..."
-                                        searchPlaceholder="Search levels..."
-                                        triggerClassName="w-[80px] text-xs"
-                                      />
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div>
+                                            <SearchableSelect
+                                              value={allocation.proficiency_level}
+                                              onValueChange={(value) => handleGridFieldChange(wave.id, allocation.id, 'proficiency_level', value)}
+                                              options={PROFICIENCY_LEVELS.map(l => ({ value: l, label: l }))}
+                                              placeholder="Level..."
+                                              searchPlaceholder="Search levels..."
+                                              triggerClassName="w-[96px] text-xs"
+                                            />
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom"><p className="text-xs font-medium">{allocation.proficiency_level || 'Select level'}</p></TooltipContent>
+                                      </Tooltip>
                                     )}
                                   </td>
-                                  <td className="p-1" style={{ position: 'sticky', left: 274, zIndex: 2, background: stickyBg, minWidth: 90, maxWidth: 90 }}>
+                                  <td className="p-1" style={{ position: 'sticky', left: 290, zIndex: 2, background: stickyBg, minWidth: 106, maxWidth: 106 }}>
                                     {isReadOnly ? (
-                                      <span className="text-xs">{allocation.base_location_name}</span>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="text-xs cursor-default truncate block">{allocation.base_location_name}</span>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom"><p className="text-xs font-medium">{allocation.base_location_name}</p></TooltipContent>
+                                      </Tooltip>
                                     ) : (
-                                      <SearchableSelect
-                                        value={allocation.base_location_id}
-                                        onValueChange={(value) => handleGridFieldChange(wave.id, allocation.id, 'base_location_id', value)}
-                                        options={locations.map(l => ({ value: l.id, label: l.name }))}
-                                        placeholder="Location..."
-                                        searchPlaceholder="Search locations..."
-                                        triggerClassName="w-[80px] text-xs"
-                                      />
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div>
+                                            <SearchableSelect
+                                              value={allocation.base_location_id}
+                                              onValueChange={(value) => handleGridFieldChange(wave.id, allocation.id, 'base_location_id', value)}
+                                              options={locations.map(l => ({ value: l.id, label: l.name }))}
+                                              placeholder="Location..."
+                                              searchPlaceholder="Search locations..."
+                                              triggerClassName="w-[96px] text-xs"
+                                            />
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom">
+                                          <p className="text-xs font-medium">{allocation.base_location_name || 'Select location'}</p>
+                                          {allocation.overhead_percentage > 0 && <p className="text-[10px] text-gray-400">OH: {allocation.overhead_percentage}%</p>}
+                                        </TooltipContent>
+                                      </Tooltip>
                                     )}
                                   </td>
-                                  <td className="p-1 text-right" style={{ position: 'sticky', left: 364, zIndex: 2, background: stickyBg, minWidth: 70, maxWidth: 70 }}>
-                                    <Input
-                                      type="number"
-                                      className="w-16 text-right font-mono text-xs h-7"
-                                      value={allocation.avg_monthly_salary}
-                                      onChange={(e) => handleSalaryChange(wave.id, allocation.id, e.target.value)}
-                                      data-testid={`salary-${allocation.id}`}
-                                      disabled={isReadOnly}
-                                    />
+                                  <td className="p-1 text-right" style={{ position: 'sticky', left: 396, zIndex: 2, background: stickyBg, minWidth: 86, maxWidth: 86 }}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div>
+                                          <Input
+                                            type="number"
+                                            className="w-[74px] text-right font-mono text-xs h-7"
+                                            value={allocation.avg_monthly_salary}
+                                            onChange={(e) => handleSalaryChange(wave.id, allocation.id, e.target.value)}
+                                            data-testid={`salary-${allocation.id}`}
+                                            disabled={isReadOnly}
+                                          />
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="bottom">
+                                        <p className="text-xs font-medium">${Number(allocation.avg_monthly_salary || 0).toLocaleString()}/month</p>
+                                        {allocation.original_monthly_salary > 0 && allocation.avg_monthly_salary !== allocation.original_monthly_salary && (
+                                          <p className="text-[10px] text-gray-400">Master rate: ${Number(allocation.original_monthly_salary).toLocaleString()}</p>
+                                        )}
+                                      </TooltipContent>
+                                    </Tooltip>
                                   </td>
-                                  <td className="p-1 text-center" style={{ position: 'sticky', left: 434, zIndex: 2, background: stickyBg, minWidth: 50, maxWidth: 50 }}>
+                                  <td className="p-1 text-center" style={{ position: 'sticky', left: 482, zIndex: 2, background: stickyBg, minWidth: 50, maxWidth: 50 }}>
                                     <button
                                       onClick={() => !isReadOnly && handleToggleOnsite(wave.id, allocation.id)}
                                       disabled={isReadOnly}
@@ -3339,7 +3378,7 @@ const ProjectEstimator = () => {
                                       {allocation.is_onsite ? "ON" : "OFF"}
                                     </button>
                                   </td>
-                                  <td className="p-1 text-center" style={{ position: 'sticky', left: 484, zIndex: 2, background: stickyBg, minWidth: 50, maxWidth: 50 }}>
+                                  <td className="p-1 text-center" style={{ position: 'sticky', left: 532, zIndex: 2, background: stickyBg, minWidth: 50, maxWidth: 50 }}>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <button
@@ -3376,7 +3415,7 @@ const ProjectEstimator = () => {
                                       </TooltipContent>
                                     </Tooltip>
                                   </td>
-                                  <td className="p-1 text-center" style={{ position: 'sticky', left: 534, zIndex: 2, background: stickyBg, minWidth: 40, maxWidth: 40, boxShadow: '3px 0 6px rgba(0,0,0,0.1)' }}>
+                                  <td className="p-1 text-center" style={{ position: 'sticky', left: 582, zIndex: 2, background: stickyBg, minWidth: 40, maxWidth: 40, boxShadow: '3px 0 6px rgba(0,0,0,0.1)' }}>
                                     <Input
                                       type="text"
                                       placeholder=""
