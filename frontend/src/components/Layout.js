@@ -47,6 +47,7 @@ const Layout = ({ user, onLogout }) => {
     main: true,
     master: true,
     admin: true,
+    help: true,
   });
   const [flyoutSection, setFlyoutSection] = useState(null);
   const flyoutRef = useRef(null);
@@ -142,6 +143,9 @@ const Layout = ({ user, onLogout }) => {
 
   const settingsItems = [
     { path: "/settings", icon: Settings, label: "Settings" },
+  ];
+
+  const helpItems = [
     { path: "/user-manual", icon: BookOpen, label: "User Manual" },
     { path: "/support-guide", icon: LifeBuoy, label: "Support Guide" },
     { path: "/tutorials", icon: Video, label: "Tutorials" },
@@ -161,6 +165,7 @@ const Layout = ({ user, onLogout }) => {
     { key: "main", title: "Main", icon: LayoutDashboard, items: mainNavItems },
     { key: "master", title: "Master Data", icon: Layers, items: masterDataItems },
     ...(adminItems.length > 0 ? [{ key: "admin", title: "Admin", icon: UserCog, items: adminItems }] : []),
+    { key: "help", title: "Help", icon: BookOpen, items: helpItems },
     { key: "settings", title: "", icon: null, items: settingsItems },
   ];
 

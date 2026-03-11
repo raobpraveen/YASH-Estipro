@@ -13,7 +13,8 @@ import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Trash2, Plane, Save, FileDown, X, Settings, Copy, History, RefreshCw, Send, CheckCircle, XCircle, Clock, Calculator, Upload, FileSpreadsheet, Minus, MessageSquare, GripVertical, Download, Zap, ChevronDown, ChevronRight } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
+import { Plus, Trash2, Plane, Save, FileDown, X, Settings, Copy, History, RefreshCw, Send, CheckCircle, XCircle, Clock, Calculator, Upload, FileSpreadsheet, Minus, MessageSquare, GripVertical, Download, Zap, ChevronDown, ChevronRight, MoreHorizontal, Eye, Target, BarChart3 } from "lucide-react";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -1823,49 +1824,153 @@ const ProjectEstimator = () => {
             </div>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={handleNewProject} variant="outline" size="sm" data-testid="new-project-button">
-            <Plus className="w-4 h-4 mr-1" />
-            New
-          </Button>
-          {projectId && (
-            <>
-              <Button onClick={handleCloneProject} variant="outline" size="sm" className="border-[#8B5CF6] text-[#8B5CF6]" data-testid="clone-project-button">
-                <Copy className="w-4 h-4 mr-1" />
-                Clone
-              </Button>
-              <Button onClick={() => setSaveAsNewVersionDialog(true)} variant="outline" size="sm" className="border-[#F59E0B] text-[#F59E0B]" data-testid="new-version-button">
-                <History className="w-4 h-4 mr-1" />
-                New Version
-              </Button>
-              {projectStatus === "draft" && !isReadOnly && (
-                <Button 
-                  onClick={openSubmitForReviewDialog} 
-                  variant="outline" 
-                  size="sm"
-                  className="border-purple-600 text-purple-600"
-                  data-testid="submit-review-button"
-                >
-                  <Send className="w-4 h-4 mr-1" />
-                  Submit for Review
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* ── Project Actions Group ── */}
+          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-1" data-testid="project-actions-group">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={handleNewProject} variant="ghost" size="sm" className="h-8 px-2.5 text-slate-700 hover:bg-white hover:text-[#0F172A]" data-testid="new-project-button">
+                  <Plus className="w-4 h-4 mr-1" />
+                  New
                 </Button>
+              </TooltipTrigger>
+              <TooltipContent>Create a new project</TooltipContent>
+            </Tooltip>
+            {projectId && (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button onClick={handleCloneProject} variant="ghost" size="sm" className="h-8 px-2.5 text-[#8B5CF6] hover:bg-purple-50" data-testid="clone-project-button">
+                      <Copy className="w-4 h-4 mr-1" />
+                      Clone
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Clone this project as a new project</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button onClick={() => setSaveAsNewVersionDialog(true)} variant="ghost" size="sm" className="h-8 px-2.5 text-[#F59E0B] hover:bg-amber-50" data-testid="new-version-button">
+                      <History className="w-4 h-4 mr-1" />
+                      Version
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Create a new version</TooltipContent>
+                </Tooltip>
+              </>
+            )}
+          </div>
+
+          {/* ── Utilities Group ── */}
+          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-1" data-testid="utilities-group">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={handleExportToExcel} variant="ghost" size="sm" className="h-8 px-2.5 text-[#10B981] hover:bg-emerald-50" data-testid="export-excel-button">
+                  <FileDown className="w-4 h-4 mr-1" />
+                  Export
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Export to Excel</TooltipContent>
+            </Tooltip>
+            {!isReadOnly && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".xlsx"
+                      onChange={handleSmartImportFile}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      data-testid="smart-import-input"
+                    />
+                    <Button variant="ghost" size="sm" className="h-8 px-2.5 text-[#8B5CF6] hover:bg-purple-50 pointer-events-none" disabled={smartImportLoading}>
+                      <Upload className="w-4 h-4 mr-1" />
+                      {smartImportLoading ? "Parsing..." : "Import"}
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>Smart Import from Excel</TooltipContent>
+              </Tooltip>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={() => setSummaryDialogOpen(true)} variant="ghost" size="sm" className="h-8 px-2.5 text-[#0EA5E9] hover:bg-sky-50" data-testid="view-summary-button">
+                  <Eye className="w-4 h-4 mr-1" />
+                  Summary
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>View full project summary</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={() => setQuickEstimateOpen(true)} variant="ghost" size="sm" className="h-8 px-2.5 text-amber-600 hover:bg-amber-50" data-testid="quick-estimate-button">
+                  <Zap className="w-4 h-4 mr-1" />
+                  Quick Est.
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Quick Estimate Calculator</TooltipContent>
+            </Tooltip>
+          </div>
+
+          {/* ── Financial Links Group (when project saved) ── */}
+          {projectId && (
+            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-1" data-testid="financial-links-group">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2.5 text-[#8B5CF6] hover:bg-purple-50" onClick={() => navigate(`/payment-milestones?project=${projectId}`)} data-testid="milestones-button">
+                    <Target className="w-4 h-4 mr-1" />
+                    Milestones
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Payment Milestones</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2.5 text-[#0EA5E9] hover:bg-sky-50" onClick={() => navigate(`/cashflow?project=${projectId}`)} data-testid="cashflow-button">
+                    <BarChart3 className="w-4 h-4 mr-1" />
+                    Cashflow
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Cashflow Statement</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
+
+          {/* ── Workflow Actions ── */}
+          {projectId && (projectStatus === "draft" || projectStatus === "in_review" || canMarkObsolete) && (
+            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-1" data-testid="workflow-group">
+              {projectStatus === "draft" && !isReadOnly && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      onClick={openSubmitForReviewDialog} 
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2.5 text-purple-600 hover:bg-purple-50"
+                      data-testid="submit-review-button"
+                    >
+                      <Send className="w-4 h-4 mr-1" />
+                      Submit
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Submit for Review</TooltipContent>
+                </Tooltip>
               )}
               {projectStatus === "in_review" && isDesignatedApprover && (
                 <>
                   <Button 
                     onClick={() => setApproverSaveDialogOpen(true)}
                     size="sm"
-                    className="bg-[#10B981] hover:bg-[#10B981]/90 text-white"
+                    className="h-8 bg-[#10B981] hover:bg-[#10B981]/90 text-white"
                     data-testid="approver-save-button"
                   >
                     <Save className="w-4 h-4 mr-1" />
-                    Save & Approve
+                    Approve
                   </Button>
                   <Button 
                     onClick={() => { setApprovalAction("reject"); setApprovalActionDialog(true); }}
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="border-red-600 text-red-600"
+                    className="h-8 px-2.5 text-red-600 hover:bg-red-50"
                     data-testid="reject-button"
                   >
                     <XCircle className="w-4 h-4 mr-1" />
@@ -1874,60 +1979,31 @@ const ProjectEstimator = () => {
                 </>
               )}
               {canMarkObsolete && (
-                <Button 
-                  onClick={() => setObsoleteConfirmOpen(true)}
-                  variant="outline"
-                  size="sm"
-                  className="border-red-400 text-red-400 hover:bg-red-50"
-                  data-testid="mark-obsolete-button"
-                >
-                  <XCircle className="w-4 h-4 mr-1" />
-                  Mark Obsolete
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      onClick={() => setObsoleteConfirmOpen(true)}
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2.5 text-red-400 hover:bg-red-50"
+                      data-testid="mark-obsolete-button"
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      Obsolete
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Mark as Obsolete</TooltipContent>
+                </Tooltip>
               )}
-            </>
+            </div>
           )}
-          <Button onClick={() => setSummaryDialogOpen(true)} variant="outline" size="sm" className="border-[#0EA5E9] text-[#0EA5E9]" data-testid="view-summary-button">
-            View Summary
-          </Button>
-          <Button onClick={() => setQuickEstimateOpen(true)} variant="outline" size="sm" className="border-amber-500 text-amber-600" data-testid="quick-estimate-button">
-            <Zap className="w-4 h-4 mr-1" />
-            Quick Estimate
-          </Button>
-          <Button onClick={handleExportToExcel} variant="outline" size="sm" className="border-[#10B981] text-[#10B981]" data-testid="export-excel-button">
-            <FileDown className="w-4 h-4 mr-1" />
-            Export Excel
-          </Button>
-          {projectId && (
-            <>
-              <Button variant="outline" size="sm" className="border-[#8B5CF6] text-[#8B5CF6]" onClick={() => navigate(`/payment-milestones?project=${projectId}`)} data-testid="milestones-button">
-                Milestones
-              </Button>
-              <Button variant="outline" size="sm" className="border-[#0EA5E9] text-[#0EA5E9]" onClick={() => navigate(`/cashflow?project=${projectId}`)} data-testid="cashflow-button">
-                Cashflow
-              </Button>
-            </>
-          )}
-          {!isReadOnly && (
-          <div className="relative">
-            <input
-              type="file"
-              accept=".xlsx"
-              onChange={handleSmartImportFile}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              data-testid="smart-import-input"
-            />
-            <Button variant="outline" size="sm" className="border-purple-600 text-purple-600 hover:bg-purple-50 pointer-events-none" disabled={smartImportLoading}>
-              <Upload className="w-4 h-4 mr-1" />
-              {smartImportLoading ? "Parsing..." : "Smart Import"}
-            </Button>
-          </div>
-          )}
+
+          {/* ── Save Button (always visible, prominent) ── */}
           {!isReadOnly && projectStatus !== "in_review" && (
-          <Button onClick={handleSaveProject} size="sm" className="bg-[#10B981] hover:bg-[#10B981]/90 text-white" data-testid="save-project-button">
-            <Save className="w-4 h-4 mr-1" />
-            Save
-          </Button>
+            <Button onClick={handleSaveProject} size="sm" className="h-8 bg-[#10B981] hover:bg-[#10B981]/90 text-white shadow-sm" data-testid="save-project-button">
+              <Save className="w-4 h-4 mr-1" />
+              Save
+            </Button>
           )}
         </div>
       </div>
