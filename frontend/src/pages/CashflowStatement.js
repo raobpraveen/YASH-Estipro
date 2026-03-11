@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, FileDown, TrendingUp, TrendingDown, DollarSign, ChevronDown, ChevronRight, Search } from "lucide-react";
+import { ArrowLeft, FileDown, TrendingUp, TrendingDown, DollarSign, ChevronDown, ChevronRight, Search, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const fmt = (v) => `$${(v || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -261,9 +262,14 @@ const CashflowStatement = () => {
             <p className="text-sm text-gray-600 mt-1">{cashflow.project_number} — {cashflow.project_name}</p>
           </div>
         </div>
-        <Button onClick={exportToExcel} variant="outline" className="border-[#10B981] text-[#10B981]" data-testid="export-cashflow-btn">
-          <FileDown className="w-4 h-4 mr-2" /> Export Excel
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate(`/estimator?project=${projectId}`)} className="border-[#0F172A] text-[#0F172A]" data-testid="open-estimator-btn">
+            <ExternalLink className="w-4 h-4 mr-1" /> Open Estimator
+          </Button>
+          <Button onClick={exportToExcel} variant="outline" className="border-[#10B981] text-[#10B981]" data-testid="export-cashflow-btn">
+            <FileDown className="w-4 h-4 mr-2" /> Export Excel
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -401,30 +407,70 @@ const CashflowStatement = () => {
               </Table>
             </div>
 
-            {/* Visual bar chart */}
+            {/* Recharts Visualization */}
             <div className="mt-8">
               <h3 className="font-semibold text-[#0F172A] mb-4">Monthly Cash Flow Visualization</h3>
-              <div className="space-y-2">
-                {combined_data.map((m, idx) => {
-                  const maxVal = Math.max(...combined_data.map((d) => Math.max(d.cost, d.revenue, 1)));
-                  const costWidth = (m.cost / maxVal) * 100;
-                  const revWidth = (m.revenue / maxVal) * 100;
-                  return (
-                    <div key={idx} className="flex items-center gap-2 text-xs">
-                      <span className="w-10 text-right font-mono text-gray-500">M{m.month}</span>
-                      <div className="flex-1 flex gap-1">
-                        <div className="h-4 bg-red-400 rounded-sm transition-all" style={{ width: `${costWidth}%` }} title={`Cost: ${fmt(m.cost)}`}></div>
-                      </div>
-                      <div className="flex-1 flex gap-1">
-                        <div className="h-4 bg-emerald-400 rounded-sm transition-all" style={{ width: `${revWidth}%` }} title={`Revenue: ${fmt(m.revenue)}`}></div>
-                      </div>
-                    </div>
-                  );
-                })}
-                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                  <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-400 rounded-sm inline-block"></span> Cash-Out (Cost)</span>
-                  <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-400 rounded-sm inline-block"></span> Cash-In (Revenue)</span>
-                </div>
+              <div className="h-[350px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={combined_data.map((m) => ({
+                      name: `M${m.month}`,
+                      "Cash-Out": m.cost,
+                      "Cash-In": m.revenue,
+                      Net: m.net,
+                      Cumulative: m.cumulative,
+                    }))}
+                    margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#64748B" }} />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "#64748B" }}
+                      tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v}`}
+                    />
+                    <Tooltip
+                      formatter={(value, name) => [`$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, name]}
+                      contentStyle={{ backgroundColor: "#0F172A", borderRadius: 8, border: "none", color: "#fff", fontSize: 12 }}
+                      labelStyle={{ color: "#94A3B8", marginBottom: 4 }}
+                      itemStyle={{ color: "#F8FAFC" }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <ReferenceLine y={0} stroke="#94A3B8" strokeDasharray="3 3" />
+                    <Bar dataKey="Cash-Out" fill="#EF4444" radius={[4, 4, 0, 0]} barSize={24} />
+                    <Bar dataKey="Cash-In" fill="#10B981" radius={[4, 4, 0, 0]} barSize={24} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Net & Cumulative line area */}
+              <div className="mt-6 h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={combined_data.map((m) => ({
+                      name: `M${m.month}`,
+                      Net: m.net,
+                      Cumulative: m.cumulative,
+                    }))}
+                    margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#64748B" }} />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "#64748B" }}
+                      tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : v <= -1000 ? `-$${(Math.abs(v) / 1000).toFixed(0)}K` : `$${v}`}
+                    />
+                    <Tooltip
+                      formatter={(value, name) => [`$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, name]}
+                      contentStyle={{ backgroundColor: "#0F172A", borderRadius: 8, border: "none", color: "#fff", fontSize: 12 }}
+                      labelStyle={{ color: "#94A3B8", marginBottom: 4 }}
+                      itemStyle={{ color: "#F8FAFC" }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <ReferenceLine y={0} stroke="#94A3B8" strokeDasharray="3 3" />
+                    <Bar dataKey="Net" fill="#F59E0B" radius={[4, 4, 0, 0]} barSize={20} />
+                    <Bar dataKey="Cumulative" fill="#0EA5E9" radius={[4, 4, 0, 0]} barSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </CardContent>

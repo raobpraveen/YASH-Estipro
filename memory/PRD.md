@@ -62,9 +62,9 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 - **Copy Skill Row**: New Copy button on each row in Proficiency Rates page. Copies skill data and opens Add dialog pre-filled for quick duplication.
 - **Enhanced Approver Email**: Review request email now includes a "Project Snapshot" section with customer, description, type, locations, technology, sales manager, total resources, man-months, total cost, selling price, and profit margin.
 - **Gantt Chart Upload**: New section in Project Estimator to upload/view/delete a timeline or Gantt chart image per project. Stored as base64 in MongoDB.
-- **Payment Milestones Page**: New /payment-milestones page to define phase-based payment schedules per wave. Features: wave selector, milestone naming, completion %, payment %, auto-calculated payment amount, per-wave summaries, save/load via API.
-- **Cashflow Statement Page**: New /cashflow page showing monthly cash outflows (costs from resources + logistics) and inflows (from payment milestones). Includes summary cards, monthly breakdown table, visual bar chart, and Excel export.
-- **Sidebar Navigation**: Added Milestones (Target icon) and Cashflow (BarChart3 icon) to main navigation.
+- **Payment Milestones Page**: New /payment-milestones page with project list (table view) and per-wave milestone editor. Features: wave-based collapsible sections, target month dropdown (M1-Mn), payment % with auto-calculated amount, row-level add button, Excel export with formula-based amount calculation (Amount = WaveSP * PaymentPct).
+- **Cashflow Statement Page**: New /cashflow page with project list (showing projects with resource data) and per-wave cashflow breakdown. Cash-In from payment milestones mapped to target months. Combined Monthly Summary sums across waves. Elegant recharts BarChart visualizations for Cash-In/Out and Net/Cumulative. Excel export with per-wave sheets + Combined Summary sheet with cross-sheet formulas.
+- **Navigation Enhancements**: "Open Estimator" button on Milestones and Cashflow detail pages. Sidebar nav includes Milestones (Target icon) and Cashflow (BarChart3 icon).
 
 ## Backend API Endpoints (New)
 - POST /api/projects/{id}/gantt — Upload Gantt chart image

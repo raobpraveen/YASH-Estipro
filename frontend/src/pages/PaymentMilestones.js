@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Save, ArrowLeft, DollarSign, Target, ChevronDown, ChevronRight, Search, FileDown } from "lucide-react";
+import { Plus, Trash2, Save, ArrowLeft, DollarSign, Target, ChevronDown, ChevronRight, Search, FileDown, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
 
@@ -340,6 +340,9 @@ const PaymentMilestones = () => {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate(`/estimator?project=${projectId}`)} className="border-[#0F172A] text-[#0F172A]" data-testid="open-estimator-btn">
+            <ExternalLink className="w-4 h-4 mr-1" /> Open Estimator
+          </Button>
           <Button onClick={handleExportExcel} variant="outline" size="sm" className="border-[#10B981] text-[#10B981]" data-testid="export-milestones-btn">
             <FileDown className="w-4 h-4 mr-1" /> Export Excel
           </Button>
