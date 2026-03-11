@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Save, ArrowLeft, DollarSign, Target, ChevronDown, ChevronRight, FolderKanban, Search } from "lucide-react";
+import { Plus, Trash2, Save, ArrowLeft, DollarSign, Target, ChevronDown, ChevronRight, Search, FileDown } from "lucide-react";
 import { toast } from "sonner";
+import ExcelJS from "exceljs";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -22,7 +23,7 @@ const PaymentMilestones = () => {
   const [saving, setSaving] = useState(false);
   const [collapsedWaves, setCollapsedWaves] = useState({});
 
-  // Project list state (when no projectId)
+  // Project list state
   const [projects, setProjects] = useState([]);
   const [projectSearch, setProjectSearch] = useState("");
   const [loadingProjects, setLoadingProjects] = useState(true);
@@ -46,8 +47,6 @@ const PaymentMilestones = () => {
       });
       const allProjects = res.data || [];
       setProjects(allProjects);
-
-      // Fetch milestone counts for all projects
       const counts = {};
       await Promise.all(
         allProjects.map(async (p) => {
@@ -131,7 +130,6 @@ const PaymentMilestones = () => {
         description: "",
       },
     ]);
-    // Auto-expand this wave
     setCollapsedWaves((prev) => ({ ...prev, [waveName]: false }));
   };
 
@@ -150,9 +148,7 @@ const PaymentMilestones = () => {
     );
   };
 
-  const removeMilestone = (id) => {
-    setMilestones(milestones.filter((m) => m.id !== id));
-  };
+  const removeMilestone = (id) => setMilestones(milestones.filter((m) => m.id !== id));
 
   const handleSave = async () => {
     setSaving(true);
@@ -169,95 +165,168 @@ const PaymentMilestones = () => {
     }
   };
 
-  const toggleWave = (waveName) => {
-    setCollapsedWaves((prev) => ({ ...prev, [waveName]: !prev[waveName] }));
+  const toggleWave = (waveName) => setCollapsedWaves((prev) => ({ ...prev, [waveName]: !prev[waveName] }));
+
+  // ===== EXCEL EXPORT =====
+  const handleExportExcel = async () => {
+    if (!project || milestones.length === 0) { toast.error("No milestones to export"); return; }
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "YASH EstiPro";
+      const headerFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F172A" } };
+      const headerFont = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+      const waveFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+      const thinBorder = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+      const moneyFmt = "#,##0.00";
+      const pctFmt = "0.00%";
+
+      const waves = project.waves || [];
+      for (const wave of waves) {
+        const waveName = wave.name;
+        const wMs = milestones.filter((m) => m.wave_name === waveName);
+        if (wMs.length === 0) continue;
+        const ws = wb.addWorksheet(waveName.substring(0, 31));
+        ws.columns = [{ width: 6 }, { width: 30 }, { width: 14 }, { width: 14 }, { width: 18 }, { width: 30 }];
+
+        // Wave selling price reference
+        const waveSP = getWaveFinalPrice(waveName);
+        ws.addRow([`${waveName} — Payment Milestones`]).font = { bold: true, size: 13 };
+        const spRow = ws.addRow(["", "Wave Selling Price", waveSP]);
+        spRow.getCell(3).numFmt = moneyFmt;
+        spRow.getCell(3).font = { bold: true };
+        const spCellRef = `C2`; // wave SP cell reference
+        ws.addRow([]);
+
+        // Headers
+        const hRow = ws.addRow(["#", "Milestone Name", "Target Month", "Payment %", "Payment Amount", "Description"]);
+        hRow.eachCell((c) => { c.fill = headerFill; c.font = headerFont; c.border = thinBorder; });
+        const dataStartRow = 5; // row after header
+
+        wMs.forEach((ms, idx) => {
+          const rowNum = dataStartRow + idx;
+          const r = ws.addRow([
+            idx + 1,
+            ms.milestone_name || "",
+            ms.target_month || "M1",
+            (ms.payment_percentage || 0) / 100,
+            { formula: `${spCellRef}*D${rowNum}`, result: ms.payment_amount || 0 },
+            ms.description || "",
+          ]);
+          r.getCell(4).numFmt = pctFmt;
+          r.getCell(5).numFmt = moneyFmt;
+          r.eachCell((c) => { c.border = thinBorder; });
+        });
+
+        // Totals row
+        const totalRowNum = dataStartRow + wMs.length;
+        ws.addRow([]);
+        const pctRange = `D${dataStartRow}:D${totalRowNum - 1}`;
+        const amtRange = `E${dataStartRow}:E${totalRowNum - 1}`;
+        const totRow = ws.addRow(["", "TOTAL", "", { formula: `SUM(${pctRange})`, result: 0 }, { formula: `SUM(${amtRange})`, result: 0 }, ""]);
+        totRow.font = { bold: true };
+        totRow.getCell(4).numFmt = pctFmt;
+        totRow.getCell(5).numFmt = moneyFmt;
+        totRow.eachCell((c) => { c.fill = waveFill; c.border = thinBorder; });
+      }
+
+      const buffer = await wb.xlsx.writeBuffer();
+      const fileName = `${project.project_number || "Project"}_Milestones.xlsx`;
+      const uploadRes = await fetch(`${API}/download-file`, {
+        method: "POST",
+        headers: { "X-Filename": fileName, "X-Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+        body: buffer,
+      });
+      const { download_id } = await uploadRes.json();
+      const iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+      iframe.src = `${API}/download-file/${download_id}`;
+      document.body.appendChild(iframe);
+      setTimeout(() => document.body.removeChild(iframe), 30000);
+      toast.success("Milestones exported to Excel");
+    } catch (err) {
+      toast.error("Export failed: " + (err.message || "Unknown"));
+    }
   };
 
   const totalPayment = milestones.reduce((s, m) => s + (m.payment_amount || 0), 0);
 
-  // ========== PROJECT LIST VIEW (no projectId) ==========
+  // ========== PROJECT LIST VIEW ==========
   if (!projectId) {
     const filtered = projects.filter((p) =>
       (p.name || "").toLowerCase().includes(projectSearch.toLowerCase()) ||
       (p.project_number || "").toLowerCase().includes(projectSearch.toLowerCase())
     );
-    // Sort: projects with milestones first
-    const sorted = [...filtered].sort((a, b) => {
-      const aHas = milestoneCounts[a.id] ? 1 : 0;
-      const bHas = milestoneCounts[b.id] ? 1 : 0;
-      return bHas - aHas;
-    });
+    const sorted = [...filtered].sort((a, b) => (milestoneCounts[b.id] ? 1 : 0) - (milestoneCounts[a.id] ? 1 : 0));
 
     return (
       <div data-testid="milestones-project-list">
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0F172A] tracking-tight">Payment Milestones</h1>
           <p className="text-sm text-gray-600 mt-1">Select a project to manage payment milestones</p>
         </div>
-
-        <div className="relative mb-6 max-w-md">
+        <div className="relative mb-4 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            placeholder="Search projects..."
-            value={projectSearch}
-            onChange={(e) => setProjectSearch(e.target.value)}
-            className="pl-10"
-            data-testid="project-search"
-          />
+          <Input placeholder="Search projects..." value={projectSearch} onChange={(e) => setProjectSearch(e.target.value)} className="pl-10" data-testid="project-search" />
         </div>
-
         {loadingProjects ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500"></div>
-          </div>
+          <div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500"></div></div>
         ) : sorted.length === 0 ? (
-          <Card className="border border-dashed">
-            <CardContent className="py-12 text-center">
-              <FolderKanban className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-500">No projects found</p>
+          <Card className="border border-dashed"><CardContent className="py-12 text-center"><p className="text-gray-500">No projects found</p></CardContent></Card>
+        ) : (
+          <Card className="border border-[#E2E8F0]">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-28">Project #</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="w-20 text-center">Version</TableHead>
+                    <TableHead className="w-20 text-center">Waves</TableHead>
+                    <TableHead className="w-28 text-center">Milestones</TableHead>
+                    <TableHead className="w-20"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sorted.map((p) => (
+                    <TableRow
+                      key={p.id}
+                      className="cursor-pointer hover:bg-[#F8FAFC] transition-colors"
+                      onClick={() => navigate(`/payment-milestones?project=${p.id}`)}
+                      data-testid={`project-row-${p.id}`}
+                    >
+                      <TableCell className="font-mono text-[#0EA5E9] text-sm">{p.project_number}</TableCell>
+                      <TableCell className="font-medium text-[#0F172A]">{p.name}</TableCell>
+                      <TableCell className="text-center text-gray-500">v{p.version}</TableCell>
+                      <TableCell className="text-center text-gray-500">{p.waves?.length || 0}</TableCell>
+                      <TableCell className="text-center">
+                        {milestoneCounts[p.id] ? (
+                          <span className="text-xs bg-[#10B981]/10 text-[#10B981] font-semibold px-2 py-0.5 rounded-full">
+                            {milestoneCounts[p.id]}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" className="text-[#0EA5E9]">Open</Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sorted.map((p) => (
-              <Card
-                key={p.id}
-                className="border border-[#E2E8F0] hover:border-[#0EA5E9] hover:shadow-md transition-all cursor-pointer"
-                onClick={() => navigate(`/payment-milestones?project=${p.id}`)}
-                data-testid={`project-card-${p.id}`}
-              >
-                <CardContent className="pt-5 pb-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="text-xs font-mono text-[#0EA5E9]">{p.project_number}</span>
-                    {milestoneCounts[p.id] && (
-                      <span className="text-xs bg-[#10B981]/10 text-[#10B981] font-semibold px-2 py-0.5 rounded-full">
-                        {milestoneCounts[p.id]} milestone{milestoneCounts[p.id] > 1 ? "s" : ""}
-                      </span>
-                    )}
-                  </div>
-                  <p className="font-semibold text-[#0F172A] text-sm truncate">{p.name}</p>
-                  <p className="text-xs text-gray-500 mt-1">v{p.version} &middot; {p.waves?.length || 0} wave{(p.waves?.length || 0) !== 1 ? "s" : ""}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
         )}
       </div>
     );
   }
 
-  // ========== LOADING STATE ==========
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500"></div>
-      </div>
-    );
-  }
+  // ========== LOADING ==========
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500"></div></div>;
 
   const waves = project?.waves || [];
 
-  // ========== MILESTONE EDITOR VIEW ==========
+  // ========== MILESTONE EDITOR ==========
   return (
     <div data-testid="payment-milestones-page">
       <div className="flex items-center justify-between mb-8">
@@ -270,12 +339,17 @@ const PaymentMilestones = () => {
             <p className="text-sm text-gray-600 mt-1">{project?.project_number} — {project?.name} (v{project?.version})</p>
           </div>
         </div>
-        <Button onClick={handleSave} disabled={saving} className="bg-[#0F172A] hover:bg-[#0F172A]/90" data-testid="save-milestones-btn">
-          <Save className="w-4 h-4 mr-2" /> {saving ? "Saving..." : "Save All"}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleExportExcel} variant="outline" size="sm" className="border-[#10B981] text-[#10B981]" data-testid="export-milestones-btn">
+            <FileDown className="w-4 h-4 mr-1" /> Export Excel
+          </Button>
+          <Button onClick={handleSave} disabled={saving} className="bg-[#0F172A] hover:bg-[#0F172A]/90" data-testid="save-milestones-btn">
+            <Save className="w-4 h-4 mr-2" /> {saving ? "Saving..." : "Save All"}
+          </Button>
+        </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card className="border-l-4 border-l-[#0EA5E9]">
           <CardContent className="pt-4 pb-4">
@@ -286,9 +360,7 @@ const PaymentMilestones = () => {
         <Card className="border-l-4 border-l-[#10B981]">
           <CardContent className="pt-4 pb-4">
             <p className="text-sm text-gray-500">Total Payment Amount</p>
-            <p className="text-2xl font-bold text-[#10B981]" data-testid="total-payment">
-              ${totalPayment.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-            </p>
+            <p className="text-2xl font-bold text-[#10B981]" data-testid="total-payment">${totalPayment.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-[#F59E0B]">
@@ -312,20 +384,11 @@ const PaymentMilestones = () => {
 
           return (
             <Card key={waveName} className="border border-[#E2E8F0] shadow-sm" data-testid={`wave-section-${waveName}`}>
-              <CardHeader
-                className="flex flex-row items-center justify-between py-3 px-5 cursor-pointer select-none hover:bg-gray-50/50 transition-colors"
-                onClick={() => toggleWave(waveName)}
-              >
+              <CardHeader className="flex flex-row items-center justify-between py-3 px-5 cursor-pointer select-none hover:bg-gray-50/50 transition-colors" onClick={() => toggleWave(waveName)}>
                 <div className="flex items-center gap-3">
-                  {isCollapsed ? (
-                    <ChevronRight className="w-5 h-5 text-gray-500" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-500" />
-                  )}
+                  {isCollapsed ? <ChevronRight className="w-5 h-5 text-gray-500" /> : <ChevronDown className="w-5 h-5 text-gray-500" />}
                   <CardTitle className="text-lg font-bold text-[#0F172A]">{waveName}</CardTitle>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                    {waveMilestones.length} milestone{waveMilestones.length !== 1 ? "s" : ""}
-                  </span>
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{waveMilestones.length} milestone{waveMilestones.length !== 1 ? "s" : ""}</span>
                   <span className="text-xs text-gray-400">{monthCount} months</span>
                 </div>
                 <div className="flex items-center gap-4 text-sm" onClick={(e) => e.stopPropagation()}>
@@ -334,10 +397,9 @@ const PaymentMilestones = () => {
                   <span className="text-[#10B981] font-semibold">${wavePayTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
               </CardHeader>
-
               {!isCollapsed && (
                 <CardContent className="pt-0 pb-4">
-                  {waveMilestones.length > 0 ? (
+                  {waveMilestones.length > 0 && (
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
@@ -355,105 +417,41 @@ const PaymentMilestones = () => {
                           {waveMilestones.map((ms, idx) => (
                             <TableRow key={ms.id} data-testid={`milestone-row-${ms.id}`}>
                               <TableCell className="font-mono text-gray-400">{idx + 1}</TableCell>
+                              <TableCell><Input value={ms.milestone_name} onChange={(e) => updateMilestone(ms.id, "milestone_name", e.target.value)} className="w-48" data-testid={`ms-name-${ms.id}`} /></TableCell>
                               <TableCell>
-                                <Input
-                                  value={ms.milestone_name}
-                                  onChange={(e) => updateMilestone(ms.id, "milestone_name", e.target.value)}
-                                  className="w-48"
-                                  data-testid={`ms-name-${ms.id}`}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Select
-                                  value={ms.target_month || "M1"}
-                                  onValueChange={(v) => updateMilestone(ms.id, "target_month", v)}
-                                >
-                                  <SelectTrigger className="w-24" data-testid={`ms-month-${ms.id}`}>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {Array.from({ length: monthCount }, (_, i) => (
-                                      <SelectItem key={i} value={`M${i + 1}`}>M{i + 1}</SelectItem>
-                                    ))}
-                                  </SelectContent>
+                                <Select value={ms.target_month || "M1"} onValueChange={(v) => updateMilestone(ms.id, "target_month", v)}>
+                                  <SelectTrigger className="w-24" data-testid={`ms-month-${ms.id}`}><SelectValue /></SelectTrigger>
+                                  <SelectContent>{Array.from({ length: monthCount }, (_, i) => (<SelectItem key={i} value={`M${i + 1}`}>M{i + 1}</SelectItem>))}</SelectContent>
                                 </Select>
                               </TableCell>
-                              <TableCell>
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  max={100}
-                                  value={ms.payment_percentage}
-                                  onChange={(e) => updateMilestone(ms.id, "payment_percentage", parseFloat(e.target.value) || 0)}
-                                  className="w-24"
-                                  data-testid={`ms-pct-${ms.id}`}
-                                />
-                              </TableCell>
-                              <TableCell className="text-right font-mono font-semibold text-[#10B981]" data-testid={`ms-amount-${ms.id}`}>
-                                ${(ms.payment_amount || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                              </TableCell>
-                              <TableCell>
-                                <Input
-                                  value={ms.description || ""}
-                                  onChange={(e) => updateMilestone(ms.id, "description", e.target.value)}
-                                  className="w-40"
-                                  placeholder="Optional"
-                                  data-testid={`ms-desc-${ms.id}`}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeMilestone(ms.id)}
-                                  className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                  data-testid={`ms-delete-${ms.id}`}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </TableCell>
+                              <TableCell><Input type="number" min={0} max={100} value={ms.payment_percentage} onChange={(e) => updateMilestone(ms.id, "payment_percentage", parseFloat(e.target.value) || 0)} className="w-24" data-testid={`ms-pct-${ms.id}`} /></TableCell>
+                              <TableCell className="text-right font-mono font-semibold text-[#10B981]" data-testid={`ms-amount-${ms.id}`}>${(ms.payment_amount || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
+                              <TableCell><Input value={ms.description || ""} onChange={(e) => updateMilestone(ms.id, "description", e.target.value)} className="w-40" placeholder="Optional" data-testid={`ms-desc-${ms.id}`} /></TableCell>
+                              <TableCell><Button variant="ghost" size="sm" onClick={() => removeMilestone(ms.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50" data-testid={`ms-delete-${ms.id}`}><Trash2 className="w-4 h-4" /></Button></TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
                       </Table>
                     </div>
-                  ) : (
-                    <p className="text-sm text-gray-400 py-3 text-center">No milestones for this wave yet.</p>
                   )}
-
-                  {/* Row-level add button */}
+                  {!waveMilestones.length && <p className="text-sm text-gray-400 py-3 text-center">No milestones for this wave yet.</p>}
                   <div className="mt-3 flex justify-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addMilestoneToWave(waveName)}
-                      className="text-[#0EA5E9] border-[#0EA5E9]/30 hover:bg-[#0EA5E9]/5"
-                      data-testid={`add-ms-${waveName}`}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => addMilestoneToWave(waveName)} className="text-[#0EA5E9] border-[#0EA5E9]/30 hover:bg-[#0EA5E9]/5" data-testid={`add-ms-${waveName}`}>
                       <Plus className="w-4 h-4 mr-1" /> Add Milestone
                     </Button>
                   </div>
-
-                  {/* Wave footer warning */}
-                  {wavePctTotal > 100 && (
-                    <p className="text-xs text-red-500 mt-2 text-center font-medium">
-                      Total payment percentage ({wavePctTotal.toFixed(1)}%) exceeds 100%
-                    </p>
-                  )}
+                  {wavePctTotal > 100 && <p className="text-xs text-red-500 mt-2 text-center font-medium">Total payment percentage ({wavePctTotal.toFixed(1)}%) exceeds 100%</p>}
                 </CardContent>
               )}
             </Card>
           );
         })}
-
         {waves.length === 0 && (
-          <Card className="border border-dashed">
-            <CardContent className="py-12 text-center">
-              <Target className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-500 text-lg mb-2">No waves in this project</p>
-              <p className="text-gray-400 text-sm">Add waves to the project estimator first, then define milestones.</p>
-            </CardContent>
-          </Card>
+          <Card className="border border-dashed"><CardContent className="py-12 text-center">
+            <Target className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+            <p className="text-gray-500 text-lg mb-2">No waves in this project</p>
+            <p className="text-gray-400 text-sm">Add waves to the project estimator first, then define milestones.</p>
+          </CardContent></Card>
         )}
       </div>
     </div>

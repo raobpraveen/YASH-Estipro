@@ -1,0 +1,120 @@
+{
+  "summary": "Iteration 28 testing completed - All 14 features verified. Milestones page now shows LIST/TABLE view with milestone count badges. Cashflow page shows project list with Resources column and wave-wise breakdown with Cash-In/Cash-Out. Both pages have working Excel export. Backend APIs return wave_data and combined_data arrays as expected.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Dashboard",
+        "issues": ["Console warning about chart width/height - recharts library issue but does not affect functionality"]
+      }
+    ]
+  },
+
+  "passed_tests": [
+    "1. Login with admin@yash.com / password - PASS",
+    "2. Milestones sidebar shows project LIST/TABLE view with columns: Project#, Name, Version, Waves, Milestones, Open - PASS",
+    "3. Milestone count badges show for ewf=2, dasg=2 - PASS",
+    "4. Cashflow sidebar shows project LIST/TABLE view with Resources column - PASS",
+    "5. Cashflow project list shows only projects with resource data (ewf, dasg, dasg Copy) - PASS",
+    "6. Click ewf in Cashflow list - wave-wise breakdown appears with W1 (Copy) section - PASS",
+    "7. W1 (Copy) wave section shows monthly rows M1-M5 with Cash-Out and Cash-In columns - PASS",
+    "8a. Cash-In at M2 shows $25,000 (from milestones) - PASS",
+    "8b. Cash-In at M5 shows $60,000 (from milestones) - PASS",
+    "9. Combined Monthly Summary section appears with cumulative tracking - PASS",
+    "10. Export Excel on Cashflow page works - PASS",
+    "11. Export Excel button exists on Milestones page - PASS",
+    "12. Export Excel on Milestones page works (shows 'Milestones exported to Excel' toast) - PASS",
+    "13. Backend API: GET /api/projects/{id}/cashflow returns wave_data AND combined_data arrays - PASS (verified via pytest)",
+    "14. Wave collapse/expand works on cashflow page - PASS"
+  ],
+
+  "backend_api_tests": {
+    "GET /api/projects?latest_only=true": "PASS - Returns projects list for table views",
+    "GET /api/projects/{id}/milestones": "PASS - Returns milestones array with correct structure",
+    "GET /api/projects/{id}/cashflow": "PASS - Returns wave_data, combined_data, and summary",
+    "POST /api/download-file": "PASS - Returns download_id for Excel export"
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_iteration28_milestones_cashflow.py",
+    "/app/test_reports/pytest/pytest_iteration28.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "All requested features implemented and working correctly",
+    "Milestones page correctly shows LIST/TABLE view instead of card view",
+    "Cashflow page correctly filters to show only projects with resource data",
+    "Wave-wise breakdown properly separates cash flow by wave",
+    "Cash-In (revenue) correctly comes from payment milestones at target months",
+    "Combined Monthly Summary correctly sums M1 of Wave1 + M1 of Wave2 etc.",
+    "Excel export generates files with formulas (PaymentAmount = WaveSP * PaymentPct)"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_iteration28_milestones_cashflow.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (14/14 pytest tests passed)",
+    "frontend": "100% (All 14 features verified via Playwright)"
+  },
+
+  "seed_data_creation": "No new seed data created. Used existing projects: ewf (PRJ-0022) with 2 milestones, dasg (PRJ-0023) with 2 milestones.",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+
+  "context_for_next_testing_agent": "Iteration 28 features all verified: 1) Milestones page (/payment-milestones) - LIST/TABLE view with columns Project#, Name, Version, Waves, Milestones count badge, Open button; 2) Cashflow page (/cashflow) - LIST/TABLE view showing only projects with resource data, columns include Resources count; 3) Cashflow detail page shows wave-wise breakdown with Cash-Out/Cash-In columns, Combined Monthly Summary with cumulative tracking; 4) Both pages have working Export Excel buttons; 5) Cash-In values correctly populated from payment milestones mapped by target_month. Test data: ewf (PRJ-0022, id: bcb545cf-efb8-4b5f-b5d4-8db988080a68) has 2 milestones (M2=$25,000, M5=$60,000); dasg (PRJ-0023, id: 0a7d0101-4c39-4398-af84-dafef153d3a8) has 2 milestones.",
+
+  "features_verified": {
+    "milestones_page": {
+      "url": "/payment-milestones",
+      "list_table_view": "PASS - Table with Project#, Name, Version, Waves, Milestones, Open columns",
+      "milestone_count_badges": "PASS - ewf shows 2, dasg shows 2",
+      "excel_export": "PASS - Export Excel button with formula-based PaymentAmount calculation"
+    },
+    "cashflow_page": {
+      "url": "/cashflow",
+      "project_list": "PASS - Shows only projects with resource data (ewf=1, dasg=81, dasg Copy=39)",
+      "resources_column": "PASS - Resources column shows count of grid_allocations",
+      "wave_breakdown": "PASS - Each wave has separate collapsible section",
+      "cash_out_cash_in": "PASS - Columns for Cash-Out (Cost) and Cash-In (Revenue)",
+      "milestone_cash_in": "PASS - M2=$25,000, M5=$60,000 from milestones",
+      "combined_summary": "PASS - Combined Monthly Summary with cumulative tracking",
+      "excel_export": "PASS - Export Excel button with per-wave sheets and combined summary"
+    },
+    "backend_api": {
+      "cashflow_wave_data": "PASS - wave_data array with per-wave monthly breakdowns",
+      "cashflow_combined_data": "PASS - combined_data array with cumulative tracking",
+      "cashflow_summary": "PASS - summary with total_cost, total_revenue, net_cashflow"
+    }
+  },
+
+  "test_data_used": {
+    "ewf_project": {
+      "id": "bcb545cf-efb8-4b5f-b5d4-8db988080a68",
+      "project_number": "PRJ-0022",
+      "waves": ["W1 (Copy)"],
+      "milestones": [
+        {"name": "Phase 1 Done", "target_month": "M2", "amount": 25000},
+        {"name": "UAT Complete", "target_month": "M5", "amount": 60000}
+      ]
+    },
+    "dasg_project": {
+      "id": "0a7d0101-4c39-4398-af84-dafef153d3a8",
+      "project_number": "PRJ-0023",
+      "resources": 81,
+      "milestones": 2
+    },
+    "admin_credentials": "admin@yash.com / password"
+  }
+}

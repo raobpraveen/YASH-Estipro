@@ -3254,7 +3254,7 @@ async def save_milestones(project_id: str, request: Request, user: dict = Depend
 # =========== CASHFLOW STATEMENT ===========
 @api_router.get("/projects/{project_id}/cashflow")
 async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
-    """Generate a cashflow statement for the project"""
+    """Generate a cashflow statement for the project with per-wave breakdown"""
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -3264,8 +3264,8 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
     milestone_doc = await db.payment_milestones.find_one({"project_id": project_id}, {"_id": 0})
     milestones = (milestone_doc or {}).get("milestones", [])
 
-    monthly_data = []
-    total_months = 0
+    wave_data = []
+    max_months = 0
 
     # Calculate monthly outflows per wave
     for wave in waves:
@@ -3273,15 +3273,12 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
         phase_names = wave.get("phase_names", [])
         lc = wave.get("logistics_config") or {}
         n_months = len(phase_names)
-        if n_months > total_months:
-            total_months = n_months
+        if n_months > max_months:
+            max_months = n_months
 
+        wave_monthly = []
         for month_idx in range(n_months):
-            while len(monthly_data) <= month_idx:
-                monthly_data.append({"month": month_idx + 1, "phase": "", "cost": 0, "revenue": 0})
-            if month_idx < len(phase_names):
-                monthly_data[month_idx]["phase"] = phase_names[month_idx]
-
+            phase_label = phase_names[month_idx] if month_idx < len(phase_names) else ""
             month_cost = 0
             travel_mm_month = 0
             travel_count_month = 0
@@ -3301,7 +3298,6 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
                     travel_mm_month += mm
                     travel_count_month += 1
 
-            # Add proportional logistics for this month
             if travel_count_month > 0:
                 per_diem = travel_mm_month * (lc.get("per_diem_daily", 0) or 0) * (lc.get("per_diem_days", 0) or 0)
                 accom = travel_mm_month * (lc.get("accommodation_daily", 0) or 0) * (lc.get("accommodation_days", 0) or 0)
@@ -3313,45 +3309,71 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
                 contingency_abs = (lc.get("contingency_absolute", 0) or 0) / max(n_months, 1)
                 month_cost += logistics_month + contingency + contingency_abs
 
-            monthly_data[month_idx]["cost"] += month_cost
+            # Cash-in from milestones for this wave and month
+            month_revenue = 0
+            for ms in milestones:
+                if ms.get("wave_name") != wave.get("name"):
+                    continue
+                payment_amount = ms.get("payment_amount", 0) or 0
+                target_month_str = ms.get("target_month", "M1") or "M1"
+                try:
+                    t_idx = int(target_month_str.replace("M", "")) - 1
+                except (ValueError, AttributeError):
+                    t_idx = 0
+                if t_idx == month_idx and payment_amount > 0:
+                    month_revenue += payment_amount
 
-    # Calculate monthly inflows from milestones
-    for ms in milestones:
-        wave_name = ms.get("wave_name", "")
-        payment_amount = ms.get("payment_amount", 0) or 0
-        # Use target_month field (e.g. "M3" -> month index 2)
-        target_month_str = ms.get("target_month", "M1") or "M1"
-        try:
-            target_month_idx = int(target_month_str.replace("M", "")) - 1
-        except (ValueError, AttributeError):
-            # Fallback: use completion_percentage if target_month not set
-            completion_pct = ms.get("completion_percentage", 0) or 0
-            wave = next((w for w in waves if w.get("name") == wave_name), None)
-            n = len(wave.get("phase_names", [])) if wave else 1
-            target_month_idx = max(0, min(int(completion_pct / 100 * n) - 1, n - 1)) if n > 0 else 0
+            wave_monthly.append({
+                "month": month_idx + 1,
+                "phase": phase_label,
+                "cost": round(month_cost, 2),
+                "revenue": round(month_revenue, 2),
+            })
 
-        if payment_amount > 0 and target_month_idx >= 0:
-            while len(monthly_data) <= target_month_idx:
-                monthly_data.append({"month": target_month_idx + 1, "phase": "", "cost": 0, "revenue": 0})
-            monthly_data[target_month_idx]["revenue"] += payment_amount
+        wave_total_cost = sum(m["cost"] for m in wave_monthly)
+        wave_total_rev = sum(m["revenue"] for m in wave_monthly)
+        wave_data.append({
+            "wave_name": wave.get("name", f"Wave {len(wave_data)+1}"),
+            "months": n_months,
+            "monthly_data": wave_monthly,
+            "total_cost": round(wave_total_cost, 2),
+            "total_revenue": round(wave_total_rev, 2),
+            "net": round(wave_total_rev - wave_total_cost, 2),
+        })
 
-    # Calculate running balance
+    # Build combined monthly summary (sum across all waves per month index)
+    combined = []
     running = 0
-    for m in monthly_data:
-        m["cost"] = round(m["cost"], 2)
-        m["revenue"] = round(m["revenue"], 2)
-        running += m["revenue"] - m["cost"]
-        m["net"] = round(m["revenue"] - m["cost"], 2)
-        m["cumulative"] = round(running, 2)
+    for m_idx in range(max_months):
+        cost_sum = 0
+        rev_sum = 0
+        phase_label = ""
+        for wd in wave_data:
+            if m_idx < len(wd["monthly_data"]):
+                cost_sum += wd["monthly_data"][m_idx]["cost"]
+                rev_sum += wd["monthly_data"][m_idx]["revenue"]
+                if not phase_label and wd["monthly_data"][m_idx].get("phase"):
+                    phase_label = wd["monthly_data"][m_idx]["phase"]
+        net = rev_sum - cost_sum
+        running += net
+        combined.append({
+            "month": m_idx + 1,
+            "phase": phase_label,
+            "cost": round(cost_sum, 2),
+            "revenue": round(rev_sum, 2),
+            "net": round(net, 2),
+            "cumulative": round(running, 2),
+        })
 
-    total_cost = sum(m["cost"] for m in monthly_data)
-    total_revenue = sum(m["revenue"] for m in monthly_data)
+    total_cost = sum(m["cost"] for m in combined)
+    total_revenue = sum(m["revenue"] for m in combined)
 
     return {
         "project_id": project_id,
         "project_name": project.get("name", ""),
         "project_number": project.get("project_number", ""),
-        "monthly_data": monthly_data,
+        "wave_data": wave_data,
+        "combined_data": combined,
         "summary": {
             "total_cost": round(total_cost, 2),
             "total_revenue": round(total_revenue, 2),
