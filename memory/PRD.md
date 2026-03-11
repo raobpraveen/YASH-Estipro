@@ -44,61 +44,45 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 
 ### Session Additions (March 2026)
 - **CRM ID**: New field (max 30 chars) in project info area, included in Excel export
-- **Sub Technologies**: New master data entity linked to parent Technology, multi-select in project form, CRUD page with filter
-- **Grid Column Overlap Fix**: Reduced sticky column widths (total frozen: 532px vs 588px), Onsite/Travel now fully visible
-- **Projects List Excel Export**: "Export to Excel" button on Projects page, includes all versions with Technologies, Sub Tech, Project Types, Sales Manager, CRM ID columns
-- **Dashboard Navigation**: Total Projects card clickable → navigates to /projects
-- **Smart Import Logistics Fix**: Now reads from Excel formula column D (not just description text column C)
-- **Version Comparison**: Field-level diff with summary banner, header/wave/resource/allocation/logistics diffs
-- **Change History**: Auto-records field-level changes on every save in change_logs collection
-- **Suspended & Obsolete Statuses**: New project statuses with auto-obsolete on approval
-- **Mark Obsolete Button**: Confirmation dialog for project creators
-- **Excel Export Fix**: Backend download proxy (POST + GET) bypasses iframe/popup blockers
-- **Documentation Updated**: UserManual.js and SupportGuide.js reflect all new features
+- **Sub Technologies**: New master data entity linked to parent Technology, multi-select in project form
+- **Smart Import Logistics Fix**: Now reads from Excel formula column D
+- **Version Comparison**: Field-level diff with summary banner
+- **Change History**: Auto-records field-level changes on every save
+- **Suspended & Obsolete Statuses**: New project statuses
+- **Excel Export Fix**: Backend download proxy bypasses iframe/popup blockers
+- **Project Access Control**: Public/Restricted visibility with user selection
+- **Version Comparison Key Metrics Summary**: Detailed metrics with color-coded indicators
+- **Tutorials Page**: Guided walkthroughs, video slideshows, interactive tours (react-joyride)
+- **ISO Country List**: Standardized country selection across app
 
-### Latest Additions (March 10, 2026)
-- **Project Access Control**: Projects can be set to "Public" (all users) or "Restricted" (only selected users):
-  - Access Level dropdown in Project Information section (renamed from "Visibility")
-  - Multi-select user dropdown when "Restricted" is chosen
-  - Admins always have access to all projects
-  - Creator always has access to their own projects
-  - Approver has access when project is "In Review"
-  - Restricted users list is displayed on the project
-  - Non-authorized users cannot see restricted projects in the list
-- **Version Comparison Key Metrics Summary**: New "Key Metrics Summary" card for reviewers showing:
-  - Total Resources (old → new with % change)
-  - Total Man-Months, Onsite MM, Offshore MM
-  - Total Cost, Selling Price, Profit Margin %
-  - Color-coded indicators (green for increase, red for decrease)
-- **Smart Import Overhead Fix**: Overhead % now correctly looked up from Base Locations (was defaulting to 15%)
-- **Updated Documentation**: User Manual & Support Guide updated with Access Level, Tutorials, and Version Comparison sections
-- **Ctrl+S Save Shortcut**: Press Ctrl+S (or Cmd+S) in the Estimator to save immediately without scrolling to the Save button
-- **Tutorials Page with Video Slideshows & Interactive Tours**: Complete tutorial system at /tutorials with three tabs:
-  - **Guided Walkthroughs**: 7 interactive step-by-step tutorials covering all features (Creating Projects, Wave Grid, Excel Export/Import, Version Comparison, Approval Workflow, Dashboard, Master Data) with category filters, search, and "Open in App" buttons
-  - **Video Slideshows**: Screenshot-based slideshows for each tutorial with play/pause auto-advance (4s per slide), next/prev navigation, progress dots, captions, and duration display
-  - **Interactive Tours**: react-joyride (v3.0.0-7) integration for in-app guided tours that highlight UI elements with tooltips
-- **Tutorial Screenshots**: Real application screenshots stored in `/frontend/public/tutorial_slides/` (dashboard, projects, estimator, wave grid, skills, proficiency rates, compare versions, login)
-- **Keyboard Shortcuts section**: Quick reference for Ctrl+S, Tab, Esc shortcuts
+### Latest Additions (March 11, 2026)
+- **Excel Export Legend Fix**: Red-colored cells now labeled "Landed" with description "Offshore resource travel to onsite with logistics applied"
+- **Excel Export Formula Linking**: Profit Margin % and Nego Buffer % in wave sheets reference Summary!$B$5 and Summary!$B$6 via formulas
+- **Contingency Absolute Value**: New field in wave logistics for fixed contingency amount (in addition to percentage-based contingency). Added to all 3 logistics dialogs (Add Wave, Edit Logistics, Batch Update) and Excel export.
+- **Copy Skill Row**: New Copy button on each row in Proficiency Rates page. Copies skill data and opens Add dialog pre-filled for quick duplication.
+- **Enhanced Approver Email**: Review request email now includes a "Project Snapshot" section with customer, description, type, locations, technology, sales manager, total resources, man-months, total cost, selling price, and profit margin.
+- **Gantt Chart Upload**: New section in Project Estimator to upload/view/delete a timeline or Gantt chart image per project. Stored as base64 in MongoDB.
+- **Payment Milestones Page**: New /payment-milestones page to define phase-based payment schedules per wave. Features: wave selector, milestone naming, completion %, payment %, auto-calculated payment amount, per-wave summaries, save/load via API.
+- **Cashflow Statement Page**: New /cashflow page showing monthly cash outflows (costs from resources + logistics) and inflows (from payment milestones). Includes summary cards, monthly breakdown table, visual bar chart, and Excel export.
+- **Sidebar Navigation**: Added Milestones (Target icon) and Cashflow (BarChart3 icon) to main navigation.
 
 ## Backend API Endpoints (New)
-- POST /api/sub-technologies — Create sub-technology
-- GET /api/sub-technologies — List all sub-technologies
-- DELETE /api/sub-technologies/{id} — Delete sub-technology
-- GET /api/projects/compare-detail?v1={id}&v2={id} — Field-level version diff
-- GET /api/change-logs/{project_number} — Change history
-- PUT /api/projects/{project_id}/obsolete — Mark project obsolete
-- POST /api/download-file — Upload file buffer, returns download_id
-- GET /api/download-file/{download_id} — Serve file as HTTP download
+- POST /api/projects/{id}/gantt — Upload Gantt chart image
+- GET /api/projects/{id}/gantt — Get Gantt chart image
+- DELETE /api/projects/{id}/gantt — Delete Gantt chart
+- GET /api/projects/{id}/milestones — Get payment milestones
+- PUT /api/projects/{id}/milestones — Save payment milestones
+- GET /api/projects/{id}/cashflow — Get cashflow statement (computed)
 
 ## Prioritized Backlog
 ### P1 - Upcoming
 - What-If Scenario Comparison (plan in /app/memory/WHAT_IF_SCENARIO_PLAN.md)
 - AI Integration (plan in /app/memory/AI_INTEGRATION_PLAN.md)
 - User Profile - Custom theme/background image
-- Add more interactive tour steps for deeper in-app guidance
 
 ### P2 - Future
 - Actuals Tracking & Profitability Module (spec in /app/memory/ACTUALS_MODULE_SPEC.md)
 
 ### Refactoring
 - Break down ProjectEstimator.js (5000+ lines) into smaller components
+- Modularize server.py into separate router files
