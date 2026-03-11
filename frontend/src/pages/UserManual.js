@@ -22,9 +22,13 @@ const TOC = [
   { id: "access-control", title: "11. Access Level (Project Visibility)", icon: Settings },
   { id: "version-mgmt", title: "12. Versioning & Comparison", icon: FolderKanban },
   { id: "smart-import", title: "13. Smart Import", icon: FileSpreadsheet },
-  { id: "tutorials", title: "14. Tutorials & Help", icon: BookOpen },
-  { id: "settings", title: "15. Settings & Profile", icon: Settings },
-  { id: "shortcuts", title: "16. Keyboard Shortcuts & Tips", icon: Info },
+  { id: "gantt-chart", title: "14. Gantt Chart / Timeline Image", icon: FileSpreadsheet },
+  { id: "milestones", title: "15. Payment Milestones", icon: Calculator },
+  { id: "cashflow", title: "16. Cashflow Statement", icon: Calculator },
+  { id: "proficiency-copy", title: "17. Copy Skill in Proficiency Rates", icon: Layers },
+  { id: "tutorials", title: "18. Tutorials & Help", icon: BookOpen },
+  { id: "settings", title: "19. Settings & Profile", icon: Settings },
+  { id: "shortcuts", title: "20. Keyboard Shortcuts & Tips", icon: Info },
 ];
 
 const Section = ({ id, title, children }) => (
@@ -547,7 +551,78 @@ export default function UserManual() {
           </Section>
 
           {/* Section 14: Tutorials */}
-          <Section id="tutorials" title="14. Tutorials & Help">
+          {/* Section 14: Gantt Chart */}
+          <Section id="gantt-chart" title="14. Gantt Chart / Timeline Image">
+            <p>Upload a project timeline or Gantt chart image for quick visual reference directly within the Estimator.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">14.1 Uploading an Image</h3>
+            <p>In the Project Estimator (after saving a project), look for the <strong>"Timeline / Gantt Chart"</strong> card. Click <strong>"Upload Image"</strong> to select an image file (PNG, JPG, WEBP — max 10MB).</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">14.2 Viewing &amp; Removing</h3>
+            <p>The uploaded image displays inline within the project. Click <strong>"Remove"</strong> to delete it. The image is version-specific — each project version has its own Gantt chart.</p>
+            
+            <Tip>Use this to attach a Gantt chart exported from MS Project, Smartsheet, or any planning tool for quick reference during estimation reviews.</Tip>
+          </Section>
+
+          {/* Section 15: Payment Milestones */}
+          <Section id="milestones" title="15. Payment Milestones">
+            <p>Define payment schedules per wave to track expected revenue and payment triggers.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">15.1 Accessing Milestones</h3>
+            <p>Navigate to <strong>Milestones</strong> from the sidebar or click the <strong>"Milestones"</strong> button in the Estimator toolbar. The project list shows all versions with milestone counts — milestones are <strong>version-specific</strong>.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.2 Wave-Based Sections</h3>
+            <p>Each wave has its own collapsible section. Click the wave header to expand/collapse. The header shows selling price (SP), total payment %, and total payment amount for that wave.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.3 Adding &amp; Editing Milestones</h3>
+            <p>Click <strong>"+ Add Milestone"</strong> within a wave section. For each milestone, set:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>Milestone Name</strong>: Descriptive label (e.g., "Phase 1 UAT Complete").</li>
+              <li><strong>Target Month</strong>: Select M1, M2, M3, etc. — this determines when the payment is expected.</li>
+              <li><strong>Payment %</strong>: Percentage of the wave's selling price. The dollar amount auto-calculates.</li>
+              <li><strong>Description</strong>: Optional notes.</li>
+            </ul>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.4 Saving &amp; Keyboard Shortcut</h3>
+            <p>Click <strong>"Save All"</strong> or press <strong>Ctrl+S</strong> to save milestones. Use <strong>"Open Estimator"</strong> to jump to the project in edit mode.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.5 Excel Export</h3>
+            <p>Click <strong>"Export Excel"</strong> to generate a formula-based Excel file. Each wave gets its own sheet with formulas: <code>Payment Amount = Wave SP × Payment %</code>. Changing the SP value updates all amounts automatically.</p>
+            
+            <Warning>If the total Payment % for a wave exceeds 100%, a red warning is displayed. This doesn't prevent saving but indicates a potential data entry error.</Warning>
+          </Section>
+
+          {/* Section 16: Cashflow Statement */}
+          <Section id="cashflow" title="16. Cashflow Statement">
+            <p>View monthly cash outflows (costs) and cash inflows (milestone payments) for a project, broken down by wave.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">16.1 Accessing Cashflow</h3>
+            <p>Navigate to <strong>Cashflow</strong> from the sidebar or the <strong>"Cashflow"</strong> button in the Estimator. Only projects with resource allocations appear in the list. Cashflow data is <strong>version-specific</strong>.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.2 Wave-Wise Breakdown</h3>
+            <p>Each wave has its own collapsible section showing monthly Cash-Out (resource costs + logistics) and Cash-In (milestone payments at their target month). The header summarizes total outflow, inflow, and net for that wave.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.3 Combined Monthly Summary</h3>
+            <p>Below the wave sections, the <strong>Combined Monthly Summary</strong> sums across all waves per month: M1 of Wave 1 + M1 of Wave 2 = Combined M1. Shows Cash-Out, Cash-In, and Net columns.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.4 Cash Flow Chart</h3>
+            <p>A bar chart visualization shows Cash-Out (red), Cash-In (green), and Net (orange) for each month for quick visual analysis.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.5 Excel Export</h3>
+            <p>Click <strong>"Export Excel"</strong> to download a multi-sheet Excel file. Each wave gets its own sheet. The "Combined Summary" sheet uses cross-sheet formulas to aggregate data from all wave sheets.</p>
+            
+            <Tip>Define Payment Milestones first, then view Cashflow to see the complete picture of when money goes out vs. when it comes in.</Tip>
+          </Section>
+
+          {/* Section 17: Copy Skill */}
+          <Section id="proficiency-copy" title="17. Copy Skill in Proficiency Rates">
+            <p>Quickly duplicate an existing proficiency rate entry using the <strong>Copy</strong> button.</p>
+            <p>On the <strong>Proficiency Rates</strong> page, each row has a <span className="text-purple-600 font-semibold">purple copy icon</span>. Clicking it opens the "Add" dialog pre-filled with that row's Skill, Level, Location, and Salary. Adjust any field (e.g., change the Level from Senior to Junior) and save to create a new entry.</p>
+            <Tip>Use Copy Skill to quickly set up rates for multiple proficiency levels of the same skill without re-entering common data.</Tip>
+          </Section>
+
+          {/* Section 18: Tutorials */}
+          <Section id="tutorials" title="18. Tutorials & Help">
             <p>Access the <strong>Tutorials</strong> page from the sidebar for guided learning resources.</p>
             
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">14.1 Guided Walkthroughs</h3>
@@ -562,16 +637,16 @@ export default function UserManual() {
             <Tip>Use the <strong>Interactive Tours</strong> when onboarding new team members - they provide hands-on guidance within the actual application interface.</Tip>
           </Section>
 
-          {/* Section 15: Settings */}
-          <Section id="settings" title="15. Settings & Profile">
+          {/* Section 19: Settings */}
+          <Section id="settings" title="19. Settings & Profile">
             <p>Access personal settings from the <strong>Settings</strong> page in the sidebar.</p>
             <KeyValue label="Theme">Choose between light and dark theme preference.</KeyValue>
             <KeyValue label="Date Format">Set your preferred date display format.</KeyValue>
             <KeyValue label="Profile">View and update your display name and email.</KeyValue>
           </Section>
 
-          {/* Section 16: Shortcuts */}
-          <Section id="shortcuts" title="16. Keyboard Shortcuts & Tips">
+          {/* Section 20: Shortcuts */}
+          <Section id="shortcuts" title="20. Keyboard Shortcuts & Tips">
             <div className="rounded-lg border overflow-hidden mt-2">
               <table className="w-full text-sm">
                 <thead className="bg-[#0F172A] text-white">
@@ -579,7 +654,7 @@ export default function UserManual() {
                 </thead>
                 <tbody>
                   <tr className="border-b"><td className="p-2 font-mono">Ctrl + B</td><td className="p-2">Toggle sidebar collapse/expand.</td></tr>
-                  <tr className="border-b"><td className="p-2 font-mono">Ctrl + S</td><td className="p-2">Save project (when in Estimator).</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono">Ctrl + S</td><td className="p-2">Save project (Estimator) or milestones (Milestones page).</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono">Tab</td><td className="p-2">Navigate between grid cells.</td></tr>
                   <tr><td className="p-2 font-mono">Esc</td><td className="p-2">Close dialogs and dropdowns.</td></tr>
                 </tbody>
@@ -597,6 +672,10 @@ export default function UserManual() {
               <li>Use <strong>CRM ID</strong> to link estimations to your external CRM system for traceability.</li>
               <li>Export the <strong>Projects List</strong> to Excel from the Saved Projects page to get a comprehensive overview of all projects and versions.</li>
               <li>Click on <strong>Total Projects</strong> in the Dashboard to jump directly to the Projects List.</li>
+              <li>Use <strong>Payment Milestones</strong> to define payment schedules, then check <strong>Cashflow</strong> to see when money flows in vs. out.</li>
+              <li>The <strong>Contingency ($)</strong> field in logistics lets you add a fixed amount on top of the percentage-based contingency.</li>
+              <li>Upload a <strong>Gantt chart image</strong> to a project so reviewers can see the timeline without switching tools.</li>
+              <li>Use the <strong>Copy Skill</strong> button in Proficiency Rates to quickly duplicate entries when setting up similar rate cards.</li>
             </ul>
           </Section>
 

@@ -124,11 +124,11 @@ const CashflowStatement = () => {
 
       // Combined Summary sheet
       const sws = wb.addWorksheet("Combined Summary");
-      sws.columns = [{ width: 10 }, { width: 20 }, { width: 18 }, { width: 18 }, { width: 18 }];
+      sws.columns = [{ width: 10 }, { width: 18 }, { width: 18 }, { width: 18 }];
       sws.addRow([`${cashflow.project_number} — Combined Cashflow Statement`]).font = { bold: true, size: 14 };
       sws.addRow([`Project: ${cashflow.project_name}`]).font = { size: 11, color: { argb: "FF6B7280" } };
       sws.addRow([]);
-      const shRow = sws.addRow(["Month", "Phase", "Cash-Out (Cost)", "Cash-In (Revenue)", "Net"]);
+      const shRow = sws.addRow(["Month", "Cash-Out (Cost)", "Cash-In (Revenue)", "Net"]);
       shRow.eachCell((c) => { c.fill = headerFill; c.font = headerFont; c.border = thinBorder; });
       const sDataStart = 5;
       (cashflow.combined_data || []).forEach((m, idx) => {
@@ -145,25 +145,24 @@ const CashflowStatement = () => {
         const revFormula = revParts.length > 0 ? revParts.join("+") : "0";
         const r = sws.addRow([
           `M${m.month}`,
-          m.phase || "",
           { formula: costFormula, result: m.cost },
           { formula: revFormula, result: m.revenue },
-          { formula: `D${rn}-C${rn}`, result: m.net },
+          { formula: `C${rn}-B${rn}`, result: m.net },
         ]);
+        r.getCell(2).numFmt = moneyFmt;
         r.getCell(3).numFmt = moneyFmt;
         r.getCell(4).numFmt = moneyFmt;
-        r.getCell(5).numFmt = moneyFmt;
         r.eachCell((c) => { c.border = thinBorder; });
-        if (m.net >= 0) r.getCell(5).fill = greenFill; else r.getCell(5).fill = redFill;
+        if (m.net >= 0) r.getCell(4).fill = greenFill; else r.getCell(4).fill = redFill;
       });
       sws.addRow([]);
       const cd = cashflow.combined_data || [];
       const sLastRow = sDataStart + cd.length - 1;
-      const stRow = sws.addRow(["", "TOTALS", { formula: `SUM(C${sDataStart}:C${sLastRow})`, result: cashflow.summary.total_cost }, { formula: `SUM(D${sDataStart}:D${sLastRow})`, result: cashflow.summary.total_revenue }, { formula: `SUM(E${sDataStart}:E${sLastRow})`, result: cashflow.summary.net_cashflow }]);
+      const stRow = sws.addRow(["TOTALS", { formula: `SUM(B${sDataStart}:B${sLastRow})`, result: cashflow.summary.total_cost }, { formula: `SUM(C${sDataStart}:C${sLastRow})`, result: cashflow.summary.total_revenue }, { formula: `SUM(D${sDataStart}:D${sLastRow})`, result: cashflow.summary.net_cashflow }]);
       stRow.font = { bold: true };
+      stRow.getCell(2).numFmt = moneyFmt;
       stRow.getCell(3).numFmt = moneyFmt;
       stRow.getCell(4).numFmt = moneyFmt;
-      stRow.getCell(5).numFmt = moneyFmt;
       stRow.eachCell((c) => { c.fill = waveFill; c.border = thinBorder; });
 
       const buffer = await wb.xlsx.writeBuffer();
@@ -389,7 +388,6 @@ const CashflowStatement = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-16">Month</TableHead>
-                    <TableHead>Phase</TableHead>
                     <TableHead className="text-right">Cash-Out (Cost)</TableHead>
                     <TableHead className="text-right">Cash-In (Revenue)</TableHead>
                     <TableHead className="text-right">Net</TableHead>
@@ -399,14 +397,12 @@ const CashflowStatement = () => {
                   {combined_data.map((m, idx) => (
                     <TableRow key={idx} data-testid={`combined-row-${idx}`}>
                       <TableCell className="font-mono">M{m.month}</TableCell>
-                      <TableCell className="text-gray-600">{m.phase || "—"}</TableCell>
                       <TableCell className="text-right font-mono text-red-600">{fmt(m.cost)}</TableCell>
                       <TableCell className="text-right font-mono text-[#10B981]">{fmt(m.revenue)}</TableCell>
                       <TableCell className={`text-right font-mono font-semibold ${m.net >= 0 ? "text-[#10B981]" : "text-red-600"}`}>{fmt(m.net)}</TableCell>
                     </TableRow>
                   ))}
                   <TableRow className="border-t-2 bg-[#F8FAFC] font-bold">
-                    <TableCell></TableCell>
                     <TableCell className="font-bold text-[#0F172A]">TOTALS</TableCell>
                     <TableCell className="text-right font-mono text-red-600">{fmt(summary.total_cost)}</TableCell>
                     <TableCell className="text-right font-mono text-[#10B981]">{fmt(summary.total_revenue)}</TableCell>

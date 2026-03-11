@@ -447,6 +447,12 @@ Response: { "token": "eyJ...", "user": { "id", "name", "email", "role" } }`}
                   <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/compare-detail?v1=&v2=</td><td className="p-2">Field-level version diff</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/change-logs/{'{pn}'}</td><td className="p-2">Change history by project number</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-amber-600">PUT</td><td className="p-2 font-mono">/api/projects/{'{id}'}/obsolete</td><td className="p-2">Mark project obsolete</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/projects/{'{id}'}/gantt</td><td className="p-2">Upload Gantt chart image (binary body)</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/gantt</td><td className="p-2">Get Gantt chart image</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-red-600">DELETE</td><td className="p-2 font-mono">/api/projects/{'{id}'}/gantt</td><td className="p-2">Delete Gantt chart image</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/milestones</td><td className="p-2">Get payment milestones (version-specific)</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-amber-600">PUT</td><td className="p-2 font-mono">/api/projects/{'{id}'}/milestones</td><td className="p-2">Save payment milestones</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/cashflow</td><td className="p-2">Get cashflow statement (wave-wise + combined)</td></tr>
                   <tr><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/download-file</td><td className="p-2">Upload file for download proxy</td></tr>
                 </tbody>
               </table>
