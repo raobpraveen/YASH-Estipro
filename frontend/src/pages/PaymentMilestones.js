@@ -42,10 +42,14 @@ const PaymentMilestones = () => {
     setLoadingProjects(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${API}/projects?latest_only=true`, {
+      const res = await axios.get(`${API}/projects`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const allProjects = res.data || [];
+      const allProjects = (res.data || []).sort((a, b) => {
+        const pnCmp = (a.project_number || "").localeCompare(b.project_number || "");
+        if (pnCmp !== 0) return pnCmp;
+        return (b.version || 1) - (a.version || 1);
+      });
       setProjects(allProjects);
       const counts = {};
       await Promise.all(
@@ -269,13 +273,21 @@ const PaymentMilestones = () => {
       (p.name || "").toLowerCase().includes(projectSearch.toLowerCase()) ||
       (p.project_number || "").toLowerCase().includes(projectSearch.toLowerCase())
     );
-    const sorted = [...filtered].sort((a, b) => (milestoneCounts[b.id] ? 1 : 0) - (milestoneCounts[a.id] ? 1 : 0));
+    // Sort: projects with milestones first, then by project_number asc, version desc
+    const sorted = [...filtered].sort((a, b) => {
+      const aHas = milestoneCounts[a.id] ? 1 : 0;
+      const bHas = milestoneCounts[b.id] ? 1 : 0;
+      if (bHas !== aHas) return bHas - aHas;
+      const pnCmp = (a.project_number || "").localeCompare(b.project_number || "");
+      if (pnCmp !== 0) return pnCmp;
+      return (b.version || 1) - (a.version || 1);
+    });
 
     return (
       <div data-testid="milestones-project-list">
         <div className="mb-6">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0F172A] tracking-tight">Payment Milestones</h1>
-          <p className="text-sm text-gray-600 mt-1">Select a project to manage payment milestones</p>
+          <p className="text-sm text-gray-600 mt-1">Select a project version to manage payment milestones</p>
         </div>
         <div className="relative mb-4 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -293,7 +305,8 @@ const PaymentMilestones = () => {
                   <TableRow>
                     <TableHead className="w-28">Project #</TableHead>
                     <TableHead>Name</TableHead>
-                    <TableHead className="w-20 text-center">Version</TableHead>
+                    <TableHead className="w-24 text-center">Version</TableHead>
+                    <TableHead className="w-20 text-center">Status</TableHead>
                     <TableHead className="w-20 text-center">Waves</TableHead>
                     <TableHead className="w-28 text-center">Milestones</TableHead>
                     <TableHead className="w-20"></TableHead>
@@ -309,7 +322,18 @@ const PaymentMilestones = () => {
                     >
                       <TableCell className="font-mono text-[#0EA5E9] text-sm">{p.project_number}</TableCell>
                       <TableCell className="font-medium text-[#0F172A]">{p.name}</TableCell>
-                      <TableCell className="text-center text-gray-500">v{p.version}</TableCell>
+                      <TableCell className="text-center">
+                        <span className="font-semibold text-[#0F172A]">v{p.version}</span>
+                        {p.is_latest_version && <span className="ml-1 text-[10px] bg-[#0EA5E9]/10 text-[#0EA5E9] font-semibold px-1.5 py-0.5 rounded">latest</span>}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          p.status === "approved" ? "bg-emerald-100 text-emerald-700" :
+                          p.status === "in_review" ? "bg-amber-100 text-amber-700" :
+                          p.status === "rejected" ? "bg-red-100 text-red-700" :
+                          "bg-gray-100 text-gray-600"
+                        }`}>{(p.status || "draft").replace("_", " ")}</span>
+                      </TableCell>
                       <TableCell className="text-center text-gray-500">{p.waves?.length || 0}</TableCell>
                       <TableCell className="text-center">
                         {milestoneCounts[p.id] ? (
