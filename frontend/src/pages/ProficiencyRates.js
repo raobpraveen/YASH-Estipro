@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Upload, Download, Edit2, Check, X, Filter, Search } from "lucide-react";
+import { Plus, Trash2, Upload, Download, Edit2, Check, X, Filter, Search, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { PROFICIENCY_LEVELS } from "@/utils/constants";
 
@@ -239,6 +239,16 @@ const ProficiencyRates = () => {
   const startEditRate = (rate) => {
     setEditingRate(rate.id);
     setEditSalary(rate.avg_monthly_salary.toString());
+  };
+
+  const handleCopyRate = (rate) => {
+    setNewRate({
+      skill_id: rate.skill_id,
+      base_location_id: rate.base_location_id,
+      proficiency_level: rate.proficiency_level,
+      avg_monthly_salary: rate.avg_monthly_salary.toString(),
+    });
+    setDialogOpen(true);
   };
 
   const cancelEditRate = () => {
@@ -525,6 +535,16 @@ const ProficiencyRates = () => {
                             </>
                           ) : (
                             <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleCopyRate(rate)}
+                                className="text-[#8B5CF6] hover:text-[#8B5CF6] hover:bg-[#8B5CF6]/10"
+                                data-testid={`copy-rate-${rate.id}`}
+                                title="Copy this rate"
+                              >
+                                <Copy className="w-4 h-4" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"

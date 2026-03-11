@@ -997,7 +997,8 @@ def compute_detailed_diff(old_project: dict, new_project: dict) -> dict:
                 visa = (lc.get("visa_medical_per_trip", 0) or 0) * (lc.get("num_trips", 0) or 0) * travel_resources
                 wave_logistics = per_diem + accommodation + conveyance + flights + visa
                 contingency = wave_logistics * ((lc.get("contingency_percentage", 0) or 0) / 100)
-                wave_logistics += contingency
+                contingency_absolute = lc.get("contingency_absolute", 0) or 0
+                wave_logistics += contingency + contingency_absolute
             
             total_logistics += wave_logistics
             
@@ -1171,9 +1172,100 @@ def _email_wrapper(content_html: str, preheader: str = "") -> str:
 </html>"""
 
 
-def get_review_request_email(project_number: str, project_name: str, submitter_name: str, submitter_email: str, project_id: str = ""):
+def get_review_request_email(project_number: str, project_name: str, submitter_name: str, submitter_email: str, project_id: str = "", project_data: dict = None):
     subject = f"[YASH EstiPro] Review Request: {project_number} - {project_name}"
     project_url = f"{APP_BASE_URL}/projects/{project_id}" if project_id else APP_BASE_URL
+
+    # Build project details table if project data provided
+    details_html = ""
+    if project_data:
+        desc = project_data.get("description", "—") or "—"
+        proj_type = project_data.get("project_type_names", [])
+        proj_type_str = ", ".join(proj_type) if isinstance(proj_type, list) and proj_type else "—"
+        locations = project_data.get("project_locations", [])
+        locations_str = ", ".join(locations) if isinstance(locations, list) and locations else "—"
+        tech = project_data.get("technology_names", [])
+        tech_str = ", ".join(tech) if isinstance(tech, list) and tech else "—"
+        sales_mgr = project_data.get("sales_manager_name", "—") or "—"
+        customer = project_data.get("customer_name", "—") or "—"
+        pm_pct = project_data.get("profit_margin_percentage", 35)
+        waves_list = project_data.get("waves", [])
+        total_cost = 0
+        total_sp = 0
+        total_mm = 0
+        total_resources = 0
+        for w in waves_list:
+            allocs = w.get("grid_allocations", [])
+            total_resources += len(allocs)
+            for a in allocs:
+                salary = a.get("avg_monthly_salary", 0) or 0
+                oh_pct = a.get("overhead_percentage", 0) or 0
+                mm = sum((a.get("phase_allocations") or {}).values()) if isinstance(a.get("phase_allocations"), dict) else sum(a.get("phase_allocations", []))
+                total_mm += mm
+                base = salary * mm
+                oh = base * (oh_pct / 100)
+                tc = base + oh
+                sp = tc / (1 - pm_pct / 100) if pm_pct < 100 else tc
+                total_cost += tc
+                total_sp += sp
+
+        details_html = f"""
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#222222;border-radius:8px;margin-bottom:24px;">
+        <tr><td style="padding:16px 24px;">
+          <p style="margin:0 0 12px 0;color:{YASH_BRAND_GOLD};font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Project Snapshot</p>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <td style="padding:4px 0;color:{YASH_TEXT_MUTED};font-size:12px;width:140px;">Customer</td>
+              <td style="padding:4px 0;color:{YASH_TEXT_PRIMARY};font-size:13px;">{customer}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;color:{YASH_TEXT_MUTED};font-size:12px;">Description</td>
+              <td style="padding:4px 0;color:{YASH_TEXT_SECONDARY};font-size:13px;">{desc[:200]}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;color:{YASH_TEXT_MUTED};font-size:12px;">Type</td>
+              <td style="padding:4px 0;color:{YASH_TEXT_PRIMARY};font-size:13px;">{proj_type_str}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;color:{YASH_TEXT_MUTED};font-size:12px;">Locations</td>
+              <td style="padding:4px 0;color:{YASH_TEXT_PRIMARY};font-size:13px;">{locations_str}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;color:{YASH_TEXT_MUTED};font-size:12px;">Technology</td>
+              <td style="padding:4px 0;color:{YASH_TEXT_PRIMARY};font-size:13px;">{tech_str}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;color:{YASH_TEXT_MUTED};font-size:12px;">Sales Manager</td>
+              <td style="padding:4px 0;color:{YASH_TEXT_PRIMARY};font-size:13px;">{sales_mgr}</td>
+            </tr>
+          </table>
+          <hr style="border:none;border-top:1px solid #333;margin:12px 0;" />
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <td style="padding:4px 0;color:{YASH_TEXT_MUTED};font-size:12px;width:140px;">Total Resources</td>
+              <td style="padding:4px 0;color:{YASH_BRAND_BLUE};font-size:14px;font-weight:600;">{total_resources}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;color:{YASH_TEXT_MUTED};font-size:12px;">Total Man-Months</td>
+              <td style="padding:4px 0;color:{YASH_BRAND_BLUE};font-size:14px;font-weight:600;">{total_mm:.1f}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;color:{YASH_TEXT_MUTED};font-size:12px;">Total Cost (CTC)</td>
+              <td style="padding:4px 0;color:{YASH_TEXT_PRIMARY};font-size:14px;font-weight:600;">${total_cost:,.0f}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;color:{YASH_TEXT_MUTED};font-size:12px;">Selling Price</td>
+              <td style="padding:4px 0;color:#10B981;font-size:14px;font-weight:600;">${total_sp:,.0f}</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0;color:{YASH_TEXT_MUTED};font-size:12px;">Profit Margin</td>
+              <td style="padding:4px 0;color:{YASH_BRAND_GOLD};font-size:14px;font-weight:600;">{pm_pct}%</td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+"""
+
     content = f"""
       <h2 style="margin:0 0 8px 0;color:{YASH_BRAND_RED};font-size:20px;font-weight:700;">Review Request</h2>
       <p style="margin:0 0 24px 0;color:{YASH_TEXT_SECONDARY};font-size:14px;">A project estimation has been submitted for your approval.</p>
@@ -1196,6 +1288,8 @@ def get_review_request_email(project_number: str, project_name: str, submitter_n
           </table>
         </td></tr>
       </table>
+
+      {details_html}
 
       <p style="margin:0 0 24px 0;color:{YASH_TEXT_SECONDARY};font-size:14px;line-height:1.7;">
         Please review the estimation details and provide your approval or feedback.
@@ -2327,7 +2421,8 @@ async def submit_for_review(project_id: str, approver_email: str, user: dict = D
             project.get("name", ""),
             current_user.get("name", ""),
             current_user.get("email", ""),
-            project_id
+            project_id,
+            project_data=project
         )
         await send_email(approver_email, subject, html_body, text_body)
     
@@ -3081,6 +3176,182 @@ async def get_download_file(download_id: str):
         media_type=entry["content_type"],
         headers={"Content-Disposition": f'attachment; filename="{entry["filename"]}"'}
     )
+
+
+# =========== GANTT CHART UPLOAD ===========
+import base64
+UPLOAD_DIR = Path(__file__).parent / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+@api_router.post("/projects/{project_id}/gantt")
+async def upload_gantt_chart(project_id: str, request: Request, user: dict = Depends(require_auth)):
+    """Upload a Gantt chart image for a project"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    body = await request.body()
+    filename = request.headers.get("X-Filename", "gantt.png")
+    content_type = request.headers.get("X-Content-Type", "image/png")
+    # Store as base64 in DB for simplicity
+    encoded = base64.b64encode(body).decode("utf-8")
+    await db.projects.update_one({"id": project_id}, {"$set": {
+        "gantt_chart": {"filename": filename, "content_type": content_type, "data": encoded, "uploaded_at": datetime.now(timezone.utc).isoformat()},
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }})
+    return {"message": "Gantt chart uploaded", "filename": filename}
+
+@api_router.delete("/projects/{project_id}/gantt")
+async def delete_gantt_chart(project_id: str, user: dict = Depends(require_auth)):
+    """Delete a Gantt chart from a project"""
+    await db.projects.update_one({"id": project_id}, {"$unset": {"gantt_chart": ""}})
+    return {"message": "Gantt chart removed"}
+
+@api_router.get("/projects/{project_id}/gantt")
+async def get_gantt_chart(project_id: str):
+    """Get a Gantt chart image for a project"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0, "gantt_chart": 1})
+    if not project or not project.get("gantt_chart"):
+        raise HTTPException(status_code=404, detail="No Gantt chart found")
+    gc = project["gantt_chart"]
+    data = base64.b64decode(gc["data"])
+    return Response(content=data, media_type=gc.get("content_type", "image/png"),
+                    headers={"Content-Disposition": f'inline; filename="{gc.get("filename", "gantt.png")}"'})
+
+
+# =========== PAYMENT MILESTONES ===========
+class PaymentMilestone(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    wave_name: str
+    milestone_name: str
+    completion_percentage: float = 0
+    payment_percentage: float = 0
+    payment_amount: float = 0
+    description: str = ""
+
+@api_router.get("/projects/{project_id}/milestones")
+async def get_milestones(project_id: str, user: dict = Depends(require_auth)):
+    doc = await db.payment_milestones.find_one({"project_id": project_id}, {"_id": 0})
+    if not doc:
+        return {"project_id": project_id, "milestones": []}
+    return doc
+
+@api_router.put("/projects/{project_id}/milestones")
+async def save_milestones(project_id: str, request: Request, user: dict = Depends(require_auth)):
+    body = await request.json()
+    milestones = body.get("milestones", [])
+    doc = {
+        "project_id": project_id,
+        "milestones": milestones,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": user.get("user_id", "")
+    }
+    await db.payment_milestones.update_one(
+        {"project_id": project_id}, {"$set": doc}, upsert=True
+    )
+    return {"message": "Milestones saved", "milestones": milestones}
+
+
+# =========== CASHFLOW STATEMENT ===========
+@api_router.get("/projects/{project_id}/cashflow")
+async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
+    """Generate a cashflow statement for the project"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    profit_margin = project.get("profit_margin_percentage", 35)
+    waves = project.get("waves", [])
+    milestone_doc = await db.payment_milestones.find_one({"project_id": project_id}, {"_id": 0})
+    milestones = (milestone_doc or {}).get("milestones", [])
+
+    monthly_data = []
+    total_months = 0
+
+    # Calculate monthly outflows per wave
+    for wave in waves:
+        allocs = wave.get("grid_allocations", [])
+        phase_names = wave.get("phase_names", [])
+        lc = wave.get("logistics_config") or {}
+        n_months = len(phase_names)
+        if n_months > total_months:
+            total_months = n_months
+
+        for month_idx in range(n_months):
+            while len(monthly_data) <= month_idx:
+                monthly_data.append({"month": month_idx + 1, "phase": "", "cost": 0, "revenue": 0})
+            if month_idx < len(phase_names):
+                monthly_data[month_idx]["phase"] = phase_names[month_idx]
+
+            month_cost = 0
+            travel_mm_month = 0
+            travel_count_month = 0
+            for alloc in allocs:
+                pa = alloc.get("phase_allocations", {})
+                mm = 0
+                if isinstance(pa, dict):
+                    mm = pa.get(str(month_idx), 0)
+                elif isinstance(pa, list) and month_idx < len(pa):
+                    mm = pa[month_idx]
+                salary = alloc.get("avg_monthly_salary", 0) or 0
+                oh_pct = alloc.get("overhead_percentage", 0) or 0
+                base = salary * mm
+                overhead = base * (oh_pct / 100)
+                month_cost += base + overhead
+                if alloc.get("travel_required") and mm > 0:
+                    travel_mm_month += mm
+                    travel_count_month += 1
+
+            # Add proportional logistics for this month
+            if travel_count_month > 0:
+                per_diem = travel_mm_month * (lc.get("per_diem_daily", 0) or 0) * (lc.get("per_diem_days", 0) or 0)
+                accom = travel_mm_month * (lc.get("accommodation_daily", 0) or 0) * (lc.get("accommodation_days", 0) or 0)
+                conv = travel_mm_month * (lc.get("local_conveyance_daily", 0) or 0) * (lc.get("local_conveyance_days", 0) or 0)
+                flights_per_month = (lc.get("flight_cost_per_trip", 0) or 0) * (lc.get("num_trips", 0) or 0) * travel_count_month / max(n_months, 1)
+                visa_per_month = (lc.get("visa_medical_per_trip", 0) or 0) * (lc.get("num_trips", 0) or 0) * travel_count_month / max(n_months, 1)
+                logistics_month = per_diem + accom + conv + flights_per_month + visa_per_month
+                contingency = logistics_month * ((lc.get("contingency_percentage", 0) or 0) / 100)
+                contingency_abs = (lc.get("contingency_absolute", 0) or 0) / max(n_months, 1)
+                month_cost += logistics_month + contingency + contingency_abs
+
+            monthly_data[month_idx]["cost"] += month_cost
+
+    # Calculate monthly inflows from milestones
+    for ms in milestones:
+        wave_name = ms.get("wave_name", "")
+        payment_amount = ms.get("payment_amount", 0) or 0
+        completion_pct = ms.get("completion_percentage", 0) or 0
+        # Distribute payment at the month closest to the completion percentage
+        wave = next((w for w in waves if w.get("name") == wave_name), None)
+        if wave and payment_amount > 0:
+            n = len(wave.get("phase_names", []))
+            target_month = max(0, min(int(completion_pct / 100 * n) - 1, n - 1)) if n > 0 else 0
+            while len(monthly_data) <= target_month:
+                monthly_data.append({"month": target_month + 1, "phase": "", "cost": 0, "revenue": 0})
+            monthly_data[target_month]["revenue"] += payment_amount
+
+    # Calculate running balance
+    running = 0
+    for m in monthly_data:
+        m["cost"] = round(m["cost"], 2)
+        m["revenue"] = round(m["revenue"], 2)
+        running += m["revenue"] - m["cost"]
+        m["net"] = round(m["revenue"] - m["cost"], 2)
+        m["cumulative"] = round(running, 2)
+
+    total_cost = sum(m["cost"] for m in monthly_data)
+    total_revenue = sum(m["revenue"] for m in monthly_data)
+
+    return {
+        "project_id": project_id,
+        "project_name": project.get("name", ""),
+        "project_number": project.get("project_number", ""),
+        "monthly_data": monthly_data,
+        "summary": {
+            "total_cost": round(total_cost, 2),
+            "total_revenue": round(total_revenue, 2),
+            "net_cashflow": round(total_revenue - total_cost, 2),
+        }
+    }
 
 
 app.include_router(api_router)

@@ -23,7 +23,9 @@ import {
   UserCircle,
   BookOpen,
   LifeBuoy,
-  Video
+  Video,
+  Target,
+  BarChart3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -117,6 +119,8 @@ const Layout = ({ user, onLogout }) => {
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/estimator", icon: Calculator, label: "Estimator" },
     { path: "/projects", icon: FolderKanban, label: "Projects" },
+    { path: "/payment-milestones", icon: Target, label: "Milestones" },
+    { path: "/cashflow", icon: BarChart3, label: "Cashflow" },
   ];
 
   const masterDataItems = [

@@ -120,6 +120,11 @@ const ProjectEstimator = () => {
 
   const [approverSaveDialogOpen, setApproverSaveDialogOpen] = useState(false);
   const [originalSnapshot, setOriginalSnapshot] = useState("");
+  
+  // Gantt chart
+  const [ganttChart, setGanttChart] = useState(null); // { filename, uploaded_at }
+  const [ganttLoading, setGanttLoading] = useState(false);
+  const ganttInputRef = useRef(null);
 
   // Get current user role
   const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
@@ -147,6 +152,7 @@ const ProjectEstimator = () => {
     visa_medical_per_trip: 400,
     num_trips: 6,
     contingency_percentage: 5,
+    contingency_absolute: 0,
   });
 
   useEffect(() => {
@@ -253,6 +259,9 @@ const ProjectEstimator = () => {
       setVisibility(project.visibility || "public");
       setRestrictedUserIds(project.restricted_user_ids || []);
       setRestrictedUserNames(project.restricted_user_names || []);
+      
+      // Gantt chart
+      setGanttChart(project.gantt_chart || null);
       
       if (project.waves && project.waves.length > 0) {
         setWaves(project.waves);
@@ -484,6 +493,7 @@ const ProjectEstimator = () => {
       visa_medical_per_trip: raw.visa_medical_per_trip ?? raw.visa_insurance_per_trip ?? 400,
       num_trips: raw.num_trips ?? 6,
       contingency_percentage: raw.contingency_percentage ?? 5,
+      contingency_absolute: raw.contingency_absolute ?? 0,
     };
   };
 
@@ -937,6 +947,7 @@ const ProjectEstimator = () => {
       visa_medical_per_trip: rawConfig.visa_medical_per_trip ?? rawConfig.visa_insurance_per_trip ?? 400,
       num_trips: rawConfig.num_trips ?? 6,
       contingency_percentage: rawConfig.contingency_percentage ?? 5,
+      contingency_absolute: rawConfig.contingency_absolute ?? 0,
     };
 
     // Calculate total traveling MM and count of traveling resources
@@ -970,7 +981,8 @@ const ProjectEstimator = () => {
     
     const subtotal = perDiemCost + accommodationCost + conveyanceCost + flightCost + visaMedicalCost;
     const contingencyCost = subtotal * (config.contingency_percentage / 100);
-    const totalLogistics = subtotal + contingencyCost;
+    const contingencyAbsolute = config.contingency_absolute || 0;
+    const totalLogistics = subtotal + contingencyCost + contingencyAbsolute;
 
     return {
       totalOnsiteMM,
@@ -983,6 +995,7 @@ const ProjectEstimator = () => {
       flightCost,
       visaMedicalCost,
       contingencyCost,
+      contingencyAbsolute,
       totalLogistics,
       config,
     };
@@ -1510,8 +1523,40 @@ const ProjectEstimator = () => {
     setIsLatestVersion(true);
     setWaves([]);
     setActiveWaveId("");
+    setGanttChart(null);
     navigate("/estimator");
     toast.info("Ready for new project");
+  };
+
+  // Gantt Chart Upload
+  const handleGanttUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (ganttInputRef.current) ganttInputRef.current.value = "";
+    if (!file || !projectId) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("File too large (max 10MB)"); return; }
+    setGanttLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const body = await file.arrayBuffer();
+      await fetch(`${API}/projects/${projectId}/gantt`, {
+        method: "POST",
+        headers: { "X-Filename": file.name, "X-Content-Type": file.type, Authorization: `Bearer ${token}` },
+        body,
+      });
+      setGanttChart({ filename: file.name, uploaded_at: new Date().toISOString() });
+      toast.success("Gantt chart uploaded");
+    } catch { toast.error("Failed to upload Gantt chart"); }
+    finally { setGanttLoading(false); }
+  };
+
+  const handleGanttDelete = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API}/projects/${projectId}/gantt`, { headers: { Authorization: `Bearer ${token}` } });
+      setGanttChart(null);
+      toast.success("Gantt chart removed");
+    } catch { toast.error("Failed to remove Gantt chart"); }
   };
 
   const handleDownloadWaveTemplate = () => {
@@ -1862,12 +1907,12 @@ const ProjectEstimator = () => {
       const titleR = dws.addRow([`${wave.name} — ${wave.duration_months} months${wave.description ? ` — ${wave.description}` : ""}`]);
       titleR.font = { bold: true, size: 13 };
 
-      // Row 2: Parameters (editable in Excel — all formulas reference these)
-      const pRow = dws.addRow(["", "Profit Margin:", profitMarginPercentage / 100, "", "Nego Buffer:", negoBufferPercentage / 100]);
+      // Row 2: Parameters - reference Summary sheet cells
+      const pRow = dws.addRow(["", "Profit Margin:", { formula: "Summary!$B$5", result: profitMarginPercentage / 100 }, "", "Nego Buffer:", { formula: "Summary!$B$6", result: negoBufferPercentage / 100 }]);
       pRow.getCell(2).font = { bold: true }; pRow.getCell(3).numFmt = '0.00%';
       pRow.getCell(5).font = { bold: true }; pRow.getCell(6).numFmt = '0.00%';
-      const MRG = "C2"; // profit margin cell ref (decimal)
-      const NGO = "F2"; // nego buffer cell ref (decimal)
+      const MRG = "C2"; // profit margin cell ref (decimal) - now linked to Summary
+      const NGO = "F2"; // nego buffer cell ref (decimal) - now linked to Summary
 
       // Row 3: empty
       dws.addRow([]);
@@ -2000,6 +2045,16 @@ const ProjectEstimator = () => {
       contR.eachCell(c => { c.fill = logisticsFill; c.border = thinBorder; });
       lgAmtCells.push(`D${dws.rowCount}`);
 
+      // Contingency Absolute
+      if (lc.contingency_absolute > 0) {
+        const contAbsR = dws.addRow([]);
+        contAbsR.getCell(2).value = "Contingency (Absolute)"; contAbsR.getCell(3).value = "Fixed contingency amount";
+        contAbsR.getCell(4).value = lc.contingency_absolute;
+        contAbsR.getCell(4).numFmt = moneyFmt;
+        contAbsR.eachCell(c => { c.fill = logisticsFill; c.border = thinBorder; });
+        lgAmtCells.push(`D${dws.rowCount}`);
+      }
+
       // Total Logistics
       const lgTotR = dws.addRow([]);
       lgTotR.getCell(2).value = "TOTAL LOGISTICS";
@@ -2054,6 +2109,22 @@ const ProjectEstimator = () => {
     summaryWs.addRow(["PROJECT ESTIMATE SUMMARY"]).font = { bold: true, size: 12, color: { argb: "FF6B7280" } };
     summaryWs.addRow([]);
 
+    // Editable parameters row for Profit Margin and Nego Buffer (referenced by wave sheets)
+    const paramRow = summaryWs.addRow(["PARAMETERS (Edit these to update all wave calculations)"]);
+    paramRow.font = { bold: true, italic: true, color: { argb: "FF059669" } };
+    const pmRow = summaryWs.addRow(["Profit Margin %", profitMarginPercentage / 100]);
+    pmRow.getCell(1).font = { bold: true };
+    pmRow.getCell(2).numFmt = '0.00%';
+    pmRow.getCell(2).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD1FAE5" } };
+    const nbRow = summaryWs.addRow(["Nego Buffer %", negoBufferPercentage / 100]);
+    nbRow.getCell(1).font = { bold: true };
+    nbRow.getCell(2).numFmt = '0.00%';
+    nbRow.getCell(2).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD1FAE5" } };
+    // Cell references for wave sheets to use
+    const SUMMARY_PM_CELL = "Summary!$B$5"; // Profit Margin as decimal
+    const SUMMARY_NB_CELL = "Summary!$B$6"; // Nego Buffer as decimal
+    summaryWs.addRow([]);
+
     const infoFields = [
       ["Project Number", projectNumber || "Not Saved"],
       ["Version", `v${projectVersion}`],
@@ -2067,8 +2138,6 @@ const ProjectEstimator = () => {
       ["Sales Manager", salesManagers.find(m => m.id === salesManagerId)?.name || "—"],
       ["CRM ID", crmId || "—"],
       ["Description", projectDescription],
-      ["Profit Margin %", `${profitMarginPercentage}%`],
-      ["Nego Buffer %", `${negoBufferPercentage}%`],
     ];
     if (versionNotes) infoFields.push(["Version Notes", versionNotes]);
     infoFields.forEach(([label, val]) => {
@@ -2151,7 +2220,7 @@ const ProjectEstimator = () => {
     legendHdr.getCell(1).font = headerFont;
 
     const legendItems = [
-      { label: "Onsite + Travel", fill: onsiteTravelFill, desc: "Resource is onsite with travel logistics applied" },
+      { label: "Landed", fill: onsiteTravelFill, desc: "Offshore resource travel to onsite with logistics applied" },
       { label: "Onsite (No Travel)", fill: onsiteNoTravelFill, desc: "Resource is onsite without travel logistics" },
       { label: "Offshore", fill: offshoreFill, desc: "Offshore resource (no travel logistics)" },
       { label: "Logistics Section", fill: logisticsFill, desc: "Logistics cost breakdown area" },
@@ -2642,6 +2711,16 @@ const ProjectEstimator = () => {
             <FileDown className="w-4 h-4 mr-1" />
             Export Excel
           </Button>
+          {projectId && (
+            <>
+              <Button variant="outline" size="sm" className="border-[#8B5CF6] text-[#8B5CF6]" onClick={() => navigate(`/payment-milestones?project=${projectId}`)} data-testid="milestones-button">
+                Milestones
+              </Button>
+              <Button variant="outline" size="sm" className="border-[#0EA5E9] text-[#0EA5E9]" onClick={() => navigate(`/cashflow?project=${projectId}`)} data-testid="cashflow-button">
+                Cashflow
+              </Button>
+            </>
+          )}
           {!isReadOnly && (
           <div className="relative">
             <input
@@ -3142,7 +3221,43 @@ const ProjectEstimator = () => {
         </CardContent>
       </Card>
 
-      {/* Overall Summary Cards */}
+      {/* Gantt Chart / Timeline Image */}
+      {projectId && (
+        <Card className="border border-[#E2E8F0] shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-lg font-bold text-[#0F172A]">Timeline / Gantt Chart</CardTitle>
+            <div className="flex gap-2">
+              {!isReadOnly && (
+                <>
+                  <input type="file" ref={ganttInputRef} accept="image/*" onChange={handleGanttUpload} className="hidden" />
+                  <Button variant="outline" size="sm" onClick={() => ganttInputRef.current?.click()} disabled={ganttLoading} data-testid="upload-gantt-btn">
+                    <Upload className="w-4 h-4 mr-1" /> {ganttLoading ? "Uploading..." : "Upload Image"}
+                  </Button>
+                  {ganttChart && (
+                    <Button variant="outline" size="sm" className="text-red-500 border-red-300" onClick={handleGanttDelete} data-testid="delete-gantt-btn">
+                      <Trash2 className="w-4 h-4 mr-1" /> Remove
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {ganttChart ? (
+              <div className="relative">
+                <img src={`${API}/projects/${projectId}/gantt?t=${ganttChart.uploaded_at}`} alt="Gantt Chart" className="w-full rounded-lg border border-gray-200 max-h-[500px] object-contain" data-testid="gantt-image" />
+                <p className="text-xs text-gray-400 mt-2">{ganttChart.filename} — uploaded {new Date(ganttChart.uploaded_at).toLocaleDateString()}</p>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-400">
+                <p className="text-sm">No timeline image uploaded yet.</p>
+                {!isReadOnly && <p className="text-xs mt-1">Upload a Gantt chart or project timeline image for quick reference.</p>}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Overall Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Card className="border border-[#E2E8F0] shadow-sm">
@@ -3490,7 +3605,10 @@ const ProjectEstimator = () => {
                         <Label className="text-xs">Contingency %</Label>
                         <Input type="number" value={waveLogistics.contingency_percentage} onChange={(e) => setWaveLogistics({ ...waveLogistics, contingency_percentage: parseFloat(e.target.value) || 0 })} />
                       </div>
-                      <div></div>
+                      <div>
+                        <Label className="text-xs">Contingency ($)</Label>
+                        <Input type="number" value={waveLogistics.contingency_absolute} onChange={(e) => setWaveLogistics({ ...waveLogistics, contingency_absolute: parseFloat(e.target.value) || 0 })} placeholder="Absolute amount" />
+                      </div>
                     </div>
                   </div>
                   
@@ -4186,6 +4304,15 @@ const ProjectEstimator = () => {
                                   <td className="text-right font-mono">1</td>
                                   <td className="text-right font-mono font-semibold">${waveSummary.logistics.contingencyCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                                 </tr>
+                                {waveSummary.logistics.contingencyAbsolute > 0 && (
+                                <tr>
+                                  <td className="py-1">Contingency (Absolute)</td>
+                                  <td className="text-right font-mono">-</td>
+                                  <td className="text-right font-mono">Fixed</td>
+                                  <td className="text-right font-mono">-</td>
+                                  <td className="text-right font-mono font-semibold">${waveSummary.logistics.contingencyAbsolute.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                                </tr>
+                                )}
                                 <tr className="border-t-2 font-bold">
                                   <td className="py-2">Total</td>
                                   <td></td>
@@ -4395,7 +4522,10 @@ const ProjectEstimator = () => {
                 <Label>Contingency %</Label>
                 <Input type="number" value={waveLogistics.contingency_percentage} onChange={(e) => setWaveLogistics({ ...waveLogistics, contingency_percentage: parseFloat(e.target.value) || 0 })} />
               </div>
-              <div></div>
+              <div>
+                <Label>Contingency ($)</Label>
+                <Input type="number" value={waveLogistics.contingency_absolute} onChange={(e) => setWaveLogistics({ ...waveLogistics, contingency_absolute: parseFloat(e.target.value) || 0 })} placeholder="Absolute amount" />
+              </div>
             </div>
             <Button onClick={handleSaveWaveLogistics} className="w-full bg-[#0F172A] hover:bg-[#0F172A]/90">
               Save Configuration
@@ -4456,6 +4586,10 @@ const ProjectEstimator = () => {
               <div>
                 <Label>Contingency %</Label>
                 <Input type="number" value={waveLogistics.contingency_percentage} onChange={(e) => setWaveLogistics({ ...waveLogistics, contingency_percentage: parseFloat(e.target.value) || 0 })} />
+              </div>
+              <div>
+                <Label>Contingency ($)</Label>
+                <Input type="number" value={waveLogistics.contingency_absolute} onChange={(e) => setWaveLogistics({ ...waveLogistics, contingency_absolute: parseFloat(e.target.value) || 0 })} placeholder="Absolute amount" />
               </div>
             </div>
             <Button onClick={handleBatchUpdateLogistics} className="w-full bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-white">
