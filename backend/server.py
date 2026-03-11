@@ -3319,15 +3319,21 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
     for ms in milestones:
         wave_name = ms.get("wave_name", "")
         payment_amount = ms.get("payment_amount", 0) or 0
-        completion_pct = ms.get("completion_percentage", 0) or 0
-        # Distribute payment at the month closest to the completion percentage
-        wave = next((w for w in waves if w.get("name") == wave_name), None)
-        if wave and payment_amount > 0:
-            n = len(wave.get("phase_names", []))
-            target_month = max(0, min(int(completion_pct / 100 * n) - 1, n - 1)) if n > 0 else 0
-            while len(monthly_data) <= target_month:
-                monthly_data.append({"month": target_month + 1, "phase": "", "cost": 0, "revenue": 0})
-            monthly_data[target_month]["revenue"] += payment_amount
+        # Use target_month field (e.g. "M3" -> month index 2)
+        target_month_str = ms.get("target_month", "M1") or "M1"
+        try:
+            target_month_idx = int(target_month_str.replace("M", "")) - 1
+        except (ValueError, AttributeError):
+            # Fallback: use completion_percentage if target_month not set
+            completion_pct = ms.get("completion_percentage", 0) or 0
+            wave = next((w for w in waves if w.get("name") == wave_name), None)
+            n = len(wave.get("phase_names", [])) if wave else 1
+            target_month_idx = max(0, min(int(completion_pct / 100 * n) - 1, n - 1)) if n > 0 else 0
+
+        if payment_amount > 0 and target_month_idx >= 0:
+            while len(monthly_data) <= target_month_idx:
+                monthly_data.append({"month": target_month_idx + 1, "phase": "", "cost": 0, "revenue": 0})
+            monthly_data[target_month_idx]["revenue"] += payment_amount
 
     # Calculate running balance
     running = 0
