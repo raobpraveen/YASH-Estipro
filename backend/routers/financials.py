@@ -37,7 +37,7 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    profit_margin = project.get("profit_margin_percentage", 35)
+    profit_margin = project.get("profit_margin_percentage", 35)  # noqa: F841
     waves = project.get("waves", [])
     milestone_doc = await db.payment_milestones.find_one({"project_id": project_id}, {"_id": 0})
     milestones = (milestone_doc or {}).get("milestones", [])
