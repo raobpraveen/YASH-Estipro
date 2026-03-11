@@ -18,12 +18,41 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 
 ## Architecture
 - **Frontend**: React 18 + Tailwind CSS + Shadcn UI
-- **Backend**: Python FastAPI
+- **Backend**: Python FastAPI (modular routers)
 - **Database**: MongoDB
 - **Deployment**: Docker + Docker Compose + Nginx
 
 ## Credentials
 - Email: admin@yash.com / Password: password
+
+## Code Architecture (Post-Refactoring)
+```
+/app/backend/
+  server.py          (76 lines - slim app setup, CORS, router includes)
+  database.py        (DB connection)
+  models.py          (Pydantic models)
+  auth.py            (JWT, auth dependencies)
+  utils.py           (Audit logs, diff computation)
+  email_service.py   (SMTP, email templates)
+  routers/
+    auth_routes.py   (register, login, me)
+    users.py         (user CRUD, settings, approvers)
+    masters.py       (customers, technologies, skills, rates, locations, project types, sales managers)
+    projects.py      (project CRUD, versions, cloning, templates, approval workflow)
+    financials.py    (milestones, cashflow)
+    dashboard.py     (analytics, compare)
+    notifications.py (notifications, audit logs)
+    files.py         (gantt upload/download, file downloads)
+
+/app/frontend/src/
+  pages/
+    ProjectEstimator.js  (4311 lines, down from 5165)
+  utils/
+    estimatorCalcs.js    (215 lines - calculation functions)
+    excelExport.js       (374 lines - Excel workbook builder)
+    excelImport.js       (211 lines - Smart Import parser)
+    constants.js         (countries, logistics defaults)
+```
 
 ## What's Been Implemented
 
@@ -41,48 +70,34 @@ A comprehensive IT/Software Project estimation tool for YASH Technologies. Suppo
 - Notification system (in-app + email)
 - Audit logs, Master data management, User management
 - Project cloning, archiving, version comparison
+- CRM ID, Sub Technologies, Smart Import with logistics parsing
+- Version Comparison with field-level diff
+- Change History auto-recording
+- Project Access Control (public/restricted)
+- Tutorials Page with guided walkthroughs
+- Payment Milestones page with wave-based milestone editor
+- Cashflow Statement page with per-wave breakdown and charts
+- Gantt Chart Upload on Project Estimator
+- Collapsible sections on Project Estimator page
+- Smart Import parsing of Profit Margin %, Nego Buffer %, Contingency Absolute
 
-### Session Additions (March 2026)
-- **CRM ID**: New field (max 30 chars) in project info area, included in Excel export
-- **Sub Technologies**: New master data entity linked to parent Technology, multi-select in project form
-- **Smart Import Logistics Fix**: Now reads from Excel formula column D
-- **Version Comparison**: Field-level diff with summary banner
-- **Change History**: Auto-records field-level changes on every save
-- **Suspended & Obsolete Statuses**: New project statuses
-- **Excel Export Fix**: Backend download proxy bypasses iframe/popup blockers
-- **Project Access Control**: Public/Restricted visibility with user selection
-- **Version Comparison Key Metrics Summary**: Detailed metrics with color-coded indicators
-- **Tutorials Page**: Guided walkthroughs, video slideshows, interactive tours (react-joyride)
-- **ISO Country List**: Standardized country selection across app
+### Refactoring (March 11, 2026)
+- **Backend**: Split monolithic server.py (3403 lines) into modular routers (14 files, 2859 total lines)
+- **Frontend**: Extracted calculation functions, Excel export, and Smart Import parsing into utility modules (800 lines extracted from ProjectEstimator.js)
 
-### Latest Additions (March 11, 2026)
-- **Excel Export Legend Fix**: Red-colored cells now labeled "Landed" with description "Offshore resource travel to onsite with logistics applied"
-- **Excel Export Formula Linking**: Profit Margin % and Nego Buffer % in wave sheets reference Summary!$B$5 and Summary!$B$6 via formulas
-- **Contingency Absolute Value**: New field in wave logistics for fixed contingency amount (in addition to percentage-based contingency). Added to all 3 logistics dialogs (Add Wave, Edit Logistics, Batch Update) and Excel export.
-- **Copy Skill Row**: New Copy button on each row in Proficiency Rates page. Copies skill data and opens Add dialog pre-filled for quick duplication.
-- **Enhanced Approver Email**: Review request email now includes a "Project Snapshot" section with customer, description, type, locations, technology, sales manager, total resources, man-months, total cost, selling price, and profit margin.
-- **Gantt Chart Upload**: New section in Project Estimator to upload/view/delete a timeline or Gantt chart image per project. Stored as base64 in MongoDB.
-- **Payment Milestones Page**: New /payment-milestones page with project list (table view) and per-wave milestone editor. Features: wave-based collapsible sections, target month dropdown (M1-Mn), payment % with auto-calculated amount, row-level add button, Excel export with formula-based amount calculation (Amount = WaveSP * PaymentPct).
-- **Cashflow Statement Page**: New /cashflow page with project list (showing projects with resource data) and per-wave cashflow breakdown. Cash-In from payment milestones mapped to target months. Combined Monthly Summary sums across waves. Elegant recharts BarChart visualizations for Cash-In/Out and Net/Cumulative. Excel export with per-wave sheets + Combined Summary sheet with cross-sheet formulas.
-- **Navigation Enhancements**: "Open Estimator" button on Milestones and Cashflow detail pages. Sidebar nav includes Milestones (Target icon) and Cashflow (BarChart3 icon).
-
-## Backend API Endpoints (New)
-- POST /api/projects/{id}/gantt — Upload Gantt chart image
-- GET /api/projects/{id}/gantt — Get Gantt chart image
-- DELETE /api/projects/{id}/gantt — Delete Gantt chart
-- GET /api/projects/{id}/milestones — Get payment milestones
-- PUT /api/projects/{id}/milestones — Save payment milestones
-- GET /api/projects/{id}/cashflow — Get cashflow statement (computed)
+## Backend API Endpoints
+- POST /api/projects/{id}/gantt - Upload Gantt chart image
+- GET /api/projects/{id}/gantt - Get Gantt chart image
+- DELETE /api/projects/{id}/gantt - Delete Gantt chart
+- GET /api/projects/{id}/milestones - Get payment milestones
+- PUT /api/projects/{id}/milestones - Save payment milestones
+- GET /api/projects/{id}/cashflow - Get cashflow statement (computed)
 
 ## Prioritized Backlog
 ### P1 - Upcoming
 - What-If Scenario Comparison (plan in /app/memory/WHAT_IF_SCENARIO_PLAN.md)
 - AI Integration (plan in /app/memory/AI_INTEGRATION_PLAN.md)
-- User Profile - Custom theme/background image
 
 ### P2 - Future
 - Actuals Tracking & Profitability Module (spec in /app/memory/ACTUALS_MODULE_SPEC.md)
-
-### Refactoring
-- Break down ProjectEstimator.js (5000+ lines) into smaller components
-- Modularize server.py into separate router files
+- Further frontend component decomposition (extract modals, grid components)
