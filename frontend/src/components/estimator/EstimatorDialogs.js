@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Send, CheckCircle, XCircle, Clock, History, RefreshCw, Upload, Zap } from "lucide-react";
+import { Send, CheckCircle, XCircle, Clock, History, RefreshCw, Upload, Zap, Link, ExternalLink, Copy, Trash2 } from "lucide-react";
 import { COUNTRIES } from "@/utils/constants";
 
 export const SubmitReviewDialog = ({ open, onOpenChange, approverEmail, setApproverEmail, approversList, onSubmit }) => (
@@ -434,6 +434,73 @@ export const QuickEstimatorDialog = ({ open, onOpenChange, quickEstimate, setQui
             <p className="text-3xl font-extrabold font-mono mt-1">${quickEstimateResult.finalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
           </div>
         </div>
+      </div>
+    </DialogContent>
+  </Dialog>
+);
+
+
+export const ShareDialog = ({ open, onOpenChange, shareLinks, shareExpiry, setShareExpiry, shareLoading, onCreate, onRevoke }) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2 text-xl font-bold text-[#0F172A]">
+          <Link className="w-5 h-5 text-indigo-600" /> Client Share Link
+        </DialogTitle>
+        <DialogDescription>Create a read-only link for clients. No login required. Sensitive data (costs, salary, margins) is hidden.</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4 mt-2">
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <Label className="text-xs font-semibold">Link Expiry</Label>
+            <Select value={String(shareExpiry)} onValueChange={(v) => setShareExpiry(Number(v))}>
+              <SelectTrigger className="h-10" data-testid="share-expiry-select"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">7 days</SelectItem>
+                <SelectItem value="14">14 days</SelectItem>
+                <SelectItem value="30">30 days</SelectItem>
+                <SelectItem value="90">90 days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={onCreate} disabled={shareLoading} className="bg-indigo-600 hover:bg-indigo-700 text-white h-10" data-testid="create-share-link-btn">
+            {shareLoading ? "Creating..." : "Generate & Copy Link"}
+          </Button>
+        </div>
+
+        {shareLinks.length > 0 && (
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Active Links</div>
+            <div className="divide-y max-h-48 overflow-y-auto">
+              {shareLinks.map((link) => {
+                const expires = new Date(link.expires_at);
+                const isExpired = expires < new Date();
+                const shareUrl = `${window.location.origin}/shared/${link.token}`;
+                return (
+                  <div key={link.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs truncate text-gray-600">{shareUrl}</span>
+                        <button onClick={() => { navigator.clipboard.writeText(shareUrl); }} className="text-indigo-500 hover:text-indigo-700" title="Copy link">
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                        <a href={shareUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:text-indigo-700" title="Open">
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                      <p className={`text-xs mt-0.5 ${isExpired ? "text-red-500" : "text-gray-400"}`}>
+                        {isExpired ? "Expired" : `Expires ${expires.toLocaleDateString()}`}
+                      </p>
+                    </div>
+                    <button onClick={() => onRevoke(link.token)} className="text-red-400 hover:text-red-600 ml-2" title="Revoke" data-testid={`revoke-${link.token}`}>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </DialogContent>
   </Dialog>

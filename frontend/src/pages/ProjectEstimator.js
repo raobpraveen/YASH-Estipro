@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Plus, Trash2, Plane, Save, FileDown, X, Settings, Copy, History, RefreshCw, Send, CheckCircle, XCircle, Clock, Calculator, Upload, FileSpreadsheet, Minus, MessageSquare, GripVertical, Download, Zap, ChevronDown, ChevronRight, MoreHorizontal, Eye, Target, BarChart3 } from "lucide-react";
+import { Plus, Trash2, Plane, Save, FileDown, X, Settings, Copy, History, RefreshCw, Send, CheckCircle, XCircle, Clock, Calculator, Upload, FileSpreadsheet, Minus, MessageSquare, GripVertical, Download, Zap, ChevronDown, ChevronRight, MoreHorizontal, Eye, Target, BarChart3, Share2, Link, ExternalLink } from "lucide-react";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -27,7 +27,7 @@ import { buildExportWorkbook } from "@/utils/excelExport";
 import { parseSmartImportExcel } from "@/utils/excelImport";
 import { OverallSummary } from "@/components/estimator/OverallSummary";
 import { GanttCard } from "@/components/estimator/GanttCard";
-import { SubmitReviewDialog, ApprovalActionDialog, LogisticsDialog, BatchLogisticsDialog, SaveVersionDialog, ApproverSaveDialog, SummaryDialog, SmartImportDialog, ObsoleteConfirmDialog, QuickEstimatorDialog } from "@/components/estimator/EstimatorDialogs";
+import { SubmitReviewDialog, ApprovalActionDialog, LogisticsDialog, BatchLogisticsDialog, SaveVersionDialog, ApproverSaveDialog, SummaryDialog, SmartImportDialog, ObsoleteConfirmDialog, QuickEstimatorDialog, ShareDialog } from "@/components/estimator/EstimatorDialogs";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -814,6 +814,10 @@ const ProjectEstimator = () => {
 
   // Quick Estimate calculator state
   const [quickEstimateOpen, setQuickEstimateOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareLinks, setShareLinks] = useState([]);
+  const [shareExpiry, setShareExpiry] = useState(14);
+  const [shareLoading, setShareLoading] = useState(false);
   const [smartImportDialog, setSmartImportDialog] = useState(false);
   const [smartImportData, setSmartImportData] = useState(null);
   const [smartImportLoading, setSmartImportLoading] = useState(false);
@@ -1619,6 +1623,67 @@ const ProjectEstimator = () => {
     }
   };
 
+  const handleExportPdf = async () => {
+    if (!projectId) { toast.error("Save the project first"); return; }
+    try {
+      toast.info("Generating PDF...");
+      const res = await axios.get(`${API}/projects/${projectId}/export-pdf`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${projectNumber}_v${projectVersion}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success("PDF downloaded");
+    } catch (err) {
+      toast.error("PDF export failed");
+    }
+  };
+
+  const handleCreateShareLink = async () => {
+    if (!projectId) return;
+    setShareLoading(true);
+    try {
+      const res = await axios.post(`${API}/projects/${projectId}/share?expiry_days=${shareExpiry}`, null, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const link = `${window.location.origin}/shared/${res.data.token}`;
+      await navigator.clipboard.writeText(link);
+      toast.success("Share link copied to clipboard!");
+      await fetchShareLinks();
+    } catch (err) {
+      toast.error("Failed to create share link");
+    }
+    setShareLoading(false);
+  };
+
+  const fetchShareLinks = async () => {
+    if (!projectId) return;
+    try {
+      const res = await axios.get(`${API}/projects/${projectId}/shares`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      setShareLinks(res.data);
+    } catch {}
+  };
+
+  const handleRevokeShare = async (token) => {
+    try {
+      await axios.delete(`${API}/shared/${token}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      toast.success("Share link revoked");
+      await fetchShareLinks();
+    } catch {
+      toast.error("Failed to revoke");
+    }
+  };
+
+
+
   // === SMART IMPORT: Parse EstiPro-exported Excel ===
   const handleSmartImportFile = async (event) => {
     const file = event.target.files?.[0];
@@ -1912,6 +1977,28 @@ const ProjectEstimator = () => {
               </TooltipTrigger>
               <TooltipContent>Quick Estimate Calculator</TooltipContent>
             </Tooltip>
+            {projectId && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={handleExportPdf} variant="ghost" size="sm" className="h-8 px-2.5 text-red-500 hover:bg-red-50" data-testid="export-pdf-button">
+                    <FileDown className="w-4 h-4 mr-1" />
+                    PDF
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Export branded PDF</TooltipContent>
+              </Tooltip>
+            )}
+            {projectId && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={() => { setShareDialogOpen(true); fetchShareLinks(); }} variant="ghost" size="sm" className="h-8 px-2.5 text-indigo-600 hover:bg-indigo-50" data-testid="share-button">
+                    <Share2 className="w-4 h-4 mr-1" />
+                    Share
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Create client-facing share link</TooltipContent>
+              </Tooltip>
+            )}
           </div>
 
           {/* ── Financial Links Group (when project saved) ── */}
@@ -3428,6 +3515,9 @@ const ProjectEstimator = () => {
 
       {/* Quick Estimate Calculator Dialog */}
       <QuickEstimatorDialog open={quickEstimateOpen} onOpenChange={setQuickEstimateOpen} quickEstimate={quickEstimate} setQuickEstimate={setQuickEstimate} quickEstimateResult={quickEstimateResult} negoBufferPercentage={negoBufferPercentage} />
+
+      {/* Share Dialog */}
+      <ShareDialog open={shareDialogOpen} onOpenChange={setShareDialogOpen} shareLinks={shareLinks} shareExpiry={shareExpiry} setShareExpiry={setShareExpiry} shareLoading={shareLoading} onCreate={handleCreateShareLink} onRevoke={handleRevokeShare} />
 
     </div>
     </TooltipProvider>

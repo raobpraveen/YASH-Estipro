@@ -16,6 +16,7 @@ from routers.financials import router as financials_router
 from routers.dashboard import router as dashboard_router
 from routers.notifications import router as notifications_router
 from routers.files import router as files_router
+from routers.sharing import router as sharing_router
 
 app = FastAPI(title="YASH EstPro API")
 
@@ -31,6 +32,7 @@ api_router.include_router(financials_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(notifications_router)
 api_router.include_router(files_router)
+api_router.include_router(sharing_router)
 
 app.include_router(api_router)
 
