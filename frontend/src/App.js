@@ -24,7 +24,6 @@ import SupportGuide from "@/pages/SupportGuide";
 import Tutorials from "@/pages/Tutorials";
 import PaymentMilestones from "@/pages/PaymentMilestones";
 import CashflowStatement from "@/pages/CashflowStatement";
-import SharedProjectView from "@/pages/SharedProjectView";
 import { Toaster } from "@/components/ui/sonner";
 
 function App() {
@@ -63,8 +62,6 @@ function App() {
     <div className="App">
       <BrowserRouter>
         <Routes>
-          {/* Public route — no auth required */}
-          <Route path="/shared/:token" element={<SharedProjectView />} />
           {!user ? (
             <>
               <Route path="/login" element={<Login onLogin={handleLogin} />} />

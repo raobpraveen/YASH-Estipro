@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import Response
 from typing import List
 from datetime import datetime, timezone
 import uuid
@@ -8,7 +7,6 @@ from models import Project, ProjectCreate, ProjectUpdate, Notification
 from auth import require_auth, get_current_user
 from utils import create_audit_log, detect_changes, compute_detailed_diff
 from email_service import send_email, get_review_request_email, get_approval_email
-from pdf_service import generate_project_pdf
 
 router = APIRouter()
 
@@ -177,23 +175,6 @@ async def get_project(project_id: str, user: dict = Depends(get_current_user)):
         if not has_access:
             raise HTTPException(status_code=403, detail="You don't have access to this project")
     return project
-
-
-LOGO_PATH = "/app/frontend/public/yash-logo-new.png"
-
-
-@router.get("/projects/{project_id}/export-pdf")
-async def export_project_pdf(project_id: str, user: dict = Depends(require_auth)):
-    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    pdf_bytes = generate_project_pdf(project, logo_path=LOGO_PATH)
-    filename = f"{project.get('project_number', 'estimate')}_v{project.get('version', 1)}.pdf"
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-    )
 
 
 
