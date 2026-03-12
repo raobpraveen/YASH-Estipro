@@ -154,10 +154,23 @@ export default function SupportGuide() {
            |
        [MongoDB]
     (Collections: projects, users, 
-     skills, locations, customers,
-     technologies, project_types,
-     sales_managers, proficiency_rates,
-     audit_logs, notifications)`}
+     skills, base_locations, customers,
+     technologies, sub_technologies,
+     project_types, sales_managers,
+     proficiency_rates, audit_logs,
+     notifications, change_logs,
+     milestones)
+
+Backend Modular Structure:
+  server.py → routers/
+    ├── auth_routes.py
+    ├── projects.py
+    ├── dashboard.py
+    ├── masters.py
+    ├── financials.py
+    ├── files.py
+    ├── notifications.py
+    └── users.py`}
             </CodeBlock>
 
             <h3 className="text-lg font-semibold text-[#10B981] mt-6">1.3 Key Libraries</h3>

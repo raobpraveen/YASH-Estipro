@@ -170,7 +170,10 @@ export default function UserManual() {
             <KeyValue label="Dashboard">Estimations overview with analytics and KPIs.</KeyValue>
             <KeyValue label="Estimator">Create or edit project estimations.</KeyValue>
             <KeyValue label="Projects">Browse, filter, and manage all projects.</KeyValue>
+            <KeyValue label="Milestones">Define payment schedules and milestones per wave for any project version.</KeyValue>
+            <KeyValue label="Cashflow">View monthly cash outflows vs. inflows with combined summary and charts.</KeyValue>
             <KeyValue label="Master Data">Manage Skills, Locations, Technologies, Sub Technologies, Customers, and more.</KeyValue>
+            <KeyValue label="Help">Access User Manual, Support Guide, and Tutorials from the collapsible Help section.</KeyValue>
             <KeyValue label="Settings">Personal profile, theme, and date format preferences.</KeyValue>
             <Tip>Use <strong>Ctrl+B</strong> (or <strong>Cmd+B</strong> on Mac) to toggle the sidebar between expanded and collapsed modes.</Tip>
           </Section>
@@ -625,13 +628,13 @@ export default function UserManual() {
           <Section id="tutorials" title="18. Tutorials & Help">
             <p>Access the <strong>Tutorials</strong> page from the sidebar for guided learning resources.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">14.1 Guided Walkthroughs</h3>
-            <p>Step-by-step text instructions for key features: Creating Projects, Wave Grid, Excel Export, Version Comparison, Approval Workflow, Dashboard Analytics, and Master Data Management.</p>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">18.1 Guided Walkthroughs</h3>
+            <p>Step-by-step text instructions for key features: Creating Projects, Wave Grid, Excel Export, Version Comparison, Approval Workflow, Dashboard Analytics, Master Data Management, Payment Milestones, Cashflow Statement, and Gantt Chart Upload.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">14.2 Video Slideshows</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">18.2 Video Slideshows</h3>
             <p>Screenshot-based slideshows that auto-play through key application screens. Click any tutorial card to watch the slideshow with play/pause controls.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">14.3 Interactive Tours</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">18.3 Interactive Tours</h3>
             <p>Click <strong>"Start Tour"</strong> on any tutorial to get guided tooltips highlighting UI elements directly in the application. Tours help new users learn by doing.</p>
             
             <Tip>Use the <strong>Interactive Tours</strong> when onboarding new team members - they provide hands-on guidance within the actual application interface.</Tip>
