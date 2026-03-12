@@ -1,101 +1,62 @@
-# YASH EstPro - Project Cost Estimator
+# YASH EstPro - Product Requirements Document
 
-## Product Overview
-A comprehensive IT/Software Project estimation tool for YASH Technologies. Supports wave-based estimation with dynamic monthly phases, editable resource definitions, cost calculations, versioning, approval workflows, and Excel export.
-
-## Core Requirements
-- **Wave-based Estimation Grid**: Dynamic monthly phases, editable resources (Skill, Level, Location) with auto salary lookups
-- **Cost Calculation**: Base Cost, Overheads, CTC, Profit Margin, Selling Price, Logistics, Override $/Hr
-- **Project & Version Management**: Full lifecycle with versioning, cloning, version comments
-- **Workflow**: Draft > In Review > Approved > Rejected > Suspended > Obsolete
-- **Master Data**: Full CRUD for Skills, Locations, Technologies, Sub Technologies, Customers, Proficiency Rates, etc.
-- **Dashboard & Analytics**: KPIs, charts, filtering, clickable Total Projects card
-- **Excel Export**: Formula-powered with color coding, color legend, override support, CRM ID, Sub Technologies
-- **Excel Smart Import**: Re-import Excel files with logistics parsing from formulas, "Import as New Version"
-- **Version Comparison**: Field-level diff between any two versions + automated change history log
-- **Authentication**: JWT-based with role-based access (Admin, Approver, User)
-- **Documentation**: In-app User Manual and Support Guide (updated with all features)
+## Original Problem Statement
+Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based estimation, cost calculations, project/version management, approval workflows, analytics dashboard, and master data management.
 
 ## Architecture
-- **Frontend**: React 18 + Tailwind CSS + Shadcn UI
-- **Backend**: Python FastAPI (modular routers)
-- **Database**: MongoDB
-
-## Credentials
-- Email: admin@yash.com / Password: password
-
-## Code Architecture (Post-Refactoring)
-```
-/app/backend/
-  server.py          (76 lines - slim app setup, CORS, router includes)
-  database.py        (DB connection)
-  models.py          (Pydantic models)
-  auth.py            (JWT, auth dependencies)
-  utils.py           (Audit logs, diff computation)
-  email_service.py   (SMTP, email templates)
-  routers/
-    auth_routes.py   (register, login, me)
-    users.py         (user CRUD, settings, approvers)
-    masters.py       (customers, technologies, skills, rates, locations, project types, sales managers)
-    projects.py      (project CRUD, versions, cloning, templates, approval workflow)
-    financials.py    (milestones, cashflow)
-    dashboard.py     (analytics, compare)
-    notifications.py (notifications, audit logs)
-    files.py         (gantt upload/download, file downloads)
-
-/app/frontend/src/
-  pages/
-    ProjectEstimator.js  (4427 lines)
-  utils/
-    estimatorCalcs.js    (calculation functions)
-    excelExport.js       (Excel workbook builder)
-    excelImport.js       (Smart Import parser)
-    constants.js         (countries, logistics defaults)
-  components/
-    Layout.js            (sidebar with Help group)
-```
+- **Backend**: FastAPI + MongoDB (modular routers in `/app/backend/routers/`)
+- **Frontend**: React + Shadcn UI + Recharts
+- **Auth**: JWT-based with role-based access control
 
 ## What's Been Implemented
-
 ### Core Features (Complete)
-- JWT Authentication & Role-based access control
-- Project CRUD with versioning
-- Wave-based estimation grid with drag-and-drop
-- Searchable dropdowns for Skill, Level, Location
-- Auto salary lookup from proficiency rates
-- Cost calculations (Salary, Overhead, CTC, Selling Price)
-- Logistics configuration per wave
-- Formula-powered Excel export
+- Wave-based estimation grid with dynamic monthly phases
+- Editable resource definitions (Skill, Level, Location) with salary lookups
+- Comprehensive cost calculations (Base, Overheads, Profit, Selling Price, Logistics)
+- Project & version management with cloning, comments, read-only states
+- Approval workflow (Draft → In Review → Approved/Rejected)
+- Analytics dashboard with filters
+- Master data CRUD (Skills, Locations, Technologies, Sub-Technologies, Customers, Project Types, Sales Managers, Proficiency Rates)
+- Export to Excel, Smart Import from Excel
+- Payment Milestones module
+- Cashflow Statement module
+- Gantt chart upload/display
+- User management with roles
+- Audit logs
+- Interactive tutorials and guided walkthroughs
 - Quick Estimate Calculator
-- Dashboard with analytics & charts
-- Notification system (in-app + email)
-- Audit logs, Master data management, User management
-- Project cloning, archiving, version comparison
-- CRM ID, Sub Technologies, Smart Import with logistics parsing
-- Version Comparison with field-level diff
-- Change History auto-recording
-- Project Access Control (public/restricted)
-- Tutorials Page with guided walkthroughs
-- Payment Milestones page with wave-based milestone editor
-- Cashflow Statement page with per-wave breakdown and charts
-- Gantt Chart Upload on Project Estimator
-- Collapsible sections on Project Estimator page
-- Smart Import parsing of Profit Margin %, Nego Buffer %, Contingency Absolute
+- Nego Buffer at wave level
+- Apply resource to all months
+- Project archiving (Mark Obsolete)
 
-### UI/UX Improvements (March 11, 2026)
-- **Sidebar**: Created "Help" group containing User Manual, Support Guide, Tutorials. Settings is separate.
-- **Estimator Toolbar**: Buttons grouped into logical clusters (Project Actions, Utilities, Financial Links, Workflow, Save) with visual group borders and tooltips
-- **Wave Grid**: Added hover tooltips on Level (shows proficiency level), Location (shows name + overhead %), and $/Month (shows formatted salary + master rate if different). Increased column widths by ~16px each.
+### Recent Completions (March 2026)
+- **P0 Bug Fixes**: Fixed email URLs (now point to `/estimator?edit={id}`), added YASH logo to Milestones/Cashflow pages, verified Add Milestone button works
+- **P1 Documentation Updates**: Fixed section numbering in UserManual, added Milestones/Cashflow/Help references to nav docs, updated SupportGuide architecture diagram
+- **P1 Frontend Refactoring**: Extracted 10 dialog components, OverallSummary, and GanttCard from ProjectEstimator.js (4427→3437 lines)
+- **Backend Refactoring**: Monolithic server.py broken into modular routers (14 files)
+- **Frontend Utility Extraction**: ~854 lines of calculation/Excel logic moved to utils/
 
-### Refactoring (March 11, 2026)
-- **Backend**: Split monolithic server.py (3403 lines) into modular routers (14 files, 2859 total lines)
-- **Frontend**: Extracted calculation functions, Excel export, and Smart Import parsing into utility modules
+## File Structure
+```
+/app/backend/
+  ├── server.py (slim app init)
+  ├── routers/ (auth_routes, projects, dashboard, masters, financials, files, notifications, users)
+  ├── models.py, database.py, auth.py, email_service.py, utils.py
+/app/frontend/src/
+  ├── pages/ProjectEstimator.js (3437 lines, partially refactored)
+  ├── components/estimator/ (OverallSummary.js, GanttCard.js, EstimatorDialogs.js)
+  ├── utils/ (estimatorCalcs.js, excelExport.js, excelImport.js)
+```
 
 ## Prioritized Backlog
-### P1 - Upcoming
-- What-If Scenario Comparison (plan in /app/memory/WHAT_IF_SCENARIO_PLAN.md)
-- AI Integration (plan in /app/memory/AI_INTEGRATION_PLAN.md)
 
-### P2 - Future
-- Actuals Tracking & Profitability Module (spec in /app/memory/ACTUALS_MODULE_SPEC.md)
-- Further frontend component decomposition (extract modals, grid components)
+### P1 - Further Refactoring
+- Break ProjectEstimator.js further (ProjectInfoCard, WaveGrid components) - still 3437 lines
+
+### P2 - New Features
+- What-If Scenario Comparison (create/compare up to 3 pricing scenarios)
+- AI Integration (Estimation Suggestions / NL Project Builder)
+- Actuals Tracking & Profitability Module
+
+## Credentials
+- Admin: admin@yash.com / password
