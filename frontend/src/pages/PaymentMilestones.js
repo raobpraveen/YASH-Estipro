@@ -286,8 +286,13 @@ const PaymentMilestones = () => {
     return (
       <div data-testid="milestones-project-list">
         <div className="mb-6">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0F172A] tracking-tight">Payment Milestones</h1>
-          <p className="text-sm text-gray-600 mt-1">Select a project version to manage payment milestones</p>
+          <div className="flex items-center gap-3">
+            <img src="/yash-logo-new.png" alt="YASH" className="h-10 object-contain" />
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0F172A] tracking-tight">Payment Milestones</h1>
+              <p className="text-sm text-gray-600 mt-1">Select a project version to manage payment milestones</p>
+            </div>
+          </div>
         </div>
         <div className="relative mb-4 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -371,6 +376,7 @@ const PaymentMilestones = () => {
           <Button variant="ghost" size="sm" onClick={() => navigate("/payment-milestones")} data-testid="back-button">
             <ArrowLeft className="w-4 h-4 mr-1" /> All Projects
           </Button>
+          <img src="/yash-logo-new.png" alt="YASH" className="h-10 object-contain" />
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0F172A] tracking-tight">Payment Milestones</h1>
             <p className="text-sm text-gray-600 mt-1">{project?.project_number} — {project?.name} (v{project?.version})</p>

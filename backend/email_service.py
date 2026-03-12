@@ -124,7 +124,7 @@ def _email_wrapper(content_html: str, preheader: str = "") -> str:
 
 def get_review_request_email(project_number: str, project_name: str, submitter_name: str, submitter_email: str, project_id: str = "", project_data: dict = None):
     subject = f"[YASH EstiPro] Review Request: {project_number} - {project_name}"
-    project_url = f"{APP_BASE_URL}/projects/{project_id}" if project_id else APP_BASE_URL
+    project_url = f"{APP_BASE_URL}/estimator?edit={project_id}" if project_id else APP_BASE_URL
 
     details_html = ""
     if project_data:
@@ -212,7 +212,7 @@ def get_approval_email(project_number: str, project_name: str, status: str, appr
     status_color = "#10B981" if is_approved else "#EF4444"
     status_bg = "#1A3A2A" if is_approved else "#3A1A1A"
     status_icon = "&#10003;" if is_approved else "&#10007;"
-    project_url = f"{APP_BASE_URL}/projects/{project_id}" if project_id else APP_BASE_URL
+    project_url = f"{APP_BASE_URL}/estimator?edit={project_id}" if project_id else APP_BASE_URL
     subject = f"[YASH EstiPro] Project {status_text}: {project_number} - {project_name}"
 
     comments_html = ""
