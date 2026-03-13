@@ -18,7 +18,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://estpro-staging.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://pricing-tool-staging.preview.emergentagent.com').rstrip('/')
 API = f"{BASE_URL}/api"
 
 

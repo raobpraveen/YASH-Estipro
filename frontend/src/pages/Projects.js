@@ -418,6 +418,7 @@ const Projects = () => {
       
       // Calculate wave logistics
       let waveLogistics = 0;
+      const contingencyAbs = config.contingency_absolute || 0;
       if (waveTravelingCount > 0) {
         const perDiem = waveTravelingMM * (config.per_diem_daily || 50) * (config.per_diem_days || 30);
         const accommodation = waveTravelingMM * (config.accommodation_daily || 80) * (config.accommodation_days || 30);
@@ -426,7 +427,9 @@ const Projects = () => {
         const visa = waveTravelingCount * (config.visa_medical_per_trip || 400) * (config.num_trips || 6);
         const subtotal = perDiem + accommodation + conveyance + flights + visa;
         const contingency = subtotal * ((config.contingency_percentage || 5) / 100);
-        waveLogistics = subtotal + contingency;
+        waveLogistics = subtotal + contingency + contingencyAbs;
+      } else {
+        waveLogistics = contingencyAbs;
       }
       totalLogistics += waveLogistics;
       

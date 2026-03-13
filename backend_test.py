@@ -4,7 +4,7 @@ from datetime import datetime
 import json
 
 class ProjectEstimatorAPITester:
-    def __init__(self, base_url="https://estpro-staging.preview.emergentagent.com"):
+    def __init__(self, base_url="https://pricing-tool-staging.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.tests_run = 0
@@ -275,7 +275,7 @@ class ProjectEstimatorAPITester:
 
 def main():
     print("🚀 Starting Project Estimator API Testing...")
-    print(f"Testing against: https://estpro-staging.preview.emergentagent.com/api")
+    print(f"Testing against: https://pricing-tool-staging.preview.emergentagent.com/api")
     
     tester = ProjectEstimatorAPITester()
     

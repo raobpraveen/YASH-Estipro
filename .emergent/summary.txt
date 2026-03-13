@@ -11,113 +11,88 @@ Build an IT/Software Project estimator tool named YASH EstPro.
 - **Authentication & Authorization**: JWT-based authentication and role-based access control.
 
 **PRODUCT REQUIREMENTS (Recent additions by user):**
-- **UI Enhancements**:
-    - Group sidebar links (User Manual, Support Guide, Tutorials) under a Help section.
-    - Reorganize buttons on the estimator screen into logical groups.
-    - In the wave grid, add hover tooltips for Level, Location, and Salary fields, and increase their column width.
-- **Bug Fixes**:
-    - An uploaded Gantt chart image does not persist when the project is reopened.
-    - **(NEW)** An email caching bug where approval emails for 2nd, 3rd.. projects contain details of the 1st project.
-    - **(NEW)** The Review link in approval emails incorrectly directs to the Dashboard instead of the specific project.
-    - **(NEW)** The Add Milestone button on the Payment Milestones page is not working.
-- **Branding**:
-    - **(NEW)** The YASH logo is missing on the Milestones and Cashflow pages.
-- **Deployment**:
-    - User is asking for guidance on deploying the application and whether to push to Git.
+- **Bug Fix:** The Add Milestone button does not work in the deployed production instance (identified as a  issue in non-secure contexts).
+- **Calculation Logic:** The Final Price used for milestone distribution must be .
+- **Calculation Logic:** An incorrect selling price was showing in the Saved Projects List and an incorrect total cost was showing on the Cashflow screen. The root cause was identified as the  value only being included if there were traveling resources. It should always be included.
+- **UI/UX Bug:** The Payment Milestones screen does not refresh with updated calculations when navigated to from the estimator after making changes.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A comprehensive full-stack project estimation tool (YASH EstPro) using FastAPI, React, and MongoDB. The application has a rich feature set including JWT authentication, detailed project/version management, master data CRUD, an analytics dashboard, and recently added modules for Payment Milestones and Cashflow Statements.
+A comprehensive full-stack project estimation tool (YASH EstPro) using FastAPI, React, and MongoDB. The application has a rich feature set including JWT authentication, detailed project/version management, master data CRUD, and an analytics dashboard.
 
-In this session, the agent performed a major, critical refactoring of the codebase:
-- **Backend**: The monolithic  file (3403 lines) was successfully broken down into a modular structure with routers, models, and services, significantly improving maintainability.
-- **Frontend**: The massive  component (5165 lines) was partially refactored by extracting ~850 lines of complex logic (calculations, Excel I/O) into separate utility modules.
+In this session, the agent successfully fixed several critical bugs related to email workflows and UI elements, performed significant refactoring of the  component by extracting over 900 lines of code into separate components, and updated user documentation.
 
-Additionally, several user-requested UI enhancements were completed, and a critical bug related to Gantt chart persistence was fixed. The agent was in the process of investigating four new bugs reported by the user after a fresh deployment.
+The agent then implemented and subsequently reverted two new features (PDF Export and Client-Facing Shareable View) at the user's request.
+
+Most recently, the agent diagnosed and began fixing a series of interdependent calculation and UI refresh bugs reported by the user concerning the Final Price, contingency costs, and stale data on the milestones page.
 
 **Last working item**:
--   Last item agent was working: Investigating four critical bugs reported by the user after a fresh deployment. The agent had begun viewing the relevant files for all four issues.
-    1.  **Email Caching:** Approval emails for subsequent projects contain details of the *first* project.
-    2.  **Incorrect Email Link:** The Review button in the email directs to the Dashboard, not the specific project.
-    3.  **Missing Logo:** The YASH logo is missing from the Milestones and Cashflow pages.
-    4.  **Broken Add Milestone button:** The button is unresponsive.
+-   Last item agent was working: Fixing three interdependent bugs related to incorrect price calculations and a UI refresh issue.
+    1.  **Incorrect Calculations**: Selling Price on the Saved Projects list and Total Cost on the Cashflow screen were wrong because the  amount was not being included correctly.
+    2.  **Stale Data on Milestones Page**: When navigating from the estimator to the milestones page after making changes, the milestone amounts were not being recalculated based on the new project data.
 -   Status: **IN PROGRESS**
 -   Agent Testing Done: N
--   Which testing method agent to use? A combination of methods is required:
-    - **Email Bugs (1 & 2):** Backend manual testing. Submit two different projects for approval and inspect the content and links of both emails received.
-    - **Logo Bug (3):** Frontend screenshot tool on the Milestones and Cashflow pages.
-    - **Milestone Button Bug (4):** Frontend interaction testing. Use the screenshot tool to navigate to the Milestones page, click the Add Milestone button, and verify a new row appears in the table.
+-   Which testing method agent to use? Combination of methods:
+    -   **Backend**:  to test the  endpoint.
+    -   **Frontend**:  to verify the Saved Projects list and the Payment Milestones page for a specific project (e.g., PRJ-0026) to ensure calculations are correct and the data refreshes properly.
 -   User Testing Done: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Stale Email Content on Approval (P0)**
-    -   **Attempted fixes**: None yet. Agent started investigation by viewing  and the  endpoint in .
+-   **Issue 1: Incorrect Price Calculation Across Multiple Screens (P0)**
+    -   **Description**: The  logistic cost is only being added to totals if a wave has traveling resources, but it should always be added. This affects the Selling Price in  and the Total Cost in .
+    -   **Attempted fixes**: The agent identified the incorrect  condition in both  and . A fix has been applied to . The fix for  was being applied.
     -   **Next debug checklist**:
-        -   Examine  for any global variables or caching mechanisms that might persist data between calls.
-        -   Trace the data flow into  in  to ensure the  and  being passed correspond to the current request.
-        -   Verify the email template string is formatted with fresh data on every invocation.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical workflow blocker. Approvers are seeing incorrect project details, which prevents them from making informed decisions.
+        -   Apply the fix to  by moving the  addition outside the  block.
+        -   Test the fix by checking project PRJ-0025 or PRJ-0026 on the Cashflow screen and the Saved Projects list.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical financial bug causing incorrect cost and price reporting across the application. Fixing it ensures data consistency and accuracy.
     -   **Status**: IN PROGRESS
     -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Backend.
+    -   **Should Test frontend/backend/both after fix?**: Both.
     -   **Blocked on other issue**: None.
 
--   **Issue 2: Incorrect Review Link in Approval Email (P0)**
-    -   **Attempted fixes**: None yet. Agent viewed .
+-   **Issue 2: Milestone Data Does Not Refresh on Navigation (P0)**
+    -   **Description**: When a user modifies a project in the estimator and then clicks to view the Payment Milestones, the milestone amounts are not recalculated based on the new Final Price. They show stale values.
+    -   **Attempted fixes**: The agent identified that the milestone amounts need to be programmatically recalculated when the page loads with new project data. An initial attempt to use  was reconsidered due to potential race conditions with concurrent data fetches.
     -   **Next debug checklist**:
-        -   Locate the link construction logic in . The current link is hardcoded to .
-        -   Modify the link to be dynamic, pointing to  using the project's version ID.
-    -   **Why fix this issue and what will be achieved with the fix?**: The approval workflow is broken. The link should provide a one-click path for approvers to review the correct project.
-    -   **Status**: IN PROGRESS
-    -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Backend.
-    -   **Blocked on other issue**: None.
-
--   **Issue 3: Broken Add Milestone Button (P0)**
-    -   **Attempted fixes**: None yet. Agent viewed .
-    -   **Next debug checklist**:
-        -   Inspect the  handler for the Add Milestone button in .
-        -   Use the browser's developer console to check for JavaScript errors when the button is clicked.
-        -   Trace the  state update logic to debug why a new row is not being added to the array.
-    -   **Why fix this issue and what will be achieved with the fix?**: The primary function of the Payment Milestones page is unusable.
-    -   **Status**: IN PROGRESS
-    -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Frontend.
-    -   **Blocked on other issue**: None.
-
--   **Issue 4: Missing Logo on Financial Pages (P1)**
-    -   **Attempted fixes**: None yet. Agent viewed  and .
-    -   **Next debug checklist**:
-        -   Copy the logo rendering JSX from a page where it works (e.g., ).
-        -   Paste the logo component into the appropriate layout location in  and .
-    -   **Why fix this issue and what will be achieved with the fix?**: Ensures brand consistency across all pages of the application.
+        -   Implement a robust solution in .
+        -   The last plan was to recalculate the milestone amounts directly within the promise chain of the data fetching logic, after both the project data and milestone data have been successfully retrieved.
+    -   **Why fix this issue and what will be achieved with the fix?**: This bug prevents users from accurately planning payment schedules based on their latest estimates, breaking a core workflow.
     -   **Status**: IN PROGRESS
     -   **Is recurring issue?**: N
     -   **Should Test frontend/backend/both after fix?**: Frontend.
     -   **Blocked on other issue**: None.
 
 **In progress Task List**:
--   None. All current work is captured in the issue list.
+-   None.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks (P1):**
-    -   **Update Documentation**: The , , and  are outdated after recent UI and feature changes. They need to be updated.
-    -   **Frontend Refactoring ()**: While utility functions were extracted, the component is still over 4,300 lines. It needs to be broken down into smaller, manageable components (e.g., , , , , ).
+    -   **Frontend Refactoring ()**: Continue breaking down the ~3400 line component into smaller, manageable pieces (e.g., , ).
 
 -   **Future Tasks (P2):**
-    -   **What-If Scenario Comparison**: Implement the feature allowing users to create and compare up to 3 pricing/resource scenarios for a project.
-    -   **AI Integration**: Implement an AI feature like AI Estimation Suggestions or a Natural Language Project Builder.
+    -   **PDF Export with Branding**: Re-implement the feature to generate a polished PDF proposal.
+    -   **Client-Facing Shareable View**: Re-implement the feature for a read-only, shareable link to a sanitized estimate.
+    -   **What-If Scenario Comparison**: Implement a feature to create and compare up to 3 pricing/resource scenarios.
+    -   **AI Integration**: Implement an AI feature like AI Estimation Suggestions.
     -   **Actuals Tracking & Profitability Module**: A large module for tracking actual project costs vs. estimates.
 
 **Completed work in this session**
--   **Refactoring (Backend)**: Successfully refactored the monolithic  into a modular structure with 14 files, improving maintainability and organization.
--   **Refactoring (Frontend)**: Partially refactored  by extracting ~854 lines of calculation and Excel I/O logic into separate utility modules (, , ).
--   **UI Enhancement (Sidebar)**: Created a collapsible Help group in the sidebar to organize documentation links.
--   **UI Enhancement (Toolbar)**: Reorganized the  toolbar, grouping buttons into logical, visually separated sections.
--   **UI Enhancement (Wave Grid)**: Added hover tooltips and increased column width for 'Level', 'Location', and '$/Month' fields to improve usability.
--   **Bug Fix**: Fixed a critical bug where uploaded Gantt chart images were not persisting after reloading a project by updating the Pydantic model and API response.
--   **Testing**: Ran the testing agent multiple times to validate P0 functionality and the refactoring work, achieving high pass rates and fixing a bug found by the agent.
+-   **P0 Bug Fixes (Session Start)**:
+    -   Fixed incorrect Review link in approval emails ().
+    -   Fixed missing YASH logo on Milestones and Cashflow pages (, ).
+    -   Verified the Add Milestone button functionality was working after a previous fix.
+-   **P1 Refactoring & Docs**:
+    -   Refactored , reducing its size by ~990 lines by extracting dialogs and summary cards into new components (, ).
+    -   Updated  and  to reflect recent changes.
+-   **Feature Revert**:
+    -   Successfully implemented PDF Export and Client-Facing Share View features, including backend APIs and frontend components.
+    -   Manually reverted all 15+ file changes related to these features at the user's request.
+-   **P0 Bug Fixes (Recent)**:
+    -   Fixed the Add Milestone button which failed in production by replacing  with a robust fallback in .
+    -   Corrected the Final Price calculation on the milestones page to include Selling Price, Logistics, and Nego Buffer.
+    -   Added a Total Final Price summary card to the  page.
+    -   Fixed a bug where Nego Buffer and Final Price were incorrect on the  list page by ensuring the project-level nego buffer was used.
 
 **Earlier issues found/mentioned but not fixed**
 -   None.
@@ -129,58 +104,58 @@ Additionally, several user-requested UI enhancements were completed, and a criti
 
 
 **Key Technical Concepts**
--   **Backend**: FastAPI, Pydantic, JWT Authentication, Modular Routers, .
--   **Frontend**: React.js, React Hooks, Context API, Axios, , Shadcn UI.
+-   **Backend**: FastAPI, Pydantic, JWT Authentication, Modular Routers.
+-   **Frontend**: React.js, React Hooks (useState, useEffect), Context API, Axios, Shadcn UI.
 -   **Database**: MongoDB.
 
 **key DB schema**
--   **projects**:
-    -   The Pydantic model  in  was updated to include  to ensure Gantt chart metadata persists.
+-   No schema changes in this session.
 
 **changes in tech stack**
--   None.
+-   The dependencies  and  were added and then removed after the corresponding features were reverted. The tech stack is back to its original state.
 
 **All files of reference**
--   **/app/backend/server.py**: Slimmed down to initialize the app and include routers.
--   **/app/backend/routers/**: New directory containing all API endpoint logic, split by domain.
--   **/app/backend/models.py**: New file centralizing all Pydantic models.
--   **/app/backend/database.py**, **auth.py**, **email_service.py**, **utils.py**: New files for separating concerns.
--   **/app/frontend/src/pages/ProjectEstimator.js**: Partially refactored but still the main file for the estimator UI.
--   **/app/frontend/src/utils/estimatorCalcs.js**, **excelExport.js**, **excelImport.js**: New utility modules.
--   **/app/frontend/src/components/Layout.js**: Modified for the new sidebar Help group.
+-   **/app/frontend/src/pages/Projects.js**: Modified to fix the  calculation.
+-   **/app/frontend/src/pages/PaymentMilestones.js**: Modified to fix  bug, correct Final Price logic, and is the target for the pending refresh-fix.
+-   **/app/backend/routers/financials.py**: Target for the pending  calculation fix.
+-   **/app/frontend/src/pages/ProjectEstimator.js**: Refactored to use new components.
+-   **/app/frontend/src/components/estimator/EstimatorDialogs.js**: New component extracted from .
+-   **/app/frontend/src/components/estimator/EstimatorSummaryCards.js**: New component extracted from .
+-   **/app/backend/email_service.py**: Modified to fix email link bug.
+-   **/app/frontend/src/pages/CashflowStatement.js**: Modified to add YASH logo.
 
 **Areas that need refactoring**:
--   ****: CRITICAL. Although some logic was extracted, this component is still over 4,300 lines. It urgently needs to be broken down into smaller UI components (e.g., , , , , ) to improve performance and maintainability.
+-   ****: Despite recent improvements, this component is still very large (~3,400 lines) and remains a top priority for further refactoring. The next logical step is to extract the main project info card and the complex wave grid into their own components.
 
 **key api endpoints**
--   All API endpoints remain the same, but their implementation has moved from  to the respective files within the  directory. For example, project-related APIs are now in .
+-   : The backend logic for this endpoint in  requires a fix.
 
 **Critical Info for New Agent**
--   Your immediate priority is to fix the four critical post-deployment bugs reported by the user. They are blocking the application's core workflows.
--   The backend codebase is now highly modular. Do not look for endpoint logic in ; find the relevant file in the  directory.
--   The user has inquired about deployment. The previous agent provided a comprehensive answer covering GitHub savings, environment variables, and deployment options. Refer to the chat history if asked again.
--   After fixing the critical bugs, the next priority should be proposing the pending documentation updates and further refactoring of .
+-   Your immediate and highest priority is to complete the fixes for the three interdependent bugs the previous agent was working on: incorrect price calculations in  and , and the data refresh issue in .
+-   The root cause for the calculation errors is known:  must always be added to totals, regardless of traveling resources.
+-   The plan for the refresh bug is also clear: implement logic in  to re-calculate milestone payment amounts after project data has been fetched. The last idea was to do this inside the data fetch promise chain for robustness.
+-   After fixing these P0 bugs, the next task should be to propose the continued refactoring of .
 
 **documents and test reports created in this job**
 -   /app/memory/PRD.md (updated)
--   /app/test_reports/iteration_11.json
--   /app/test_reports/iteration_12.json
+-   /app/test_reports/iteration_13.json
+-   /app/test_reports/iteration_14.json
+-   /app/test_reports/iteration_15.json
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **user**: Requests to add hover tooltips and increase column widths in the wave grid.
-2.  **agent**: Implements the wave grid UI enhancements.
-3.  **user**: Reports that the uploaded Gantt chart image doesn't save/reappear. Asks about deployment and pushing to Git.
-4.  **agent**: Investigates the Gantt bug.
-5.  **agent**: Fixes the Gantt bug by updating the backend Pydantic model and API responses.
-6.  **agent**: Provides a detailed answer to the user's deployment questions, explaining the process of saving to GitHub, setting environment variables, and deploying.
-7.  **user**: Asks if the help/support documents need updating.
-8.  **agent**: Acknowledges the docs are outdated and begins to investigate.
-9.  **user**: Interrupts with a report of 4 new critical bugs found after deployment (email caching, bad email link, missing logos, broken milestone button).
-10. **agent**: Begins investigating all four new issues in parallel by viewing the relevant source files.
+1.  **user**: Reports that the Add Milestone button is not working in production and provides a video. Also states the milestone price calculation should be based on .
+2.  **agent**: Analyzes the video and code, identifying  as the button issue and an incorrect price formula as the calculation issue.
+3.  **agent**: Implements fixes for both the button and the price calculation logic in , and adds new summary cards.
+4.  **agent**: Tests the fixes with screenshots and confirms they are working.
+5.  **user**: Reports a new calculation error: for project PRJ-0026, the milestone Final Price is wrong. Also reports the Nego buffer field is empty on the Saved Projects list.
+6.  **agent**: Investigates and finds both bugs are caused by reading the  from the wave level () instead of the project level ().
+7.  **agent**: Implements fixes in  and .
+8.  **agent**: Tests both fixes with screenshots and confirms they are working correctly.
+9.  **user**: Reports three new issues: 1) Selling price is still wrong on the Saved Projects List for PRJ-0026. 2) The milestone screen isn't refreshing with new data. 3) The total cost on the cashflow screen for PRJ-0025 seems wrong by exactly the  amount.
+10. **agent**: Investigates all three issues, confirms the user's analysis on the cashflow screen, and identifies the root cause for all calculation errors:  is only added when traveling resources exist. The agent also identifies the plan to fix the milestone refresh issue.
 
 **Project Health Check:**
--   **Broken**: While the codebase is structurally healthier after major refactoring, four new high-priority bugs are blocking critical production workflows (approvals, milestone management). The application cannot be considered stable until these are resolved.
--   **Needs Refactoring**:  remains a significant technical debt and a risk to future development velocity.
+-   **Broken**: The application has critical bugs related to financial calculations and UI data synchronization that prevent accurate use of the core estimation and milestone planning features.
 
 **3rd Party Integrations**
 -   **openpyxl**: Used for backend Excel import/export.
@@ -190,15 +165,14 @@ Additionally, several user-requested UI enhancements were completed, and a criti
 -   **react-joyride**: For interactive UI tours.
 
 **Testing status**
--   Testing agent used after significant changes: YES. The testing agent was used to validate the major backend and frontend refactoring, achieving a 96-100% pass rate and helping identify one bug in the process.
+-   Testing agent used after significant changes: YES. The agent used the testing subagent to validate the major bug fixes and refactoring work.
 -   Troubleshoot agent used after agent stuck in loop: NO.
 -   Test files created: None.
--   Known regressions: The four new bugs reported by the user are post-deployment regressions.
+-   Known regressions: The incorrect calculations and the milestone refresh issue are regressions or newly discovered complexities from recent changes.
 
 **Credentials to test flow:**
 -   **Email**: 
 -   **Password**: 
 
 **What agent forgot to execute**
--   **Update Documentation**: The user asked about updating the help/support documents. The agent confirmed they were outdated but was interrupted by the critical bug report before any action was taken. This task is now pending.
--   **Implement Bug Fixes**: The agent had only started the investigation phase for the four new bugs and has not yet implemented any fixes.</analysis>
+-   The agent was in the middle of a multi-step fix when the session ended. The fix for the milestone refresh issue in  and the calculation fix in  are not yet complete.</analysis>

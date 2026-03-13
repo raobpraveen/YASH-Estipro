@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://estpro-staging.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://pricing-tool-staging.preview.emergentagent.com').rstrip('/')
 
 class TestHealthAndAuth:
     """Test health endpoint and authentication flows"""

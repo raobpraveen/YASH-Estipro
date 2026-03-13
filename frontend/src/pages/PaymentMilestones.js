@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,44 @@ import { toast } from "sonner";
 import ExcelJS from "exceljs";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Pure helper: calculate wave final price from project data
+const calcWaveFinalPrice = (projectData, waveName) => {
+  if (!projectData) return 0;
+  const wave = projectData.waves?.find((w) => w.name === waveName);
+  if (!wave) return 0;
+  const pm = projectData.profit_margin_percentage || 35;
+  const nbp = projectData.nego_buffer_percentage || 0;
+  let totalRowsSP = 0;
+  let travelingMM = 0;
+  let travelingCount = 0;
+  for (const alloc of wave.grid_allocations || []) {
+    const pa = alloc.phase_allocations || {};
+    const mm = typeof pa === "object" && !Array.isArray(pa)
+      ? Object.values(pa).reduce((s, v) => s + v, 0)
+      : Array.isArray(pa) ? pa.reduce((s, v) => s + v, 0) : 0;
+    const salary = alloc.avg_monthly_salary || 0;
+    const oh = salary * mm * ((alloc.overhead_percentage || 0) / 100);
+    const tc = salary * mm + oh;
+    const sp = pm < 100 ? tc / (1 - pm / 100) : tc;
+    const override = alloc.override_hourly_rate || 0;
+    totalRowsSP += override > 0 ? override * 176 * mm : sp;
+    if (alloc.travel_required) { travelingMM += mm; travelingCount += 1; }
+  }
+  const lc = wave.logistics_config || wave.logistics_defaults || {};
+  const perDiem = travelingMM * (lc.per_diem_daily || 50) * (lc.per_diem_days || 30);
+  const accommodation = travelingMM * (lc.accommodation_daily || 80) * (lc.accommodation_days || 30);
+  const conveyance = travelingMM * (lc.local_conveyance_daily || 15) * (lc.local_conveyance_days || 21);
+  const flights = travelingCount * (lc.flight_cost_per_trip || 450) * (lc.num_trips || 6);
+  const visaMedical = travelingCount * (lc.visa_medical_per_trip || lc.visa_insurance_per_trip || 400) * (lc.num_trips || 6);
+  const logisticsSub = perDiem + accommodation + conveyance + flights + visaMedical;
+  const contingencyPct = lc.contingency_percentage || 5;
+  const contingencyAbs = lc.contingency_absolute || 0;
+  const totalLogistics = logisticsSub + logisticsSub * (contingencyPct / 100) + contingencyAbs;
+  const sellingPrice = totalRowsSP + totalLogistics;
+  const negoBuffer = sellingPrice * (nbp / 100);
+  return sellingPrice + negoBuffer;
+};
 
 const PaymentMilestones = () => {
   const [searchParams] = useSearchParams();
@@ -31,12 +69,11 @@ const PaymentMilestones = () => {
 
   useEffect(() => {
     if (projectId) {
-      fetchProject();
-      fetchMilestones();
+      loadProjectAndMilestones();
     } else {
       fetchProjectsList();
     }
-  }, [projectId]);
+  }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchProjectsList = async () => {
     setLoadingProjects(true);
@@ -71,13 +108,23 @@ const PaymentMilestones = () => {
     }
   };
 
-  const fetchProject = async () => {
+  const loadProjectAndMilestones = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${API}/projects/${projectId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const [projectRes, milestonesRes] = await Promise.all([
+        axios.get(`${API}/projects/${projectId}`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API}/projects/${projectId}/milestones`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { milestones: [] } })),
+      ]);
+      const projectData = projectRes.data;
+      const loadedMilestones = milestonesRes.data.milestones || [];
+      // Recalculate milestone amounts with fresh project data
+      const recalculated = loadedMilestones.map((m) => {
+        if (!m.payment_percentage) return m;
+        const wavePrice = calcWaveFinalPrice(projectData, m.wave_name);
+        return { ...m, payment_amount: Math.round(wavePrice * (m.payment_percentage / 100) * 100) / 100 };
       });
-      setProject(res.data);
+      setProject(projectData);
+      setMilestones(recalculated);
     } catch {
       toast.error("Failed to load project");
     } finally {
@@ -85,58 +132,7 @@ const PaymentMilestones = () => {
     }
   };
 
-  const fetchMilestones = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(`${API}/projects/${projectId}/milestones`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setMilestones(res.data.milestones || []);
-    } catch { /* No milestones yet */ }
-  };
-
-  const getWaveFinalPrice = (waveName) => {
-    if (!project) return 0;
-    const wave = project.waves?.find((w) => w.name === waveName);
-    if (!wave) return 0;
-    const pm = project.profit_margin_percentage || 35;
-    const nbp = project.nego_buffer_percentage || 0;
-    let totalRowsSP = 0;
-    let travelingMM = 0;
-    let travelingCount = 0;
-    for (const alloc of wave.grid_allocations || []) {
-      const pa = alloc.phase_allocations || {};
-      const mm = typeof pa === "object" && !Array.isArray(pa)
-        ? Object.values(pa).reduce((s, v) => s + v, 0)
-        : Array.isArray(pa) ? pa.reduce((s, v) => s + v, 0) : 0;
-      const salary = alloc.avg_monthly_salary || 0;
-      const oh = salary * mm * ((alloc.overhead_percentage || 0) / 100);
-      const tc = salary * mm + oh;
-      const sp = pm < 100 ? tc / (1 - pm / 100) : tc;
-      const override = alloc.override_hourly_rate || 0;
-      totalRowsSP += override > 0 ? override * 176 * mm : sp;
-      if (alloc.travel_required) {
-        travelingMM += mm;
-        travelingCount += 1;
-      }
-    }
-
-    // Logistics calculation
-    const lc = wave.logistics_config || wave.logistics_defaults || {};
-    const perDiem = (travelingMM * (lc.per_diem_daily || 50) * (lc.per_diem_days || 30));
-    const accommodation = (travelingMM * (lc.accommodation_daily || 80) * (lc.accommodation_days || 30));
-    const conveyance = (travelingMM * (lc.local_conveyance_daily || 15) * (lc.local_conveyance_days || 21));
-    const flights = (travelingCount * (lc.flight_cost_per_trip || 450) * (lc.num_trips || 6));
-    const visaMedical = (travelingCount * (lc.visa_medical_per_trip || lc.visa_insurance_per_trip || 400) * (lc.num_trips || 6));
-    const logisticsSub = perDiem + accommodation + conveyance + flights + visaMedical;
-    const contingencyPct = lc.contingency_percentage || 5;
-    const contingencyAbs = lc.contingency_absolute || 0;
-    const totalLogistics = logisticsSub + logisticsSub * (contingencyPct / 100) + contingencyAbs;
-
-    const sellingPrice = totalRowsSP + totalLogistics;
-    const negoBuffer = sellingPrice * (nbp / 100);
-    return sellingPrice + negoBuffer;
-  };
+  const getWaveFinalPrice = (waveName) => calcWaveFinalPrice(project, waveName);
 
   const getWaveMonthCount = (waveName) => {
     const wave = project?.waves?.find((w) => w.name === waveName);

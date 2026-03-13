@@ -75,6 +75,8 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
                     travel_mm_month += mm
                     travel_count_month += 1
 
+            # Logistics - contingency_absolute applies regardless of travelers
+            contingency_abs = (lc.get("contingency_absolute", 0) or 0) / max(n_months, 1)
             if travel_count_month > 0:
                 per_diem = travel_mm_month * (lc.get("per_diem_daily", 0) or 0) * (lc.get("per_diem_days", 0) or 0)
                 accom = travel_mm_month * (lc.get("accommodation_daily", 0) or 0) * (lc.get("accommodation_days", 0) or 0)
@@ -83,8 +85,8 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
                 visa_per_month = (lc.get("visa_medical_per_trip", 0) or 0) * (lc.get("num_trips", 0) or 0) * travel_count_month / max(n_months, 1)
                 logistics_month = per_diem + accom + conv + flights_per_month + visa_per_month
                 contingency = logistics_month * ((lc.get("contingency_percentage", 0) or 0) / 100)
-                contingency_abs = (lc.get("contingency_absolute", 0) or 0) / max(n_months, 1)
-                month_cost += logistics_month + contingency + contingency_abs
+                month_cost += logistics_month + contingency
+            month_cost += contingency_abs
 
             month_revenue = 0
             for ms in milestones:

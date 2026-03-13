@@ -34,6 +34,7 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - **P1 Refactoring**: Extracted 10 dialog components, OverallSummary, GanttCard (4427→3437 lines)
 - **P1 Docs**: Updated UserManual and SupportGuide
 - **Bug Fix (Mar 13)**: Fixed Add Milestone button (crypto.randomUUID fallback for non-secure contexts), Fixed Final Price calculation to include Logistics + Nego Buffer, Added Project Final Price & Coverage % summary cards
+- **P0 Bug Fixes (Mar 14)**: Fixed contingency_absolute always included in price calculations (Projects list, Cashflow, Milestones) regardless of traveling resources. Fixed milestone page stale data by combining project+milestone fetching with inline recalculation (9/9 backend tests + frontend verified)
 
 ## File Structure
 ```
