@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
+import { calculateOverallSummary } from "@/utils/estimatorCalcs";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -378,82 +379,15 @@ const Projects = () => {
     if (!project.waves || project.waves.length === 0) {
       return { baseCost: 0, withOverhead: 0, sellingPrice: 0, negoBuffer: 0, finalPrice: 0, totalMM: 0, resourceCount: 0 };
     }
-    
-    let totalBaseCost = 0;
-    let totalRowsSellingPrice = 0;
-    let totalLogistics = 0;
-    let totalMM = 0;
-    let resourceCount = 0;
-    let totalNegoBuffer = 0;
-    const profitMargin = project.profit_margin_percentage || 35;
-    
-    project.waves.forEach((wave) => {
-      if (!wave.grid_allocations) return;
-      resourceCount += wave.grid_allocations.length;
-      
-      const config = wave.logistics_config || {};
-      let waveTravelingMM = 0;
-      let waveTravelingCount = 0;
-      let waveRowsSellingPrice = 0;
-      
-      wave.grid_allocations.forEach((allocation) => {
-        const manMonths = Object.values(allocation.phase_allocations || {}).reduce((s, v) => s + v, 0);
-        totalMM += manMonths;
-        
-        const baseSalaryCost = (allocation.avg_monthly_salary || 0) * manMonths;
-        const overheadCost = baseSalaryCost * ((allocation.overhead_percentage || 0) / 100);
-        const totalCost = baseSalaryCost + overheadCost;
-        const rowSellingPrice = profitMargin < 100 ? totalCost / (1 - (profitMargin / 100)) : totalCost;
-        
-        totalBaseCost += baseSalaryCost;
-        waveRowsSellingPrice += rowSellingPrice;
-        
-        if (allocation.travel_required) {
-          waveTravelingMM += manMonths;
-          waveTravelingCount++;
-        }
-      });
-      
-      totalRowsSellingPrice += waveRowsSellingPrice;
-      
-      // Calculate wave logistics
-      let waveLogistics = 0;
-      const contingencyAbs = config.contingency_absolute || 0;
-      if (waveTravelingCount > 0) {
-        const perDiem = waveTravelingMM * (config.per_diem_daily || 50) * (config.per_diem_days || 30);
-        const accommodation = waveTravelingMM * (config.accommodation_daily || 80) * (config.accommodation_days || 30);
-        const conveyance = waveTravelingMM * (config.local_conveyance_daily || 15) * (config.local_conveyance_days || 21);
-        const flights = waveTravelingCount * (config.flight_cost_per_trip || 450) * (config.num_trips || 6);
-        const visa = waveTravelingCount * (config.visa_medical_per_trip || 400) * (config.num_trips || 6);
-        const subtotal = perDiem + accommodation + conveyance + flights + visa;
-        const contingency = subtotal * ((config.contingency_percentage || 5) / 100);
-        waveLogistics = subtotal + contingency + contingencyAbs;
-      } else {
-        waveLogistics = contingencyAbs;
-      }
-      totalLogistics += waveLogistics;
-      
-      // Wave selling price = rows + logistics
-      const waveSellingPrice = waveRowsSellingPrice + waveLogistics;
-      
-      // Nego buffer on wave selling price
-      const negoBufferPercentage = project.nego_buffer_percentage || 0;
-      const waveNegoBuffer = waveSellingPrice * (negoBufferPercentage / 100);
-      totalNegoBuffer += waveNegoBuffer;
-    });
-
-    // Total Selling Price = Sum of all rows + logistics
-    const sellingPrice = totalRowsSellingPrice + totalLogistics;
-    // Final Price = Selling Price + Nego Buffer
-    const finalPrice = sellingPrice + totalNegoBuffer;
-    
+    const summary = calculateOverallSummary(project.waves, project.profit_margin_percentage ?? 35, project.nego_buffer_percentage ?? 0);
+    const resourceCount = project.waves.reduce((sum, w) => sum + (w.grid_allocations?.length || 0), 0);
     return { 
-      baseCost: totalBaseCost, 
-      withOverhead: totalRowsSellingPrice, 
-      sellingPrice, 
-      negoBuffer: totalNegoBuffer, 
-      finalPrice, 
-      totalMM, 
+      baseCost: summary.onsiteSalaryCost + summary.offshoreSalaryCost, 
+      withOverhead: summary.totalRowsSellingPrice, 
+      sellingPrice: summary.sellingPrice, 
+      negoBuffer: summary.negoBuffer, 
+      finalPrice: summary.finalPrice, 
+      totalMM: summary.totalMM, 
       resourceCount 
     };
   };

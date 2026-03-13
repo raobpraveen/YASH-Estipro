@@ -9,46 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2, Save, ArrowLeft, DollarSign, Target, ChevronDown, ChevronRight, Search, FileDown, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
+import { calculateWaveSummary } from "@/utils/estimatorCalcs";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-
-// Pure helper: calculate wave final price from project data
-const calcWaveFinalPrice = (projectData, waveName) => {
-  if (!projectData) return 0;
-  const wave = projectData.waves?.find((w) => w.name === waveName);
-  if (!wave) return 0;
-  const pm = projectData.profit_margin_percentage || 35;
-  const nbp = projectData.nego_buffer_percentage || 0;
-  let totalRowsSP = 0;
-  let travelingMM = 0;
-  let travelingCount = 0;
-  for (const alloc of wave.grid_allocations || []) {
-    const pa = alloc.phase_allocations || {};
-    const mm = typeof pa === "object" && !Array.isArray(pa)
-      ? Object.values(pa).reduce((s, v) => s + v, 0)
-      : Array.isArray(pa) ? pa.reduce((s, v) => s + v, 0) : 0;
-    const salary = alloc.avg_monthly_salary || 0;
-    const oh = salary * mm * ((alloc.overhead_percentage || 0) / 100);
-    const tc = salary * mm + oh;
-    const sp = pm < 100 ? tc / (1 - pm / 100) : tc;
-    const override = alloc.override_hourly_rate || 0;
-    totalRowsSP += override > 0 ? override * 176 * mm : sp;
-    if (alloc.travel_required) { travelingMM += mm; travelingCount += 1; }
-  }
-  const lc = wave.logistics_config || wave.logistics_defaults || {};
-  const perDiem = travelingMM * (lc.per_diem_daily || 50) * (lc.per_diem_days || 30);
-  const accommodation = travelingMM * (lc.accommodation_daily || 80) * (lc.accommodation_days || 30);
-  const conveyance = travelingMM * (lc.local_conveyance_daily || 15) * (lc.local_conveyance_days || 21);
-  const flights = travelingCount * (lc.flight_cost_per_trip || 450) * (lc.num_trips || 6);
-  const visaMedical = travelingCount * (lc.visa_medical_per_trip || lc.visa_insurance_per_trip || 400) * (lc.num_trips || 6);
-  const logisticsSub = perDiem + accommodation + conveyance + flights + visaMedical;
-  const contingencyPct = lc.contingency_percentage || 5;
-  const contingencyAbs = lc.contingency_absolute || 0;
-  const totalLogistics = logisticsSub + logisticsSub * (contingencyPct / 100) + contingencyAbs;
-  const sellingPrice = totalRowsSP + totalLogistics;
-  const negoBuffer = sellingPrice * (nbp / 100);
-  return sellingPrice + negoBuffer;
-};
 
 const PaymentMilestones = () => {
   const [searchParams] = useSearchParams();
@@ -117,10 +80,14 @@ const PaymentMilestones = () => {
       ]);
       const projectData = projectRes.data;
       const loadedMilestones = milestonesRes.data.milestones || [];
-      // Recalculate milestone amounts with fresh project data
+      const pm = projectData.profit_margin_percentage ?? 35;
+      const nbp = projectData.nego_buffer_percentage ?? 0;
+      // Recalculate milestone amounts using the same formula as the estimator
       const recalculated = loadedMilestones.map((m) => {
         if (!m.payment_percentage) return m;
-        const wavePrice = calcWaveFinalPrice(projectData, m.wave_name);
+        const wave = projectData.waves?.find((w) => w.name === m.wave_name);
+        if (!wave) return m;
+        const wavePrice = calculateWaveSummary(wave, pm, nbp).finalPrice;
         return { ...m, payment_amount: Math.round(wavePrice * (m.payment_percentage / 100) * 100) / 100 };
       });
       setProject(projectData);
@@ -132,7 +99,12 @@ const PaymentMilestones = () => {
     }
   };
 
-  const getWaveFinalPrice = (waveName) => calcWaveFinalPrice(project, waveName);
+  const getWaveFinalPrice = (waveName) => {
+    if (!project) return 0;
+    const wave = project.waves?.find((w) => w.name === waveName);
+    if (!wave) return 0;
+    return calculateWaveSummary(wave, project.profit_margin_percentage ?? 35, project.nego_buffer_percentage ?? 0).finalPrice;
+  };
 
   const getWaveMonthCount = (waveName) => {
     const wave = project?.waves?.find((w) => w.name === waveName);
