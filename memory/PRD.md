@@ -30,11 +30,10 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - Project archiving (Mark Obsolete)
 
 ### Recent Completions (March 2026)
-- **P0 Bug Fixes**: Fixed email URLs (now point to `/estimator?edit={id}`), added YASH logo to Milestones/Cashflow pages, verified Add Milestone button works
-- **P1 Documentation Updates**: Fixed section numbering in UserManual, added Milestones/Cashflow/Help references to nav docs, updated SupportGuide architecture diagram
-- **P1 Frontend Refactoring**: Extracted 10 dialog components, OverallSummary, and GanttCard from ProjectEstimator.js (4427→3437 lines)
-- **Backend Refactoring**: Monolithic server.py broken into modular routers (14 files)
-- **Frontend Utility Extraction**: ~854 lines of calculation/Excel logic moved to utils/
+- **P0 Bug Fixes**: Fixed email URLs, added YASH logo to Milestones/Cashflow pages
+- **P1 Refactoring**: Extracted 10 dialog components, OverallSummary, GanttCard (4427→3437 lines)
+- **P1 Docs**: Updated UserManual and SupportGuide
+- **Bug Fix (Mar 13)**: Fixed Add Milestone button (crypto.randomUUID fallback for non-secure contexts), Fixed Final Price calculation to include Logistics + Nego Buffer, Added Project Final Price & Coverage % summary cards
 
 ## File Structure
 ```
@@ -50,11 +49,15 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 
 ## Prioritized Backlog
 
+### P1 - New Features (User Interested)
+- PDF Export with Branding (cover page, wave breakdowns, charts, Gantt)
+- Client-Facing Shareable View (sanitized, no-login, expiry links)
+
 ### P1 - Further Refactoring
-- Break ProjectEstimator.js further (ProjectInfoCard, WaveGrid components) - still 3437 lines
+- Break ProjectEstimator.js further (ProjectInfoCard, WaveGrid components)
 
 ### P2 - New Features
-- What-If Scenario Comparison (create/compare up to 3 pricing scenarios)
+- What-If Scenario Comparison
 - AI Integration (Estimation Suggestions / NL Project Builder)
 - Actuals Tracking & Profitability Module
 

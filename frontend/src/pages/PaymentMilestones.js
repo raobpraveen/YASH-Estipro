@@ -100,7 +100,10 @@ const PaymentMilestones = () => {
     const wave = project.waves?.find((w) => w.name === waveName);
     if (!wave) return 0;
     const pm = project.profit_margin_percentage || 35;
-    let totalSP = 0;
+    const nbp = wave.nego_buffer_percentage ?? project.nego_buffer_percentage ?? 0;
+    let totalRowsSP = 0;
+    let travelingMM = 0;
+    let travelingCount = 0;
     for (const alloc of wave.grid_allocations || []) {
       const pa = alloc.phase_allocations || {};
       const mm = typeof pa === "object" && !Array.isArray(pa)
@@ -110,9 +113,29 @@ const PaymentMilestones = () => {
       const oh = salary * mm * ((alloc.overhead_percentage || 0) / 100);
       const tc = salary * mm + oh;
       const sp = pm < 100 ? tc / (1 - pm / 100) : tc;
-      totalSP += sp;
+      const override = alloc.override_hourly_rate || 0;
+      totalRowsSP += override > 0 ? override * 176 * mm : sp;
+      if (alloc.travel_required) {
+        travelingMM += mm;
+        travelingCount += 1;
+      }
     }
-    return totalSP;
+
+    // Logistics calculation
+    const lc = wave.logistics_config || wave.logistics_defaults || {};
+    const perDiem = (travelingMM * (lc.per_diem_daily || 50) * (lc.per_diem_days || 30));
+    const accommodation = (travelingMM * (lc.accommodation_daily || 80) * (lc.accommodation_days || 30));
+    const conveyance = (travelingMM * (lc.local_conveyance_daily || 15) * (lc.local_conveyance_days || 21));
+    const flights = (travelingCount * (lc.flight_cost_per_trip || 450) * (lc.num_trips || 6));
+    const visaMedical = (travelingCount * (lc.visa_medical_per_trip || lc.visa_insurance_per_trip || 400) * (lc.num_trips || 6));
+    const logisticsSub = perDiem + accommodation + conveyance + flights + visaMedical;
+    const contingencyPct = lc.contingency_percentage || 5;
+    const contingencyAbs = lc.contingency_absolute || 0;
+    const totalLogistics = logisticsSub + logisticsSub * (contingencyPct / 100) + contingencyAbs;
+
+    const sellingPrice = totalRowsSP + totalLogistics;
+    const negoBuffer = sellingPrice * (nbp / 100);
+    return sellingPrice + negoBuffer;
   };
 
   const getWaveMonthCount = (waveName) => {
@@ -122,10 +145,13 @@ const PaymentMilestones = () => {
 
   const addMilestoneToWave = (waveName) => {
     const waveMilestones = milestones.filter((m) => m.wave_name === waveName);
+    const newId = typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `ms-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     setMilestones([
       ...milestones,
       {
-        id: crypto.randomUUID(),
+        id: newId,
         wave_name: waveName,
         milestone_name: `Milestone ${waveMilestones.length + 1}`,
         target_month: "M1",
@@ -266,6 +292,7 @@ const PaymentMilestones = () => {
   };
 
   const totalPayment = milestones.reduce((s, m) => s + (m.payment_amount || 0), 0);
+  const totalProjectFinalPrice = (project?.waves || []).reduce((sum, w) => sum + getWaveFinalPrice(w.name), 0);
 
   // ========== PROJECT LIST VIEW ==========
   if (!projectId) {
@@ -396,11 +423,17 @@ const PaymentMilestones = () => {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="border-l-4 border-l-[#0EA5E9]">
           <CardContent className="pt-4 pb-4">
             <p className="text-sm text-gray-500">Total Milestones</p>
             <p className="text-2xl font-bold text-[#0F172A]" data-testid="total-milestones">{milestones.length}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-[#8B5CF6]">
+          <CardContent className="pt-4 pb-4">
+            <p className="text-sm text-gray-500">Project Final Price</p>
+            <p className="text-2xl font-bold text-[#8B5CF6]" data-testid="project-final-price">${totalProjectFinalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-[#10B981]">
@@ -411,8 +444,8 @@ const PaymentMilestones = () => {
         </Card>
         <Card className="border-l-4 border-l-[#F59E0B]">
           <CardContent className="pt-4 pb-4">
-            <p className="text-sm text-gray-500">Waves</p>
-            <p className="text-2xl font-bold text-[#F59E0B]" data-testid="wave-count">{waves.length}</p>
+            <p className="text-sm text-gray-500">Coverage</p>
+            <p className={`text-2xl font-bold ${totalProjectFinalPrice > 0 && Math.abs((totalPayment / totalProjectFinalPrice) * 100 - 100) < 1 ? "text-[#10B981]" : "text-[#F59E0B]"}`} data-testid="coverage-pct">{totalProjectFinalPrice > 0 ? ((totalPayment / totalProjectFinalPrice) * 100).toFixed(1) : 0}%</p>
           </CardContent>
         </Card>
       </div>
@@ -438,7 +471,7 @@ const PaymentMilestones = () => {
                   <span className="text-xs text-gray-400">{monthCount} months</span>
                 </div>
                 <div className="flex items-center gap-4 text-sm" onClick={(e) => e.stopPropagation()}>
-                  <span className="text-gray-500">SP: <span className="font-semibold text-[#0F172A]">${waveFP.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></span>
+                  <span className="text-gray-500">Final Price: <span className="font-semibold text-[#0F172A]">${waveFP.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></span>
                   <span className={`font-semibold ${wavePctTotal > 100 ? "text-red-500" : "text-[#0F172A]"}`}>{wavePctTotal.toFixed(1)}%</span>
                   <span className="text-[#10B981] font-semibold">${wavePayTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
