@@ -100,7 +100,7 @@ const PaymentMilestones = () => {
     const wave = project.waves?.find((w) => w.name === waveName);
     if (!wave) return 0;
     const pm = project.profit_margin_percentage || 35;
-    const nbp = wave.nego_buffer_percentage ?? project.nego_buffer_percentage ?? 0;
+    const nbp = project.nego_buffer_percentage || 0;
     let totalRowsSP = 0;
     let travelingMM = 0;
     let travelingCount = 0;

@@ -434,7 +434,7 @@ const Projects = () => {
       const waveSellingPrice = waveRowsSellingPrice + waveLogistics;
       
       // Nego buffer on wave selling price
-      const negoBufferPercentage = wave.nego_buffer_percentage || 0;
+      const negoBufferPercentage = project.nego_buffer_percentage || 0;
       const waveNegoBuffer = waveSellingPrice * (negoBufferPercentage / 100);
       totalNegoBuffer += waveNegoBuffer;
     });
