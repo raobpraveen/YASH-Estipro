@@ -299,14 +299,12 @@ const PaymentMilestones = () => {
   if (!projectId) {
     const filtered = projects.filter((p) =>
       (p.name || "").toLowerCase().includes(projectSearch.toLowerCase()) ||
-      (p.project_number || "").toLowerCase().includes(projectSearch.toLowerCase())
+      (p.project_number || "").toLowerCase().includes(projectSearch.toLowerCase()) ||
+      (p.customer_name || "").toLowerCase().includes(projectSearch.toLowerCase())
     );
     // Sort: projects with milestones first, then by project_number asc, version desc
     const sorted = [...filtered].sort((a, b) => {
-      const aHas = milestoneCounts[a.id] ? 1 : 0;
-      const bHas = milestoneCounts[b.id] ? 1 : 0;
-      if (bHas !== aHas) return bHas - aHas;
-      const pnCmp = (a.project_number || "").localeCompare(b.project_number || "");
+      const pnCmp = (a.project_number || "").localeCompare(b.project_number || "", undefined, { numeric: true });
       if (pnCmp !== 0) return pnCmp;
       return (b.version || 1) - (a.version || 1);
     });
@@ -338,6 +336,7 @@ const PaymentMilestones = () => {
                   <TableRow>
                     <TableHead className="w-28">Project #</TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Customer</TableHead>
                     <TableHead className="w-24 text-center">Version</TableHead>
                     <TableHead className="w-20 text-center">Status</TableHead>
                     <TableHead className="w-20 text-center">Waves</TableHead>
@@ -355,6 +354,7 @@ const PaymentMilestones = () => {
                     >
                       <TableCell className="font-mono text-[#0EA5E9] text-sm">{p.project_number}</TableCell>
                       <TableCell className="font-medium text-[#0F172A]">{p.name}</TableCell>
+                      <TableCell className="text-sm text-gray-600">{p.customer_name || "—"}</TableCell>
                       <TableCell className="text-center">
                         <span className="font-semibold text-[#0F172A]">v{p.version}</span>
                         {p.is_latest_version && <span className="ml-1 text-[10px] bg-[#0EA5E9]/10 text-[#0EA5E9] font-semibold px-1.5 py-0.5 rounded">latest</span>}

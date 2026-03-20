@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, FileDown, TrendingUp, TrendingDown, DollarSign, ChevronDown, ChevronRight, Search, ExternalLink, Clock } from "lucide-react";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const fmt = (v) => `$${(v || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -188,8 +188,15 @@ const CashflowStatement = () => {
   if (!projectId) {
     const filtered = projects.filter((p) =>
       (p.name || "").toLowerCase().includes(projectSearch.toLowerCase()) ||
-      (p.project_number || "").toLowerCase().includes(projectSearch.toLowerCase())
+      (p.project_number || "").toLowerCase().includes(projectSearch.toLowerCase()) ||
+      (p.customer_name || "").toLowerCase().includes(projectSearch.toLowerCase())
     );
+    // Sort by project_number asc, version desc
+    const sorted = [...filtered].sort((a, b) => {
+      const pnCmp = (a.project_number || "").localeCompare(b.project_number || "", undefined, { numeric: true });
+      if (pnCmp !== 0) return pnCmp;
+      return (b.version || 1) - (a.version || 1);
+    });
 
     return (
       <div data-testid="cashflow-project-list">
@@ -208,7 +215,7 @@ const CashflowStatement = () => {
         </div>
         {loadingProjects ? (
           <div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500"></div></div>
-        ) : filtered.length === 0 ? (
+        ) : sorted.length === 0 ? (
           <Card className="border border-dashed"><CardContent className="py-12 text-center"><p className="text-gray-500">No projects with resource data found.</p></CardContent></Card>
         ) : (
           <Card className="border border-[#E2E8F0]">
@@ -218,6 +225,7 @@ const CashflowStatement = () => {
                   <TableRow>
                     <TableHead className="w-28">Project #</TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Customer</TableHead>
                     <TableHead className="w-24 text-center">Version</TableHead>
                     <TableHead className="w-20 text-center">Status</TableHead>
                     <TableHead className="w-20 text-center">Waves</TableHead>
@@ -226,12 +234,13 @@ const CashflowStatement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((p) => {
+                  {sorted.map((p) => {
                     const totalRes = (p.waves || []).reduce((s, w) => s + (w.grid_allocations || []).length, 0);
                     return (
                       <TableRow key={p.id} className="cursor-pointer hover:bg-[#F8FAFC] transition-colors" onClick={() => navigate(`/cashflow?project=${p.id}`)} data-testid={`cashflow-project-row-${p.id}`}>
                         <TableCell className="font-mono text-[#0EA5E9] text-sm">{p.project_number}</TableCell>
                         <TableCell className="font-medium text-[#0F172A]">{p.name}</TableCell>
+                        <TableCell className="text-sm text-gray-600">{p.customer_name || "—"}</TableCell>
                         <TableCell className="text-center">
                           <span className="font-semibold text-[#0F172A]">v{p.version}</span>
                           {p.is_latest_version && <span className="ml-1 text-[10px] bg-[#0EA5E9]/10 text-[#0EA5E9] font-semibold px-1.5 py-0.5 rounded">latest</span>}
@@ -466,6 +475,56 @@ const CashflowStatement = () => {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+            </div>
+
+            {/* Cumulative Cashflow Chart */}
+            <div className="mt-8">
+              <h3 className="font-semibold text-[#0F172A] mb-1">Cumulative Cash Flow & Break-Even</h3>
+              <p className="text-xs text-gray-500 mb-4">Shows when cumulative Cash-In crosses cumulative Cash-Out (break-even point)</p>
+              {(() => {
+                let cumCost = 0, cumRev = 0;
+                const cumData = combined_data.map((m) => {
+                  cumCost += m.cost;
+                  cumRev += m.revenue;
+                  return { name: `M${m.month}`, "Cum. Cash-Out": Math.round(cumCost), "Cum. Cash-In": Math.round(cumRev), "Cum. Net": Math.round(cumRev - cumCost) };
+                });
+                const breakEvenMonth = cumData.find((d) => d["Cum. Net"] >= 0);
+                return (
+                  <>
+                    {breakEvenMonth && (
+                      <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg" data-testid="break-even-info">
+                        <TrendingUp className="w-4 h-4 text-emerald-600" />
+                        <span className="text-sm text-emerald-700 font-medium">
+                          Break-even at {breakEvenMonth.name}: Cumulative Cash-In ({fmt(breakEvenMonth["Cum. Cash-In"])}) exceeds Cash-Out ({fmt(breakEvenMonth["Cum. Cash-Out"])})
+                        </span>
+                      </div>
+                    )}
+                    <div className="h-[350px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={cumData} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                          <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#64748B" }} />
+                          <YAxis
+                            tick={{ fontSize: 11, fill: "#64748B" }}
+                            tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : v <= -1000 ? `-$${(Math.abs(v) / 1000).toFixed(0)}K` : `$${v}`}
+                          />
+                          <Tooltip
+                            formatter={(value, name) => [`$${Math.abs(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, name]}
+                            contentStyle={{ backgroundColor: "#0F172A", borderRadius: 8, border: "none", color: "#fff", fontSize: 12 }}
+                            labelStyle={{ color: "#94A3B8", marginBottom: 4 }}
+                            itemStyle={{ color: "#F8FAFC" }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 12 }} />
+                          <ReferenceLine y={0} stroke="#94A3B8" strokeDasharray="3 3" label={{ value: "Break-Even", position: "right", fill: "#94A3B8", fontSize: 11 }} />
+                          <Line type="monotone" dataKey="Cum. Cash-Out" stroke="#EF4444" strokeWidth={2.5} dot={{ r: 4, fill: "#EF4444" }} />
+                          <Line type="monotone" dataKey="Cum. Cash-In" stroke="#10B981" strokeWidth={2.5} dot={{ r: 4, fill: "#10B981" }} />
+                          <Line type="monotone" dataKey="Cum. Net" stroke="#6366F1" strokeWidth={2} strokeDasharray="6 3" dot={{ r: 3, fill: "#6366F1" }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
