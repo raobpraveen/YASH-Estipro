@@ -340,7 +340,8 @@ SMTP_FROM=noreply@yash.com`}
                   <tr className="border-b"><td className="p-2 font-mono text-xs">proficiency_rates</td><td className="p-2">Salary and overhead rate matrix.</td><td className="p-2 text-xs">skill_id, level, location_id, monthly_rate, overhead_pct</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-xs">customers</td><td className="p-2">Client organizations.</td><td className="p-2 text-xs">name, industry</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-xs">audit_logs</td><td className="p-2">System audit trail.</td><td className="p-2 text-xs">user_id, action, entity, timestamp</td></tr>
-                  <tr><td className="p-2 font-mono text-xs">notifications</td><td className="p-2">In-app notification queue.</td><td className="p-2 text-xs">user_id, title, message, is_read</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-xs">notifications</td><td className="p-2">In-app notification queue.</td><td className="p-2 text-xs">user_id, title, message, is_read</td></tr>
+                  <tr><td className="p-2 font-mono text-xs">payment_milestones</td><td className="p-2">Payment milestones per project version with payment terms.</td><td className="p-2 text-xs">project_id, milestones[], payment_terms_days</td></tr>
                 </tbody>
               </table>
             </div>
@@ -463,9 +464,9 @@ Response: { "token": "eyJ...", "user": { "id", "name", "email", "role" } }`}
                   <tr className="border-b"><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/projects/{'{id}'}/gantt</td><td className="p-2">Upload Gantt chart image (binary body)</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/gantt</td><td className="p-2">Get Gantt chart image</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-red-600">DELETE</td><td className="p-2 font-mono">/api/projects/{'{id}'}/gantt</td><td className="p-2">Delete Gantt chart image</td></tr>
-                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/milestones</td><td className="p-2">Get payment milestones (version-specific)</td></tr>
-                  <tr className="border-b"><td className="p-2 font-mono text-amber-600">PUT</td><td className="p-2 font-mono">/api/projects/{'{id}'}/milestones</td><td className="p-2">Save payment milestones</td></tr>
-                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/cashflow</td><td className="p-2">Get cashflow statement (wave-wise + combined)</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/milestones</td><td className="p-2">Get payment milestones + payment_terms_days</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-amber-600">PUT</td><td className="p-2 font-mono">/api/projects/{'{id}'}/milestones</td><td className="p-2">Save milestones + payment_terms_days</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/cashflow</td><td className="p-2">Cashflow with payment term shifting, extended months, break-even data</td></tr>
                   <tr><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/download-file</td><td className="p-2">Upload file for download proxy</td></tr>
                 </tbody>
               </table>
@@ -675,7 +676,15 @@ mongosh --eval "db.adminCommand('ping')"`}
               </div>
               <div>
                 <p className="font-bold text-sm">Q: Why do logistics costs show as $0?</p>
-                <p className="text-sm text-gray-600 mt-1">A: Logistics costs are only calculated for resources with <strong>Travel = YES</strong>. Additionally, the logistics configuration must be set for the wave (click "Logistics Config" in the wave toolbar).</p>
+                <p className="text-sm text-gray-600 mt-1">A: Logistics costs are only calculated for resources with <strong>Travel = YES</strong>. Additionally, the logistics configuration must be set for the wave (click "Logistics Config" in the wave toolbar). Note: The <strong>Contingency ($)</strong> field is always included even without traveling resources.</p>
+              </div>
+              <div>
+                <p className="font-bold text-sm">Q: How do Payment Terms affect the Cashflow?</p>
+                <p className="text-sm text-gray-600 mt-1">A: Payment Terms (set on the Milestones page) shift when Cash-In appears in the Cashflow. For example, with 30-day terms, a milestone achieved in M1 will show Cash-In in M2. If the last milestone shifts beyond the project duration, extra months are automatically added to the Cashflow.</p>
+              </div>
+              <div>
+                <p className="font-bold text-sm">Q: What is the Break-Even chart on the Cashflow page?</p>
+                <p className="text-sm text-gray-600 mt-1">A: The cumulative cashflow line chart shows running totals of Cash-In and Cash-Out over time. The break-even point is the first month where cumulative Cash-In exceeds cumulative Cash-Out, meaning the project becomes cash-positive. This is especially useful with payment terms that delay revenue.</p>
               </div>
               <div>
                 <p className="font-bold text-sm">Q: How do I export multiple waves to Excel?</p>

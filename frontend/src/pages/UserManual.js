@@ -572,7 +572,7 @@ export default function UserManual() {
             <p>Define payment schedules per wave to track expected revenue and payment triggers.</p>
             
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">15.1 Accessing Milestones</h3>
-            <p>Navigate to <strong>Milestones</strong> from the sidebar or click the <strong>"Milestones"</strong> button in the Estimator toolbar. The project list shows all versions with milestone counts — milestones are <strong>version-specific</strong>.</p>
+            <p>Navigate to <strong>Milestones</strong> from the sidebar or click the <strong>"Milestones"</strong> button in the Estimator toolbar. The project list shows all versions sorted by project number, with <strong>Customer Name</strong> and milestone counts. Milestones are <strong>version-specific</strong>. You can search by project name, number, or customer name.</p>
             
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.2 Wave-Based Sections</h3>
             <p>Each wave has its own collapsible section. Click the wave header to expand/collapse. The header shows selling price (SP), total payment %, and total payment amount for that wave.</p>
@@ -581,15 +581,29 @@ export default function UserManual() {
             <p>Click <strong>"+ Add Milestone"</strong> within a wave section. For each milestone, set:</p>
             <ul className="list-disc pl-6 space-y-1 text-sm">
               <li><strong>Milestone Name</strong>: Descriptive label (e.g., "Phase 1 UAT Complete").</li>
-              <li><strong>Target Month</strong>: Select M1, M2, M3, etc. — this determines when the payment is expected.</li>
-              <li><strong>Payment %</strong>: Percentage of the wave's selling price. The dollar amount auto-calculates.</li>
+              <li><strong>Target Month</strong>: Select M1, M2, M3, etc. — this determines when the milestone is achieved and invoiced.</li>
+              <li><strong>Payment %</strong>: Percentage of the wave's Final Price. The dollar amount auto-calculates.</li>
               <li><strong>Description</strong>: Optional notes.</li>
             </ul>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.4 Payment Terms (Days)</h3>
+            <p>Set a <strong>project-level Payment Terms</strong> value (in days) that applies to all waves. This controls when Cash-In is actually received in the Cashflow:</p>
+            <KeyValue label="0 days (Immediate)">Cash-In occurs in the same month as the milestone.</KeyValue>
+            <KeyValue label="30 days (+1 month)">Cash-In shifts by 1 month from the milestone month.</KeyValue>
+            <KeyValue label="60 days (+2 months)">Cash-In shifts by 2 months. If the last milestone is in M6, Cash-In appears in M8.</KeyValue>
+            <KeyValue label="90 / 120 days">Larger offsets for longer payment cycles.</KeyValue>
+            <Tip>Payment Terms affect only the Cashflow screen — the milestone amounts and percentages remain unchanged. The Cashflow automatically adds extra months beyond the project duration if needed.</Tip>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.5 Copy Milestones to Wave</h3>
+            <p>For multi-wave projects, use the <strong>"Copy to Wave"</strong> button to duplicate all milestones from one wave to another. The copied milestones keep the same percentages but amounts are recalculated based on the target wave's Final Price. Target months are clamped to the destination wave's duration.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.4 Saving &amp; Keyboard Shortcut</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.6 Auto-Recalculation</h3>
+            <p>When you navigate to the Milestones page from the Estimator after making changes, milestone amounts are <strong>automatically recalculated</strong> using the latest project data. Percentages stay the same — only the dollar amounts update to match the current wave Final Prices.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.7 Saving &amp; Keyboard Shortcut</h3>
             <p>Click <strong>"Save All"</strong> or press <strong>Ctrl+S</strong> to save milestones. Use <strong>"Open Estimator"</strong> to jump to the project in edit mode.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.5 Excel Export</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.8 Excel Export</h3>
             <p>Click <strong>"Export Excel"</strong> to generate a formula-based Excel file. Each wave gets its own sheet with formulas: <code>Payment Amount = Wave SP × Payment %</code>. Changing the SP value updates all amounts automatically.</p>
             
             <Warning>If the total Payment % for a wave exceeds 100%, a red warning is displayed. This doesn't prevent saving but indicates a potential data entry error.</Warning>
@@ -600,21 +614,39 @@ export default function UserManual() {
             <p>View monthly cash outflows (costs) and cash inflows (milestone payments) for a project, broken down by wave.</p>
             
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">16.1 Accessing Cashflow</h3>
-            <p>Navigate to <strong>Cashflow</strong> from the sidebar or the <strong>"Cashflow"</strong> button in the Estimator. Only projects with resource allocations appear in the list. Cashflow data is <strong>version-specific</strong>.</p>
+            <p>Navigate to <strong>Cashflow</strong> from the sidebar or the <strong>"Cashflow"</strong> button in the Estimator. The project list is sorted by project number and includes <strong>Customer Name</strong>. Only projects with resource allocations appear. Cashflow data is <strong>version-specific</strong>. Search by project name, number, or customer.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.2 Wave-Wise Breakdown</h3>
-            <p>Each wave has its own collapsible section showing monthly Cash-Out (resource costs + logistics) and Cash-In (milestone payments at their target month). The header summarizes total outflow, inflow, and net for that wave.</p>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.2 Payment Terms &amp; Cash-In Shifting</h3>
+            <p>If <strong>Payment Terms</strong> are configured on the Milestones page, Cash-In is automatically shifted:</p>
+            <div className="bg-gray-50 p-4 rounded-lg border font-mono text-sm space-y-2 my-3">
+              <p><strong>Cash-In Month</strong> = Milestone Target Month + Payment Offset</p>
+              <p><strong>Payment Offset</strong> = ceil(Payment Terms Days / 30)</p>
+              <p>Example: Milestone in M3 + 60 days = Cash-In in M5</p>
+            </div>
+            <p>A purple banner at the top of the cashflow page displays the active payment terms and offset.</p>
+            <Tip>If a milestone in the last project month has payment terms that push Cash-In beyond the project duration, the Cashflow automatically adds extra months (highlighted in purple with "M*" labels).</Tip>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.3 Wave-Wise Breakdown</h3>
+            <p>Each wave has its own collapsible section showing monthly Cash-Out (resource costs + logistics) and Cash-In (milestone payments shifted by payment terms). The header summarizes total outflow, inflow, net, and shows extended month count if applicable.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.3 Combined Monthly Summary</h3>
-            <p>Below the wave sections, the <strong>Combined Monthly Summary</strong> sums across all waves per month: M1 of Wave 1 + M1 of Wave 2 = Combined M1. Shows Cash-Out, Cash-In, and Net columns.</p>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.4 Combined Monthly Summary</h3>
+            <p>Below the wave sections, the <strong>Combined Monthly Summary</strong> sums across all waves per month: M1 of Wave 1 + M1 of Wave 2 = Combined M1. Shows Cash-Out, Cash-In, Net, and <strong>Cumulative</strong> columns.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.4 Cash Flow Chart</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.5 Monthly Cash Flow Chart</h3>
             <p>A bar chart visualization shows Cash-Out (red), Cash-In (green), and Net (orange) for each month for quick visual analysis.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.5 Excel Export</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.6 Cumulative Cash Flow &amp; Break-Even Chart</h3>
+            <p>A line chart shows <strong>cumulative</strong> Cash-In, Cash-Out, and Net over time:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>Cum. Cash-Out (red line)</strong>: Running total of all costs.</li>
+              <li><strong>Cum. Cash-In (green line)</strong>: Running total of all revenue.</li>
+              <li><strong>Cum. Net (purple dashed)</strong>: Difference between cumulative revenue and cost.</li>
+              <li><strong>Break-Even Point</strong>: A green banner identifies the first month where cumulative Cash-In exceeds Cash-Out.</li>
+            </ul>
+            <Tip>The break-even chart is especially useful with payment terms — it shows how delayed payments impact when the project becomes cash-positive.</Tip>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.7 Excel Export</h3>
             <p>Click <strong>"Export Excel"</strong> to download a multi-sheet Excel file. Each wave gets its own sheet. The "Combined Summary" sheet uses cross-sheet formulas to aggregate data from all wave sheets.</p>
-            
-            <Tip>Define Payment Milestones first, then view Cashflow to see the complete picture of when money goes out vs. when it comes in.</Tip>
           </Section>
 
           {/* Section 17: Copy Skill */}
@@ -676,6 +708,9 @@ export default function UserManual() {
               <li>Export the <strong>Projects List</strong> to Excel from the Saved Projects page to get a comprehensive overview of all projects and versions.</li>
               <li>Click on <strong>Total Projects</strong> in the Dashboard to jump directly to the Projects List.</li>
               <li>Use <strong>Payment Milestones</strong> to define payment schedules, then check <strong>Cashflow</strong> to see when money flows in vs. out.</li>
+              <li>Set <strong>Payment Terms (Days)</strong> on the Milestones page to model realistic cash collection cycles (30, 60, 90 days).</li>
+              <li>The <strong>Cumulative Cash Flow chart</strong> on the Cashflow page shows the break-even point where revenue catches up with costs.</li>
+              <li>Use <strong>"Copy to Wave"</strong> on the Milestones page to quickly duplicate payment schedules across waves.</li>
               <li>The <strong>Contingency ($)</strong> field in logistics lets you add a fixed amount on top of the percentage-based contingency.</li>
               <li>Upload a <strong>Gantt chart image</strong> to a project so reviewers can see the timeline without switching tools.</li>
               <li>Use the <strong>Copy Skill</strong> button in Proficiency Rates to quickly duplicate entries when setting up similar rate cards.</li>

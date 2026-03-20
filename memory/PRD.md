@@ -49,7 +49,7 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 ```
 
 - **Payment Terms & Cashflow Feature (Mar 20)**: Added project-level "Payment Terms (Days)" field on Milestones page with 0/15/30/45/60/90/120 day options. Cashflow now shifts Cash-In revenue by the payment offset (30 days = +1 month). Extra months are automatically added to cashflow when last-month milestones have delayed payments. Added "Copy Milestones to Wave" feature for multi-wave projects. 25/25 tests passed (100%).
-- **Cumulative Cashflow Chart & UI Enhancements (Mar 20)**: Added cumulative cashflow line chart with break-even detection and info banner. Project lists on Milestones and Cashflow screens now sorted by project number (ascending). Added "Customer Name" column to both project list screens with search support. 8/8 frontend tests passed (100%).
+- **Documentation Updates (Mar 20)**: Updated UserManual.js (Payment Milestones section 15 expanded with Payment Terms, Copy to Wave, Auto-Recalculation; Cashflow section 16 expanded with Payment Terms shifting, Cumulative Break-Even chart, extended months), SupportGuide.js (API Reference updated, payment_milestones collection added, new FAQ entries), Tutorials.js (Milestones and Cashflow tutorials expanded with new steps).
 
 ## Prioritized Backlog
 
