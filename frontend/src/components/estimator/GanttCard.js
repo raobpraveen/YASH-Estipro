@@ -116,25 +116,35 @@ export const GanttCard = ({ projectId, waves, ganttChart, ganttLoading, ganttInp
                 </div>
 
                 {/* Wave Groups with Staircase Rows */}
-                {waveGroups.map((wg) => {
+                {waveGroups.map((wg, wgIdx) => {
                   const wave = waves.find(w => w.name === wg.waveName);
                   const startMonth = wave?.wave_start_month || 1;
+                  const description = wave?.description || "";
+                  const totalRows = wg.rows.length;
+                  const midIdx = Math.floor(totalRows / 2);
                   return (
-                    <div key={wg.waveName} className="mb-1">
-                      {/* Wave label */}
-                      <div className="flex items-center h-6 mb-0.5">
-                        <div className="w-[140px] pr-2 text-right">
-                          <span className="text-[11px] font-bold text-[#0F172A] truncate">{wg.waveName}</span>
-                          {startMonth > 1 && <span className="text-[9px] text-gray-400 ml-1">(from M{startMonth})</span>}
+                    <div key={wg.waveName} className={wgIdx > 0 ? "mt-3 pt-3 border-t-2 border-[#CBD5E1]" : ""}>
+                      {/* Wave header bar */}
+                      <div className="flex items-center h-7 mb-1 rounded bg-[#F1F5F9]">
+                        <div className="w-[140px] pr-2 text-right shrink-0">
+                          <span className="text-[11px] font-bold text-[#0F172A]">{wg.waveName}</span>
+                          {startMonth > 1 && <span className="text-[9px] text-[#6366F1] ml-1 font-medium">(from M{startMonth})</span>}
                         </div>
-                        <div className="flex-1 border-b border-dashed border-gray-200" />
+                        <div className="flex-1 flex items-center px-2">
+                          <div className="h-px flex-1 bg-[#CBD5E1]" />
+                          {description && <span className="text-[10px] text-gray-500 italic px-2 whitespace-nowrap">{description}</span>}
+                          {description && <div className="h-px flex-1 bg-[#CBD5E1]" />}
+                        </div>
                       </div>
 
                       {/* Phase rows - one per unique phase (staircase) */}
                       {wg.rows.map((row, rIdx) => (
                         <div key={rIdx} className="flex items-center h-8 group" data-testid={`gantt-row-${row.phase}`}>
-                          {/* Phase label */}
+                          {/* Phase label + wave description in center row */}
                           <div className="w-[140px] pr-2 text-right shrink-0">
+                            {rIdx === midIdx && description ? (
+                              <span className="text-[9px] text-gray-400 italic block leading-tight mb-0.5">{description}</span>
+                            ) : null}
                             <span className="text-[10px] font-medium text-gray-600 truncate">{row.phase}</span>
                             <span className="text-[9px] text-gray-400 ml-1">M{row.absStart + 1}{row.absEnd > row.absStart ? `–M${row.absEnd + 1}` : ""}</span>
                           </div>
