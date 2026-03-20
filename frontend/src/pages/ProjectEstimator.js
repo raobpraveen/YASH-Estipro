@@ -406,6 +406,8 @@ const ProjectEstimator = () => {
       description: newWave.description || "",
       duration_months: parseFloat(newWave.duration_months),
       phase_names: phaseNames,
+      month_phases: Array(numMonths).fill(""),
+      wave_start_month: 1,
       logistics_config: { ...waveLogistics },
       nego_buffer_percentage: 0,
       grid_allocations: [],
@@ -454,6 +456,7 @@ const ProjectEstimator = () => {
         ...w,
         duration_months: w.duration_months + 1,
         phase_names: [...w.phase_names, `Month ${newIndex}`],
+        month_phases: [...(w.month_phases || []), ""],
       };
     }));
     toast.success("Month column added");
@@ -471,6 +474,7 @@ const ProjectEstimator = () => {
         ...w,
         duration_months: w.duration_months - 1,
         phase_names: w.phase_names.slice(0, -1),
+        month_phases: (w.month_phases || []).slice(0, -1),
         grid_allocations: w.grid_allocations.map(a => {
           const newPhaseAllocations = { ...a.phase_allocations };
           delete newPhaseAllocations[lastIndex];
@@ -487,6 +491,15 @@ const ProjectEstimator = () => {
         ? { ...w, phase_names: w.phase_names.map((name, i) => i === phaseIndex ? newName : name) }
         : w
     ));
+  };
+
+  const handleUpdateMonthPhase = (waveId, monthIndex, phaseName) => {
+    setWaves(waves.map(w => {
+      if (w.id !== waveId) return w;
+      const mp = [...(w.month_phases || w.phase_names.map(() => ""))];
+      mp[monthIndex] = phaseName;
+      return { ...w, month_phases: mp };
+    }));
   };
 
   const getLogisticsConfig = (wave) => getLogisticsConfigUtil(wave);
@@ -964,6 +977,8 @@ const ProjectEstimator = () => {
         description: w.description || "",
         duration_months: w.duration_months,
         phase_names: w.phase_names,
+        month_phases: w.month_phases || w.phase_names.map(() => ""),
+        wave_start_month: w.wave_start_month || 1,
         logistics_config: w.logistics_config,
         nego_buffer_percentage: w.nego_buffer_percentage || 0,
         grid_allocations: w.grid_allocations,
@@ -2397,7 +2412,7 @@ const ProjectEstimator = () => {
       </Card>
 
       {/* Gantt Chart */}
-      <GanttCard projectId={projectId} ganttChart={ganttChart} ganttLoading={ganttLoading} ganttInputRef={ganttInputRef} handleGanttUpload={handleGanttUpload} handleGanttDelete={handleGanttDelete} isReadOnly={isReadOnly} collapsedSections={collapsedSections} toggleSection={toggleSection} />
+      <GanttCard projectId={projectId} waves={waves} ganttChart={ganttChart} ganttLoading={ganttLoading} ganttInputRef={ganttInputRef} handleGanttUpload={handleGanttUpload} handleGanttDelete={handleGanttDelete} isReadOnly={isReadOnly} collapsedSections={collapsedSections} toggleSection={toggleSection} />
 
       {/* Overall Summary Cards */}
       <OverallSummary overall={overall} profitMarginPercentage={profitMarginPercentage} collapsedSections={collapsedSections} toggleSection={toggleSection} />
@@ -2569,6 +2584,19 @@ const ProjectEstimator = () => {
                         <span className="text-sm text-gray-600">Resources: {wave.grid_allocations.length}</span>
                         <span className="text-sm text-[#F59E0B]">Onsite: {waveSummary.onsiteResourceCount}</span>
                         <span className="text-sm text-purple-600">Traveling: {waveSummary.travelingResourceCount}</span>
+                        {!isReadOnly && waves.length > 1 && (
+                          <span className="text-sm text-gray-500 flex items-center gap-1">
+                            Starts at project M
+                            <input
+                              type="number"
+                              min={1}
+                              value={wave.wave_start_month || 1}
+                              onChange={(e) => setWaves(waves.map(w => w.id === wave.id ? { ...w, wave_start_month: Math.max(1, parseInt(e.target.value) || 1) } : w))}
+                              className="w-10 text-center text-sm border border-gray-300 rounded px-1 py-0"
+                              data-testid={`wave-start-month-${wave.id}`}
+                            />
+                          </span>
+                        )}
                       </div>
                     </div>
                     {/* Wave Description */}
@@ -2842,6 +2870,49 @@ const ProjectEstimator = () => {
                               <th className="text-right p-2 font-semibold text-xs bg-purple-50 w-16">Ovr $/Hr</th>
                               <th className="text-left p-2 font-semibold text-xs">Comments</th>
                               <th className="text-center p-2 font-semibold text-xs">Actions</th>
+                            </tr>
+                            {/* Phase assignment row */}
+                            <tr className="border-b border-[#E2E8F0] bg-[#F0FDF4]">
+                              <td colSpan={9} className="text-right pr-2 text-xs font-medium text-emerald-700" style={{ position: 'sticky', left: 0, zIndex: 10, background: '#F0FDF4', boxShadow: '3px 0 6px rgba(0,0,0,0.1)' }}>Phase</td>
+                              {wave.phase_names.map((_, mIdx) => {
+                                const currentPhase = (wave.month_phases || [])[mIdx] || "";
+                                return (
+                                  <td key={mIdx} className="p-1 bg-[#F0FDF4]">
+                                    <select
+                                      value={currentPhase}
+                                      onChange={(e) => {
+                                        if (e.target.value === "__custom__") {
+                                          const custom = window.prompt("Enter custom phase name:");
+                                          if (custom?.trim()) handleUpdateMonthPhase(wave.id, mIdx, custom.trim());
+                                        } else {
+                                          handleUpdateMonthPhase(wave.id, mIdx, e.target.value);
+                                        }
+                                      }}
+                                      className="w-20 text-[10px] text-center border border-emerald-300 rounded bg-white focus:ring-1 focus:ring-emerald-400 py-0.5 px-0"
+                                      disabled={isReadOnly}
+                                      data-testid={`month-phase-${wave.id}-${mIdx}`}
+                                    >
+                                      <option value="">—</option>
+                                      <option value="Prepare">Prepare</option>
+                                      <option value="Explore">Explore</option>
+                                      <option value="Realize">Realize</option>
+                                      <option value="Deploy">Deploy</option>
+                                      <option value="Go-live">Go-live</option>
+                                      <option value="Hypercare">Hypercare</option>
+                                      <option value="Design">Design</option>
+                                      <option value="Build">Build</option>
+                                      <option value="Test">Test</option>
+                                      <option value="UAT">UAT</option>
+                                      <option value="Support">Support</option>
+                                      {currentPhase && !["","Prepare","Explore","Realize","Deploy","Go-live","Hypercare","Design","Build","Test","UAT","Support"].includes(currentPhase) && (
+                                        <option value={currentPhase}>{currentPhase}</option>
+                                      )}
+                                      <option value="__custom__">+ Custom...</option>
+                                    </select>
+                                  </td>
+                                );
+                              })}
+                              <td colSpan={10} className="bg-[#F0FDF4]"></td>
                             </tr>
                           </thead>
                           <Droppable droppableId={`wave-${wave.id}`}>

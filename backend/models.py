@@ -227,8 +227,11 @@ class WaveGridAllocation(BaseModel):
 class ProjectWave(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
+    description: str = ""
     duration_months: float
     phase_names: List[str] = []
+    month_phases: List[str] = []  # Phase assignment per month for Gantt chart
+    wave_start_month: int = 1  # Offset for wave start in project timeline
     logistics_defaults: Dict[str, float] = {}
     logistics_config: Dict[str, float] = {}
     nego_buffer_percentage: float = 0

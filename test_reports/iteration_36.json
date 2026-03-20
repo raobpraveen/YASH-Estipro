@@ -1,0 +1,71 @@
+{
+  "summary": "Comprehensive testing of auto-generated staircase Gantt chart from phase assignments. All 10 test scenarios PASSED. Fixed critical bug: month_phases and wave_start_month fields were missing from ProjectWave model, preventing phase data persistence.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard charts", "issues": ["Console warnings about chart dimensions (-1 width/height) - cosmetic only, pre-existing"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration36_gantt_phases.py",
+    "/app/test_reports/pytest/pytest_iteration36.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/models.py",
+    "/app/backend/tests/test_iteration36_gantt_phases.py"
+  ],
+  "success_rate": {"backend": "100% (10/10 passed)", "frontend": "100% (10/10 UI tests passed)"},
+  "test_credentials": {
+    "email": "admin@yash.com",
+    "password": "password"
+  },
+  "seed_data_creation": "PRJ-0025 (d94df1da-49b0-497e-90ae-f9466da8444b) now has phase assignments: Wave1 SF with Prepare/Explore/Explore/Realize/Realize/Deploy/Go-live, W2 with Design/Build/Test starting at M3",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Gantt chart phase assignment feature fully tested. ProjectWave model now includes month_phases (List[str]) and wave_start_month (int) fields. Phase dropdowns use data-testid='month-phase-{waveId}-{monthIdx}'. Gantt chart uses data-testid='auto-gantt-chart'. Individual phase rows use data-testid='gantt-row-{phaseName}'. Start month input uses data-testid='wave-start-month-{waveId}'.",
+  "features_tested": {
+    "1_phase_dropdown_row_visible": "PASS - Green background row (bg-[#F0FDF4]) with phase dropdowns visible below month headers",
+    "2_wave1_phases_set_gantt_generated": "PASS - Set M1=Prepare, M2=Explore, M3=Explore, M4=Realize, M5=Realize, M6=Deploy, M7=Go-live. Gantt auto-generated with staircase layout",
+    "3_w2_start_month_input_visible": "PASS - 'Starts at project M' input visible when multiple waves exist",
+    "4_w2_phases_with_offset": "PASS - Set W2 start month to 3, phases M1=Design, M2=Build, M3=Test. Gantt shows W2 offset from M3",
+    "5_gantt_two_wave_sections": "PASS - Gantt chart shows Wave1 SF and W2 (from M3) sections with cascading phase rows",
+    "6_phase_bars_color_coded": "PASS - 8 distinct phase bars with unique colors (Prepare=blue, Explore=purple, Realize=yellow, Deploy=green, Go-live=teal, Design=purple, Build=orange, Test=red)",
+    "7_legend_shows_phases": "PASS - Legend at bottom shows all 8 unique phases with color indicators",
+    "8_save_reload_persistence": "PASS - Phases persist after save and reload. Gantt chart re-renders correctly",
+    "9_upload_image_available": "PASS - 'Upload Image' button visible alongside auto-generated chart",
+    "10_api_returns_phase_data": "PASS - GET /api/projects/{id} returns month_phases and wave_start_month in wave data"
+  },
+  "bug_fixed": {
+    "issue": "month_phases and wave_start_month fields were not being persisted to database",
+    "root_cause": "ProjectWave model in /app/backend/models.py was missing month_phases (List[str]) and wave_start_month (int) fields",
+    "fix_applied": "Added month_phases: List[str] = [] and wave_start_month: int = 1 to ProjectWave model",
+    "file_modified": "/app/backend/models.py"
+  },
+  "api_tests_passed": {
+    "GET /api/projects/{id}": "Returns waves with month_phases and wave_start_month fields",
+    "PUT /api/projects/{id}": "Saves phase assignments correctly",
+    "GET /api/projects/{id}/gantt": "Returns 404 if no image uploaded (expected)"
+  },
+  "gantt_chart_verification": {
+    "auto_generated_badge": "Visible next to 'Timeline / Gantt Chart' header",
+    "staircase_layout": "Each unique phase gets its own row, creating waterfall visual",
+    "wave_offset_support": "W2 shows '(from M3)' indicator and bars positioned correctly",
+    "phase_colors": {
+      "Prepare": "#DBEAFE (blue)",
+      "Explore": "#E0E7FF (purple)",
+      "Realize": "#FEF3C7 (yellow)",
+      "Deploy": "#D1FAE5 (green)",
+      "Go-live": "#CCFBF1 (teal)",
+      "Design": "#EDE9FE (purple)",
+      "Build": "#FFF7ED (orange)",
+      "Test": "#FEE2E2 (red)"
+    }
+  }
+}
