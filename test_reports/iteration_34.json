@@ -1,0 +1,57 @@
+{
+  "summary": "Comprehensive testing of Payment Terms in Cashflow feature. All 10 test scenarios passed: Payment Terms dropdown on Milestones page, Copy to Wave button visibility, saving different payment term values (0/30/60 days), Cashflow API with payment_terms_days/payment_offset_months/extended_months fields, payment terms banner visibility, and extended month highlighting.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard charts", "issues": ["Console warnings about chart dimensions (-1 width/height) - cosmetic only, pre-existing"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration34_payment_terms.py",
+    "/app/test_reports/pytest/pytest_iteration34.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_iteration34_payment_terms.py"
+  ],
+  "success_rate": {"backend": "100% (15/15 passed)", "frontend": "100% (10/10 UI tests passed)"},
+  "test_credentials": {
+    "email": "admin@yash.com",
+    "password": "password"
+  },
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Payment Terms feature fully tested. PRJ-0025 (d94df1da-49b0-497e-90ae-f9466da8444b) has payment_terms_days=60 set. W2 has 3 months with milestones at M1/M2/M3, extending to 5 months with 60-day terms.",
+  "features_tested": {
+    "payment_terms_dropdown_visible": "PASS - Dropdown on Milestones page shows all options (0/15/30/45/60/90/120 days)",
+    "payment_terms_shows_offset": "PASS - Shows '+N months' indicator next to dropdown",
+    "copy_to_wave_button_visible": "PASS - Copy to Wave button visible for Wave1 SF (which has milestones)",
+    "copy_to_wave_dropdown_shows_w2": "PASS - Dropdown shows W2 as target wave option",
+    "save_payment_terms_30_days": "PASS - PUT /api/projects/{id}/milestones with payment_terms_days=30",
+    "save_payment_terms_60_days": "PASS - PUT /api/projects/{id}/milestones with payment_terms_days=60",
+    "save_payment_terms_0_immediate": "PASS - PUT /api/projects/{id}/milestones with payment_terms_days=0",
+    "cashflow_api_returns_payment_fields": "PASS - Returns payment_terms_days, payment_offset_months, extended_months",
+    "cashflow_banner_hidden_for_0_days": "PASS - No banner shown when payment_terms_days=0",
+    "cashflow_banner_shows_60_days": "PASS - Banner shows '60 days — Cash-In is shifted by +2 months'",
+    "w2_extended_months_indicator": "PASS - W2 header shows '+2 payment term months' badge",
+    "extended_months_highlighted": "PASS - M8*, M9* in Wave1 SF and M4*, M5* in W2 highlighted with 'Payment terms' label",
+    "cash_in_shifted_correctly": "PASS - W2 milestones at M1/M2/M3 have revenue shifted to M3/M4/M5"
+  },
+  "api_tests_passed": {
+    "GET /api/projects/{id}/milestones": "Returns payment_terms_days field",
+    "PUT /api/projects/{id}/milestones": "Saves payment_terms_days correctly (0/30/60 tested)",
+    "GET /api/projects/{id}/cashflow": "Returns payment_terms_days, payment_offset_months, wave_data with extended_months"
+  },
+  "calculation_verification": {
+    "30_day_offset": "30 days → +1 month offset (ceil(30/30) = 1)",
+    "60_day_offset": "60 days → +2 month offset (ceil(60/30) = 2)",
+    "w2_extended_months": "W2 has 3 months, last milestone M3, with +2 offset → extended_months = 5"
+  }
+}

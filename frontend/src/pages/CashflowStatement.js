@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, FileDown, TrendingUp, TrendingDown, DollarSign, ChevronDown, ChevronRight, Search, ExternalLink } from "lucide-react";
+import { ArrowLeft, FileDown, TrendingUp, TrendingDown, DollarSign, ChevronDown, ChevronRight, Search, ExternalLink, Clock } from "lucide-react";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
@@ -320,6 +320,16 @@ const CashflowStatement = () => {
         </Card>
       </div>
 
+      {/* Payment Terms Indicator */}
+      {cashflow.payment_terms_days > 0 && (
+        <div className="flex items-center gap-3 mb-6 px-4 py-3 bg-[#6366F1]/5 border border-[#6366F1]/20 rounded-lg" data-testid="payment-terms-info">
+          <Clock className="w-4 h-4 text-[#6366F1]" />
+          <span className="text-sm text-[#6366F1] font-medium">
+            Payment Terms: {cashflow.payment_terms_days} days — Cash-In is shifted by +{cashflow.payment_offset_months} month{cashflow.payment_offset_months > 1 ? "s" : ""} from milestone month
+          </span>
+        </div>
+      )}
+
       {/* Per-Wave Breakdown Sections */}
       <div className="space-y-4 mb-6">
         {(wave_data || []).map((wd) => {
@@ -331,6 +341,9 @@ const CashflowStatement = () => {
                   {isCollapsed ? <ChevronRight className="w-5 h-5 text-gray-500" /> : <ChevronDown className="w-5 h-5 text-gray-500" />}
                   <CardTitle className="text-lg font-bold text-[#0F172A]">{wd.wave_name}</CardTitle>
                   <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{wd.months} months</span>
+                  {wd.extended_months > wd.months && (
+                    <span className="text-xs bg-[#6366F1]/10 text-[#6366F1] px-2 py-0.5 rounded-full">+{wd.extended_months - wd.months} payment term month{wd.extended_months - wd.months > 1 ? "s" : ""}</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-5 text-sm" onClick={(e) => e.stopPropagation()}>
                   <span className="text-red-500">Out: <span className="font-semibold">{fmt(wd.total_cost)}</span></span>
@@ -354,10 +367,11 @@ const CashflowStatement = () => {
                       <TableBody>
                         {wd.monthly_data.map((m, idx) => {
                           const net = m.revenue - m.cost;
+                          const isExtended = idx >= wd.months;
                           return (
-                            <TableRow key={idx}>
-                              <TableCell className="font-mono">M{m.month}</TableCell>
-                              <TableCell className="text-gray-600">{m.phase || "—"}</TableCell>
+                            <TableRow key={idx} className={isExtended ? "bg-[#6366F1]/5" : ""}>
+                              <TableCell className="font-mono">{isExtended ? <span className="text-[#6366F1]">M{m.month}*</span> : `M${m.month}`}</TableCell>
+                              <TableCell className="text-gray-600">{m.phase || (isExtended ? "Payment terms" : "—")}</TableCell>
                               <TableCell className="text-right font-mono text-red-600">{fmt(m.cost)}</TableCell>
                               <TableCell className="text-right font-mono text-[#10B981]">{fmt(m.revenue)}</TableCell>
                               <TableCell className={`text-right font-mono font-semibold ${net >= 0 ? "text-[#10B981]" : "text-red-600"}`}>{fmt(net)}</TableCell>

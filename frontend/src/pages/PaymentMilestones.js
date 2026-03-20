@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Save, ArrowLeft, DollarSign, Target, ChevronDown, ChevronRight, Search, FileDown, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Save, ArrowLeft, DollarSign, Target, ChevronDown, ChevronRight, Search, FileDown, ExternalLink, Copy, Clock } from "lucide-react";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
 import { calculateWaveSummary } from "@/utils/estimatorCalcs";
@@ -20,6 +20,7 @@ const PaymentMilestones = () => {
 
   const [project, setProject] = useState(null);
   const [milestones, setMilestones] = useState([]);
+  const [paymentTermsDays, setPaymentTermsDays] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [collapsedWaves, setCollapsedWaves] = useState({});
@@ -76,10 +77,11 @@ const PaymentMilestones = () => {
       const token = localStorage.getItem("token");
       const [projectRes, milestonesRes] = await Promise.all([
         axios.get(`${API}/projects/${projectId}`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API}/projects/${projectId}/milestones`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { milestones: [] } })),
+        axios.get(`${API}/projects/${projectId}/milestones`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { milestones: [], payment_terms_days: 0 } })),
       ]);
       const projectData = projectRes.data;
       const loadedMilestones = milestonesRes.data.milestones || [];
+      const loadedTerms = milestonesRes.data.payment_terms_days || 0;
       const pm = projectData.profit_margin_percentage ?? 35;
       const nbp = projectData.nego_buffer_percentage ?? 0;
       // Recalculate milestone amounts using the same formula as the estimator
@@ -92,6 +94,7 @@ const PaymentMilestones = () => {
       });
       setProject(projectData);
       setMilestones(recalculated);
+      setPaymentTermsDays(loadedTerms);
     } catch {
       toast.error("Failed to load project");
     } finally {
@@ -148,11 +151,41 @@ const PaymentMilestones = () => {
 
   const removeMilestone = (id) => setMilestones(milestones.filter((m) => m.id !== id));
 
+  const copyMilestonesToWave = (sourceWaveName, targetWaveName) => {
+    const sourceMilestones = milestones.filter((m) => m.wave_name === sourceWaveName);
+    if (sourceMilestones.length === 0) {
+      toast.error("No milestones to copy from this wave");
+      return;
+    }
+    // Remove existing milestones in target wave first, then copy
+    const filtered = milestones.filter((m) => m.wave_name !== targetWaveName);
+    const targetMaxMonths = getWaveMonthCount(targetWaveName);
+    const copied = sourceMilestones.map((m) => {
+      const newId = typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `ms-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      // Clamp target_month to the target wave's month count
+      const monthNum = parseInt(m.target_month?.replace("M", "") || "1");
+      const clampedMonth = `M${Math.min(monthNum, targetMaxMonths)}`;
+      const wavePrice = getWaveFinalPrice(targetWaveName);
+      return {
+        ...m,
+        id: newId,
+        wave_name: targetWaveName,
+        target_month: clampedMonth,
+        payment_amount: Math.round(wavePrice * ((m.payment_percentage || 0) / 100) * 100) / 100,
+      };
+    });
+    setMilestones([...filtered, ...copied]);
+    setCollapsedWaves((prev) => ({ ...prev, [targetWaveName]: false }));
+    toast.success(`Copied ${sourceMilestones.length} milestones to ${targetWaveName}`);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`${API}/projects/${projectId}/milestones`, { milestones }, {
+      await axios.put(`${API}/projects/${projectId}/milestones`, { milestones, payment_terms_days: paymentTermsDays }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success("Payment milestones saved");
@@ -418,6 +451,44 @@ const PaymentMilestones = () => {
         </Card>
       </div>
 
+      {/* Payment Terms */}
+      <Card className="mb-6 border border-[#E2E8F0]">
+        <CardContent className="pt-4 pb-4">
+          <div className="flex items-center gap-4">
+            <Clock className="w-5 h-5 text-[#6366F1]" />
+            <div>
+              <p className="text-sm font-medium text-gray-700">Payment Terms (Days)</p>
+              <p className="text-xs text-gray-500">Cash-In will be shifted in the Cashflow by this many days (30 days = +1 month). Applies to all waves.</p>
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              <Select
+                value={String(paymentTermsDays)}
+                onValueChange={(v) => setPaymentTermsDays(Number(v))}
+                data-testid="payment-terms-select"
+              >
+                <SelectTrigger className="w-36" data-testid="payment-terms-trigger">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">0 days (Immediate)</SelectItem>
+                  <SelectItem value="15">15 days</SelectItem>
+                  <SelectItem value="30">30 days (+1 month)</SelectItem>
+                  <SelectItem value="45">45 days (+2 months)</SelectItem>
+                  <SelectItem value="60">60 days (+2 months)</SelectItem>
+                  <SelectItem value="90">90 days (+3 months)</SelectItem>
+                  <SelectItem value="120">120 days (+4 months)</SelectItem>
+                </SelectContent>
+              </Select>
+              {paymentTermsDays > 0 && (
+                <span className="text-xs text-[#6366F1] font-medium whitespace-nowrap">
+                  Cash-In shifts by +{Math.ceil(paymentTermsDays / 30)} month{Math.ceil(paymentTermsDays / 30) > 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Wave Sections */}
       <div className="space-y-4">
         {waves.map((wave) => {
@@ -482,10 +553,22 @@ const PaymentMilestones = () => {
                     </div>
                   )}
                   {!waveMilestones.length && <p className="text-sm text-gray-400 py-3 text-center">No milestones for this wave yet.</p>}
-                  <div className="mt-3 flex justify-center">
+                  <div className="mt-3 flex justify-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => addMilestoneToWave(waveName)} className="text-[#0EA5E9] border-[#0EA5E9]/30 hover:bg-[#0EA5E9]/5" data-testid={`add-ms-${waveName}`}>
                       <Plus className="w-4 h-4 mr-1" /> Add Milestone
                     </Button>
+                    {waves.length > 1 && waveMilestones.length > 0 && (
+                      <Select onValueChange={(targetWave) => copyMilestonesToWave(waveName, targetWave)}>
+                        <SelectTrigger className="w-auto h-8 text-xs border-[#8B5CF6]/30 text-[#8B5CF6] px-3" data-testid={`copy-ms-${waveName}`}>
+                          <Copy className="w-3.5 h-3.5 mr-1" /><span>Copy to Wave</span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {waves.filter((w) => w.name !== waveName).map((w) => (
+                            <SelectItem key={w.name} value={w.name}>{w.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                   {wavePctTotal > 100 && <p className="text-xs text-red-500 mt-2 text-center font-medium">Total payment percentage ({wavePctTotal.toFixed(1)}%) exceeds 100%</p>}
                 </CardContent>

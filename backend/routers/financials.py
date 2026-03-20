@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from datetime import datetime, timezone
 from database import db
 from auth import require_auth
+import math
 
 router = APIRouter()
 
@@ -10,7 +11,9 @@ router = APIRouter()
 async def get_milestones(project_id: str, user: dict = Depends(require_auth)):
     doc = await db.payment_milestones.find_one({"project_id": project_id}, {"_id": 0})
     if not doc:
-        return {"project_id": project_id, "milestones": []}
+        return {"project_id": project_id, "milestones": [], "payment_terms_days": 0}
+    if "payment_terms_days" not in doc:
+        doc["payment_terms_days"] = 0
     return doc
 
 
@@ -18,29 +21,32 @@ async def get_milestones(project_id: str, user: dict = Depends(require_auth)):
 async def save_milestones(project_id: str, request: Request, user: dict = Depends(require_auth)):
     body = await request.json()
     milestones = body.get("milestones", [])
+    payment_terms_days = body.get("payment_terms_days", 0)
     doc = {
         "project_id": project_id,
         "milestones": milestones,
+        "payment_terms_days": payment_terms_days,
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "updated_by": user.get("user_id", "")
     }
     await db.payment_milestones.update_one(
         {"project_id": project_id}, {"$set": doc}, upsert=True
     )
-    return {"message": "Milestones saved", "milestones": milestones}
+    return {"message": "Milestones saved", "milestones": milestones, "payment_terms_days": payment_terms_days}
 
 
 @router.get("/projects/{project_id}/cashflow")
 async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
-    """Generate a cashflow statement for the project with per-wave breakdown"""
+    """Generate a cashflow statement with payment-terms-aware Cash-In shifting"""
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    profit_margin = project.get("profit_margin_percentage", 35)  # noqa: F841
     waves = project.get("waves", [])
     milestone_doc = await db.payment_milestones.find_one({"project_id": project_id}, {"_id": 0})
     milestones = (milestone_doc or {}).get("milestones", [])
+    payment_terms_days = (milestone_doc or {}).get("payment_terms_days", 0)
+    payment_offset = math.ceil(payment_terms_days / 30) if payment_terms_days > 0 else 0
 
     wave_data = []
     max_months = 0
@@ -50,9 +56,8 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
         phase_names = wave.get("phase_names", [])
         lc = wave.get("logistics_config") or {}
         n_months = len(phase_names)
-        if n_months > max_months:
-            max_months = n_months
 
+        # Step 1: Calculate costs per month
         wave_monthly = []
         for month_idx in range(n_months):
             phase_label = phase_names[month_idx] if month_idx < len(phase_names) else ""
@@ -75,7 +80,7 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
                     travel_mm_month += mm
                     travel_count_month += 1
 
-            # Logistics - contingency_absolute applies regardless of travelers
+            # Logistics
             contingency_abs = (lc.get("contingency_absolute", 0) or 0) / max(n_months, 1)
             if travel_count_month > 0:
                 per_diem = travel_mm_month * (lc.get("per_diem_daily", 0) or 0) * (lc.get("per_diem_days", 0) or 0)
@@ -88,37 +93,57 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
                 month_cost += logistics_month + contingency
             month_cost += contingency_abs
 
-            month_revenue = 0
-            for ms in milestones:
-                if ms.get("wave_name") != wave.get("name"):
-                    continue
-                payment_amount = ms.get("payment_amount", 0) or 0
-                target_month_str = ms.get("target_month", "M1") or "M1"
-                try:
-                    t_idx = int(target_month_str.replace("M", "")) - 1
-                except (ValueError, AttributeError):
-                    t_idx = 0
-                if t_idx == month_idx and payment_amount > 0:
-                    month_revenue += payment_amount
-
             wave_monthly.append({
                 "month": month_idx + 1,
                 "phase": phase_label,
                 "cost": round(month_cost, 2),
-                "revenue": round(month_revenue, 2),
+                "revenue": 0,
             })
+
+        # Step 2: Assign revenue with payment term offset
+        for ms in milestones:
+            if ms.get("wave_name") != wave.get("name"):
+                continue
+            payment_amount = ms.get("payment_amount", 0) or 0
+            if payment_amount <= 0:
+                continue
+            target_month_str = ms.get("target_month", "M1") or "M1"
+            try:
+                t_idx = int(target_month_str.replace("M", "")) - 1
+            except (ValueError, AttributeError):
+                t_idx = 0
+            cash_in_idx = t_idx + payment_offset
+
+            # Extend wave_monthly if cash-in falls beyond project duration
+            while cash_in_idx >= len(wave_monthly):
+                extra_num = len(wave_monthly) + 1
+                wave_monthly.append({
+                    "month": extra_num,
+                    "phase": "",
+                    "cost": 0,
+                    "revenue": 0,
+                })
+
+            wave_monthly[cash_in_idx]["revenue"] = round(
+                wave_monthly[cash_in_idx]["revenue"] + payment_amount, 2
+            )
+
+        if len(wave_monthly) > max_months:
+            max_months = len(wave_monthly)
 
         wave_total_cost = sum(m["cost"] for m in wave_monthly)
         wave_total_rev = sum(m["revenue"] for m in wave_monthly)
         wave_data.append({
             "wave_name": wave.get("name", f"Wave {len(wave_data)+1}"),
             "months": n_months,
+            "extended_months": len(wave_monthly),
             "monthly_data": wave_monthly,
             "total_cost": round(wave_total_cost, 2),
             "total_revenue": round(wave_total_rev, 2),
             "net": round(wave_total_rev - wave_total_cost, 2),
         })
 
+    # Combined summary across all waves
     combined = []
     running = 0
     for m_idx in range(max_months):
@@ -146,6 +171,8 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
         "project_id": project_id,
         "project_name": project.get("name", ""),
         "project_number": project.get("project_number", ""),
+        "payment_terms_days": payment_terms_days,
+        "payment_offset_months": payment_offset,
         "wave_data": wave_data,
         "combined_data": combined,
         "summary": {
