@@ -13,7 +13,7 @@ import os
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://pricing-tool-staging.preview.emergentagent.com"
+    BASE_URL = "https://component-extract-17.preview.emergentagent.com"
 
 # PRJ-0025 project ID for testing
 TEST_PROJECT_ID = "d94df1da-49b0-497e-90ae-f9466da8444b"
