@@ -345,6 +345,28 @@ export default function UserManual() {
             <KeyValue label="Upload Grid">Import data from an Excel template.</KeyValue>
             <KeyValue label="Clone Wave">Create a copy of the current wave.</KeyValue>
             <KeyValue label="Delete Wave">Remove the current wave (with confirmation).</KeyValue>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.8 Phase Assignment &amp; Auto-Generated Gantt Chart</h3>
+            <p>Each month column in the wave grid has a <strong>Phase dropdown</strong> (green row below the month headers). Assign a project phase to each month to auto-generate a Gantt chart.</p>
+            
+            <p className="font-medium mt-3 text-sm">Predefined Phases:</p>
+            <ul className="list-disc pl-6 space-y-0.5 text-sm">
+              <li>Prepare, Explore, Realize, Deploy, Go-live, Hypercare</li>
+              <li>Design, Build, Test, UAT, Support</li>
+              <li>Custom phases via <strong>"+ Custom..."</strong> option</li>
+            </ul>
+
+            <p className="font-medium mt-3 text-sm">Gantt Chart (Staircase Layout):</p>
+            <ul className="list-disc pl-6 space-y-0.5 text-sm">
+              <li>Each phase appears on its own row, creating a <strong>waterfall/staircase</strong> visual.</li>
+              <li>Consecutive months with the same phase merge into a single bar.</li>
+              <li>Color-coded by phase type with a legend at the bottom.</li>
+              <li>All waves are shown on a <strong>shared project timeline</strong>.</li>
+            </ul>
+            
+            <p className="font-medium mt-3 text-sm">Wave Start Offset (Multi-Wave Projects):</p>
+            <p>For projects where waves overlap or start at different times, set the <strong>"Starts at project M"</strong> value in the wave header. For example, if Wave 2 starts in project month 3, set it to 3. The Gantt chart will reflect this offset, showing Wave 2's bars starting from M3 on the shared timeline.</p>
+            <Tip>The auto-generated Gantt chart appears alongside the option to upload a custom Gantt image. Both can coexist.</Tip>
           </Section>
 
           {/* Section 6: Cost Calculations */}

@@ -687,6 +687,10 @@ mongosh --eval "db.adminCommand('ping')"`}
                 <p className="text-sm text-gray-600 mt-1">A: The cumulative cashflow line chart shows running totals of Cash-In and Cash-Out over time. The break-even point is the first month where cumulative Cash-In exceeds cumulative Cash-Out, meaning the project becomes cash-positive. This is especially useful with payment terms that delay revenue.</p>
               </div>
               <div>
+                <p className="font-bold text-sm">Q: How do I generate a Gantt chart?</p>
+                <p className="text-sm text-gray-600 mt-1">A: In the Estimator, use the green <strong>Phase row</strong> below the month headers to assign phases (Prepare, Explore, Realize, etc.) to each month. The Gantt chart auto-generates in the Timeline section with a staircase layout. For multi-wave projects, set the "Starts at project M" value in the wave header to offset waves on the shared timeline.</p>
+              </div>
+              <div>
                 <p className="font-bold text-sm">Q: How do I export multiple waves to Excel?</p>
                 <p className="text-sm text-gray-600 mt-1">A: The Excel export automatically includes all waves. Each wave gets its own detail sheet, plus a Summary sheet that aggregates across all waves.</p>
               </div>
