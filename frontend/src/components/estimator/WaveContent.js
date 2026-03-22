@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Trash2, Plane, Settings, Copy, FileSpreadsheet, Minus, Upload, Download, GripVertical, Calculator, X } from "lucide-react";
+import { Plus, Trash2, Plane, Settings, Copy, FileSpreadsheet, Minus, Upload, Download, GripVertical, Calculator, X, ChevronDown, ChevronRight } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { useState } from "react";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { calculateResourceBaseCost as calcResourceBaseCostUtil } from "@/utils/estimatorCalcs";
 import { PROFICIENCY_LEVELS, getGroupColor, PHASE_OPTIONS, getPhaseColor } from "./constants";
@@ -53,6 +54,9 @@ export const WaveContent = ({
   onDeleteWave,
   onGridFieldChange,
 }) => {
+  const [phasesCollapsed, setPhasesCollapsed] = useState(false);
+  const phaseCount = (wave.phase_ranges || []).length;
+
   return (
     <div className="space-y-4">
       {/* Wave Header */}
@@ -207,12 +211,21 @@ export const WaveContent = ({
 
       {/* Phase Range Editor */}
       <div className="bg-emerald-50/50 border border-emerald-200 rounded-lg p-3" data-testid={`phase-range-editor-${wave.id}`}>
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
-            Phase Ranges
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            className="flex items-center gap-2 cursor-pointer select-none hover:opacity-80 transition-opacity"
+            onClick={() => setPhasesCollapsed(!phasesCollapsed)}
+            data-testid={`toggle-phases-${wave.id}`}
+          >
+            {phasesCollapsed ? <ChevronRight className="w-4 h-4 text-emerald-700" /> : <ChevronDown className="w-4 h-4 text-emerald-700" />}
+            <h4 className="text-sm font-semibold text-emerald-800">Phase Ranges</h4>
             <span className="text-[10px] font-normal text-emerald-600">(defines Gantt chart timeline)</span>
-          </h4>
-          {!isReadOnly && (
+            {phasesCollapsed && phaseCount > 0 && (
+              <span className="text-[10px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded-full font-medium">{phaseCount} phase{phaseCount !== 1 ? "s" : ""}</span>
+            )}
+          </button>
+          {!isReadOnly && !phasesCollapsed && (
             <Button size="sm" variant="outline" className="h-7 border-emerald-500 text-emerald-600 hover:bg-emerald-100" onClick={() => {
               const ranges = [...(wave.phase_ranges || []), { name: "Prepare", start_month: 1, end_month: 1 }];
               setWaves(waves.map(w => w.id === wave.id ? { ...w, phase_ranges: ranges } : w));
@@ -221,6 +234,8 @@ export const WaveContent = ({
             </Button>
           )}
         </div>
+        {!phasesCollapsed && (
+        <div className="mt-2">
         {(wave.phase_ranges || []).length > 0 ? (
           <div className="space-y-1.5">
             <div className="grid grid-cols-[1fr_90px_90px_36px] gap-2 text-[10px] font-semibold text-emerald-700 px-1 uppercase tracking-wide">
@@ -334,6 +349,8 @@ export const WaveContent = ({
           </div>
         ) : (
           <p className="text-sm text-emerald-600 italic">No phases defined. Add phases to generate the Gantt chart.</p>
+        )}
+        </div>
         )}
       </div>
 
