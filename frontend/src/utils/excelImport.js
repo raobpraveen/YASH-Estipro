@@ -47,6 +47,7 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
   wb.eachSheet((ws) => {
     const name = ws.name;
     if (name.toLowerCase() === "summary") return;
+    if (name.toLowerCase() === "gantt chart") return;
 
     // Find the header row
     let headerRowNum = 1;
@@ -191,10 +192,30 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
         }
       }
 
+      // Parse phase ranges section
+      let phaseRanges = [];
+      for (let r = headerRowNum + allocations.length + 2; r <= ws.rowCount; r++) {
+        const row = ws.getRow(r);
+        const cellA = (getCellVal(row.getCell(1)) || "").toString().trim();
+        if (cellA.toUpperCase().includes("PHASE RANGES")) {
+          // Next row is header (Phase Name, Start Month, End Month), skip it
+          for (let pr = r + 2; pr <= ws.rowCount; pr++) {
+            const prRow = ws.getRow(pr);
+            const phaseName = (getCellVal(prRow.getCell(1)) || "").toString().trim();
+            const startMonth = parseInt(getCellVal(prRow.getCell(2))) || 0;
+            const endMonth = parseInt(getCellVal(prRow.getCell(3))) || 0;
+            if (!phaseName || !startMonth) break;
+            phaseRanges.push({ name: phaseName, start_month: startMonth, end_month: endMonth || startMonth });
+          }
+          break;
+        }
+      }
+
       parsedWaves.push({
         sheetName: name,
         phaseNames,
         allocations,
+        phaseRanges,
         logistics: Object.keys(parsedLogistics).length > 0 ? parsedLogistics : null,
       });
     }

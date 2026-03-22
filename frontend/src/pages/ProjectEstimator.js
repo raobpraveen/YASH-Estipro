@@ -21,7 +21,7 @@ import { SubmitReviewDialog, ApprovalActionDialog, LogisticsDialog, BatchLogisti
 import { ProjectToolbar } from "@/components/estimator/ProjectToolbar";
 import { ProjectInfoCard } from "@/components/estimator/ProjectInfoCard";
 import { WaveContent } from "@/components/estimator/WaveContent";
-import { PROFICIENCY_LEVELS } from "@/components/estimator/constants";
+import { PROFICIENCY_LEVELS, convertMonthPhasesToRanges } from "@/components/estimator/constants";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -256,8 +256,15 @@ const ProjectEstimator = () => {
       setGanttChart(project.gantt_chart || null);
       
       if (project.waves && project.waves.length > 0) {
-        setWaves(project.waves);
-        setActiveWaveId(project.waves[0].id);
+        // Backward compatibility: convert legacy month_phases to phase_ranges
+        const migratedWaves = project.waves.map(w => {
+          if ((!w.phase_ranges || w.phase_ranges.length === 0) && w.month_phases && w.month_phases.some(p => p)) {
+            return { ...w, phase_ranges: convertMonthPhasesToRanges(w.month_phases) };
+          }
+          return w;
+        });
+        setWaves(migratedWaves);
+        setActiveWaveId(migratedWaves[0].id);
       }
       
       // Capture snapshot for change detection (approver flow)
@@ -388,6 +395,7 @@ const ProjectEstimator = () => {
       duration_months: parseFloat(newWave.duration_months),
       phase_names: phaseNames,
       month_phases: Array(numMonths).fill(""),
+      phase_ranges: [],
       wave_start_month: 1,
       logistics_config: { ...waveLogistics },
       nego_buffer_percentage: 0,
@@ -959,6 +967,7 @@ const ProjectEstimator = () => {
         duration_months: w.duration_months,
         phase_names: w.phase_names,
         month_phases: w.month_phases || w.phase_names.map(() => ""),
+        phase_ranges: w.phase_ranges || [],
         wave_start_month: w.wave_start_month || 1,
         logistics_config: w.logistics_config,
         nego_buffer_percentage: w.nego_buffer_percentage || 0,
@@ -1671,6 +1680,7 @@ const ProjectEstimator = () => {
         description: "",
         duration_months: pw.phaseNames.length,
         phase_names: pw.phaseNames,
+        phase_ranges: pw.phaseRanges || [],
         logistics_config: pw.logistics || waves[0]?.logistics_config || {},
         grid_allocations: pw.allocations.map(a => ({
           ...a,
@@ -1968,7 +1978,7 @@ const ProjectEstimator = () => {
                     newAllocation={newAllocation} setNewAllocation={setNewAllocation}
                     rates={rates} skills={skills} locations={locations}
                     onAddPhaseColumn={handleAddPhaseColumn} onRemovePhaseColumn={handleRemovePhaseColumn}
-                    onUpdatePhaseName={handleUpdatePhaseName} onUpdateMonthPhase={handleUpdateMonthPhase}
+                    onUpdatePhaseName={handleUpdatePhaseName}
                     onOpenLogisticsEditor={handleOpenLogisticsEditor} onAddAllocation={handleAddAllocation}
                     onDeleteAllocation={handleDeleteAllocation} onToggleOnsite={handleToggleOnsite}
                     onToggleTravelRequired={handleToggleTravelRequired} onPhaseAllocationChange={handlePhaseAllocationChange}

@@ -5,54 +5,36 @@ import { useMemo, useRef, useCallback } from "react";
 import { toPng } from "html-to-image";
 import ExcelJS from "exceljs";
 import { toast } from "sonner";
+import { getPhaseColor } from "./constants";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const PHASE_COLORS = {
-  Prepare: { bg: "#DBEAFE", border: "#3B82F6", text: "#1E40AF" },
-  Explore: { bg: "#E0E7FF", border: "#6366F1", text: "#4338CA" },
-  Realize: { bg: "#FEF3C7", border: "#F59E0B", text: "#92400E" },
-  Deploy: { bg: "#D1FAE5", border: "#10B981", text: "#065F46" },
-  "Go-live": { bg: "#CCFBF1", border: "#14B8A6", text: "#134E4A" },
-  Hypercare: { bg: "#FCE7F3", border: "#EC4899", text: "#9D174D" },
-  Design: { bg: "#EDE9FE", border: "#8B5CF6", text: "#5B21B6" },
-  Build: { bg: "#FFF7ED", border: "#F97316", text: "#9A3412" },
-  Test: { bg: "#FEE2E2", border: "#EF4444", text: "#991B1B" },
-  UAT: { bg: "#FEF9C3", border: "#EAB308", text: "#854D0E" },
-  Support: { bg: "#F0FDFA", border: "#2DD4BF", text: "#115E59" },
-};
-const getPhaseColor = (phase) => PHASE_COLORS[phase] || { bg: "#F1F5F9", border: "#94A3B8", text: "#475569" };
-
 /**
- * Build staircase gantt rows from wave data.
- * Each unique phase becomes its own row with absolute month positioning.
+ * Build gantt rows from wave phase_ranges data.
+ * Each phase range becomes its own row with absolute month positioning.
+ * Supports overlapping phases natively.
  */
 const buildGanttRows = (waves) => {
-  const rows = []; // { waveName, phase, absStart, absEnd, color }
+  const rows = [];
   let maxMonth = 0;
 
   for (const w of waves) {
-    const mp = w.month_phases || [];
-    if (mp.every(p => !p)) continue;
-    const offset = (w.wave_start_month || 1) - 1; // 0-based offset
-    let current = null;
+    const ranges = w.phase_ranges || [];
+    if (ranges.length === 0) continue;
+    const offset = (w.wave_start_month || 1) - 1;
 
-    for (let i = 0; i < mp.length; i++) {
-      const phase = mp[i] || "";
-      const absMonth = offset + i; // 0-based absolute month
-      if (!phase) {
-        if (current) { rows.push(current); current = null; }
-        continue;
-      }
-      if (current && current.phase === phase) {
-        current.absEnd = absMonth;
-      } else {
-        if (current) rows.push(current);
-        current = { waveName: w.name, phase, absStart: absMonth, absEnd: absMonth, color: getPhaseColor(phase) };
-      }
-      if (absMonth + 1 > maxMonth) maxMonth = absMonth + 1;
+    for (const pr of ranges) {
+      const absStart = offset + (pr.start_month || 1) - 1;
+      const absEnd = offset + (pr.end_month || pr.start_month || 1) - 1;
+      rows.push({
+        waveName: w.name,
+        phase: pr.name,
+        absStart,
+        absEnd,
+        color: getPhaseColor(pr.name),
+      });
+      if (absEnd + 1 > maxMonth) maxMonth = absEnd + 1;
     }
-    if (current) rows.push(current);
   }
 
   return { rows, maxMonth };

@@ -230,7 +230,8 @@ class ProjectWave(BaseModel):
     description: str = ""
     duration_months: float
     phase_names: List[str] = []
-    month_phases: List[str] = []  # Phase assignment per month for Gantt chart
+    month_phases: List[str] = []  # Phase assignment per month for Gantt chart (legacy)
+    phase_ranges: Optional[List[dict]] = []  # Phase ranges: [{name, start_month, end_month}]
     wave_start_month: int = 1  # Offset for wave start in project timeline
     logistics_defaults: Dict[str, float] = {}
     logistics_config: Dict[str, float] = {}

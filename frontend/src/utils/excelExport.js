@@ -226,6 +226,21 @@ export async function buildExportWorkbook({
     const offMMCell = addSumRow("Offshore MM", `${colL(C_TMM)}${TR}-${onsMMCell}`, {});
     const costCell = `${colL(C_TC)}${TR}`;
 
+    // ---- Phase Ranges Section ----
+    const phaseRanges = wave.phase_ranges || [];
+    if (phaseRanges.length > 0) {
+      dws.addRow([]);
+      const prHdr = dws.addRow(["PHASE RANGES (for Gantt Chart)"]);
+      prHdr.font = { bold: true, size: 11 };
+      prHdr.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD1FAE5" } };
+      const prColHdr = dws.addRow(["Phase Name", "Start Month", "End Month"]);
+      prColHdr.eachCell(c => { c.fill = subHeaderFill; c.font = { bold: true }; c.border = thinBorder; });
+      phaseRanges.forEach(pr => {
+        const prRow = dws.addRow([pr.name, pr.start_month, pr.end_month]);
+        prRow.eachCell(c => { c.border = thinBorder; });
+      });
+    }
+
     waveRefs.push({
       name: wave.name, sheet: sRef,
       totalMM: `${sRef}!${colL(C_TMM)}${TR}`,
@@ -366,6 +381,82 @@ export async function buildExportWorkbook({
     r.getCell(1).font = { bold: true };
     r.getCell(1).border = thinBorder;
     r.getCell(2).border = thinBorder;
+  });
+
+  // ========= GANTT CHART SHEET =========
+  const ganttWs = wb.addWorksheet("Gantt Chart", { properties: { tabColor: { argb: "FF10B981" } } });
+  ganttWs.addRow(["YASH Technologies - EstiPro | Gantt Chart"]).font = { bold: true, size: 14, color: { argb: "FF0F172A" } };
+  ganttWs.addRow([]);
+
+  // Calculate max months across all waves
+  let ganttMaxMonth = 0;
+  waves.forEach(w => {
+    const offset = (w.wave_start_month || 1) - 1;
+    (w.phase_ranges || []).forEach(pr => {
+      const absEnd = offset + (pr.end_month || 1);
+      if (absEnd > ganttMaxMonth) ganttMaxMonth = absEnd;
+    });
+    // Fallback to wave duration
+    const wavEnd = offset + w.duration_months;
+    if (wavEnd > ganttMaxMonth) ganttMaxMonth = wavEnd;
+  });
+  if (ganttMaxMonth === 0) ganttMaxMonth = 12;
+
+  // Build month headers
+  const ganttHeaders = ["Wave", "Phase"];
+  for (let m = 1; m <= ganttMaxMonth; m++) ganttHeaders.push(`M${m}`);
+  const gHdr = ganttWs.addRow(ganttHeaders);
+  gHdr.eachCell(c => { c.fill = headerFill; c.font = headerFont; c.border = thinBorder; });
+  ganttWs.getColumn(1).width = 18;
+  ganttWs.getColumn(2).width = 16;
+  for (let m = 3; m <= ganttMaxMonth + 2; m++) ganttWs.getColumn(m).width = 6;
+
+  const ganttPhaseColors = {
+    Prepare: "FFDBEAFE", Explore: "FFE0E7FF", Realize: "FFFEF3C7",
+    Deploy: "FFD1FAE5", "Go-live": "FFCCFBF1", Hypercare: "FFFCE7F3",
+    Design: "FFEDE9FE", Build: "FFFFF7ED", Test: "FFFEE2E2",
+    UAT: "FFFEF9C3", Support: "FFF0FDFA",
+  };
+  const defaultGanttColor = "FFF1F5F9";
+
+  waves.forEach(w => {
+    const ranges = w.phase_ranges || [];
+    if (ranges.length === 0) return;
+    const offset = (w.wave_start_month || 1) - 1;
+
+    ranges.forEach((pr, i) => {
+      const rowData = [i === 0 ? w.name : "", pr.name];
+      for (let m = 1; m <= ganttMaxMonth; m++) rowData.push("");
+      const gRow = ganttWs.addRow(rowData);
+      gRow.eachCell(c => { c.border = thinBorder; });
+      if (i === 0) gRow.getCell(1).font = { bold: true };
+
+      // Fill the phase bar cells
+      const fillArgb = ganttPhaseColors[pr.name] || defaultGanttColor;
+      const absStart = offset + pr.start_month;
+      const absEnd = offset + pr.end_month;
+      for (let m = absStart; m <= absEnd; m++) {
+        const cell = gRow.getCell(m + 2); // +2 because col 1=Wave, col 2=Phase
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fillArgb } };
+        cell.value = pr.name;
+        cell.font = { size: 8, color: { argb: "FF374151" } };
+        cell.alignment = { horizontal: "center" };
+      }
+    });
+    // Add separator row
+    ganttWs.addRow([]);
+  });
+
+  // Legend
+  ganttWs.addRow([]);
+  const ganttLegend = ganttWs.addRow(["LEGEND"]);
+  ganttLegend.font = { bold: true, size: 11 };
+  ganttLegend.getCell(1).fill = headerFill;
+  ganttLegend.getCell(1).font = headerFont;
+  Object.entries(ganttPhaseColors).forEach(([phase, color]) => {
+    const lr = ganttWs.addRow([phase]);
+    lr.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
+    lr.getCell(1).border = thinBorder;
   });
 
   const buffer = await wb.xlsx.writeBuffer();

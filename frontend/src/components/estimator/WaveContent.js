@@ -12,7 +12,7 @@ import { Plus, Trash2, Plane, Settings, Copy, FileSpreadsheet, Minus, Upload, Do
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { calculateResourceBaseCost as calcResourceBaseCostUtil } from "@/utils/estimatorCalcs";
-import { PROFICIENCY_LEVELS, getGroupColor } from "./constants";
+import { PROFICIENCY_LEVELS, getGroupColor, PHASE_OPTIONS, getPhaseColor } from "./constants";
 
 export const WaveContent = ({
   wave,
@@ -35,7 +35,6 @@ export const WaveContent = ({
   onAddPhaseColumn,
   onRemovePhaseColumn,
   onUpdatePhaseName,
-  onUpdateMonthPhase,
   onOpenLogisticsEditor,
   onAddAllocation,
   onDeleteAllocation,
@@ -206,6 +205,116 @@ export const WaveContent = ({
         </div>
       </div>
 
+      {/* Phase Range Editor */}
+      <div className="bg-emerald-50/50 border border-emerald-200 rounded-lg p-3" data-testid={`phase-range-editor-${wave.id}`}>
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
+            Phase Ranges
+            <span className="text-[10px] font-normal text-emerald-600">(defines Gantt chart timeline)</span>
+          </h4>
+          {!isReadOnly && (
+            <Button size="sm" variant="outline" className="h-7 border-emerald-500 text-emerald-600 hover:bg-emerald-100" onClick={() => {
+              const ranges = [...(wave.phase_ranges || []), { name: "Prepare", start_month: 1, end_month: 1 }];
+              setWaves(waves.map(w => w.id === wave.id ? { ...w, phase_ranges: ranges } : w));
+            }} data-testid={`add-phase-range-${wave.id}`}>
+              <Plus className="w-3 h-3 mr-1" /> Add Phase
+            </Button>
+          )}
+        </div>
+        {(wave.phase_ranges || []).length > 0 ? (
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-[1fr_80px_80px_36px] gap-2 text-[10px] font-semibold text-emerald-700 px-1 uppercase tracking-wide">
+              <span>Phase Name</span><span>Start (M)</span><span>End (M)</span><span></span>
+            </div>
+            {(wave.phase_ranges || []).map((pr, idx) => (
+              <div key={idx} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center" data-testid={`phase-range-row-${idx}`}>
+                <select
+                  value={PHASE_OPTIONS.includes(pr.name) ? pr.name : "__custom__"}
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    if (val === "__custom__") {
+                      const custom = window.prompt("Enter custom phase name:", pr.name);
+                      if (!custom?.trim()) return;
+                      val = custom.trim();
+                    }
+                    const ranges = [...(wave.phase_ranges || [])];
+                    ranges[idx] = { ...ranges[idx], name: val };
+                    setWaves(waves.map(w => w.id === wave.id ? { ...w, phase_ranges: ranges } : w));
+                  }}
+                  className="h-8 text-xs border border-emerald-300 rounded bg-white px-2 focus:ring-1 focus:ring-emerald-400"
+                  disabled={isReadOnly}
+                  data-testid={`phase-range-name-${idx}`}
+                >
+                  {PHASE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                  {!PHASE_OPTIONS.includes(pr.name) && <option value="__custom__">{pr.name}</option>}
+                  <option value="__custom__">+ Custom...</option>
+                </select>
+                <Input
+                  type="number" min={1} max={wave.phase_names.length}
+                  value={pr.start_month}
+                  onChange={(e) => {
+                    const val = Math.max(1, Math.min(wave.phase_names.length, parseInt(e.target.value) || 1));
+                    const ranges = [...(wave.phase_ranges || [])];
+                    ranges[idx] = { ...ranges[idx], start_month: val, end_month: Math.max(val, ranges[idx].end_month) };
+                    setWaves(waves.map(w => w.id === wave.id ? { ...w, phase_ranges: ranges } : w));
+                  }}
+                  className="h-8 text-center text-xs"
+                  disabled={isReadOnly}
+                  data-testid={`phase-range-start-${idx}`}
+                />
+                <Input
+                  type="number" min={pr.start_month} max={wave.phase_names.length}
+                  value={pr.end_month}
+                  onChange={(e) => {
+                    const val = Math.max(pr.start_month, Math.min(wave.phase_names.length, parseInt(e.target.value) || pr.start_month));
+                    const ranges = [...(wave.phase_ranges || [])];
+                    ranges[idx] = { ...ranges[idx], end_month: val };
+                    setWaves(waves.map(w => w.id === wave.id ? { ...w, phase_ranges: ranges } : w));
+                  }}
+                  className="h-8 text-center text-xs"
+                  disabled={isReadOnly}
+                  data-testid={`phase-range-end-${idx}`}
+                />
+                {!isReadOnly && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => {
+                    const ranges = (wave.phase_ranges || []).filter((_, i) => i !== idx);
+                    setWaves(waves.map(w => w.id === wave.id ? { ...w, phase_ranges: ranges } : w));
+                  }} data-testid={`remove-phase-range-${idx}`}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            {/* Visual timeline */}
+            <div className="mt-3 pt-2 border-t border-emerald-200">
+              <p className="text-[10px] text-emerald-600 mb-1 font-medium">Timeline Preview</p>
+              <div className="flex gap-0.5">
+                {wave.phase_names.map((phaseName, mIdx) => {
+                  const monthNum = mIdx + 1;
+                  const activePhases = (wave.phase_ranges || []).filter(pr => monthNum >= pr.start_month && monthNum <= pr.end_month);
+                  return (
+                    <div key={mIdx} className="flex-1 min-w-[28px]">
+                      <div className="text-[9px] text-center text-gray-400 mb-0.5">{phaseName}</div>
+                      {activePhases.length > 0 ? activePhases.map((pr, i) => (
+                        <div key={i} className="h-5 rounded-sm text-[7px] leading-[20px] text-center truncate mb-0.5"
+                          style={{ background: getPhaseColor(pr.name).bg, color: getPhaseColor(pr.name).text, border: `1px solid ${getPhaseColor(pr.name).border}` }}
+                          title={pr.name}>
+                          {pr.name}
+                        </div>
+                      )) : (
+                        <div className="h-5 bg-gray-100 rounded-sm"></div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-emerald-600 italic">No phases defined. Add phases to generate the Gantt chart.</p>
+        )}
+      </div>
+
       {/* Grid Table */}
       {wave.grid_allocations.length === 0 ? (
         <div className="text-center py-8 border border-dashed border-gray-300 rounded">
@@ -247,49 +356,6 @@ export const WaveContent = ({
                 <th className="text-right p-2 font-semibold text-xs bg-purple-50 w-16">Ovr $/Hr</th>
                 <th className="text-left p-2 font-semibold text-xs">Comments</th>
                 <th className="text-center p-2 font-semibold text-xs">Actions</th>
-              </tr>
-              {/* Phase assignment row */}
-              <tr className="border-b border-[#E2E8F0] bg-[#F0FDF4]">
-                <td colSpan={9} className="text-right pr-2 text-xs font-medium text-emerald-700" style={{ position: 'sticky', left: 0, zIndex: 10, background: '#F0FDF4', boxShadow: '3px 0 6px rgba(0,0,0,0.1)' }}>Phase</td>
-                {wave.phase_names.map((_, mIdx) => {
-                  const currentPhase = (wave.month_phases || [])[mIdx] || "";
-                  return (
-                    <td key={mIdx} className="p-1 bg-[#F0FDF4]">
-                      <select
-                        value={currentPhase}
-                        onChange={(e) => {
-                          if (e.target.value === "__custom__") {
-                            const custom = window.prompt("Enter custom phase name:");
-                            if (custom?.trim()) onUpdateMonthPhase(wave.id, mIdx, custom.trim());
-                          } else {
-                            onUpdateMonthPhase(wave.id, mIdx, e.target.value);
-                          }
-                        }}
-                        className="w-20 text-[10px] text-center border border-emerald-300 rounded bg-white focus:ring-1 focus:ring-emerald-400 py-0.5 px-0"
-                        disabled={isReadOnly}
-                        data-testid={`month-phase-${wave.id}-${mIdx}`}
-                      >
-                        <option value="">—</option>
-                        <option value="Prepare">Prepare</option>
-                        <option value="Explore">Explore</option>
-                        <option value="Realize">Realize</option>
-                        <option value="Deploy">Deploy</option>
-                        <option value="Go-live">Go-live</option>
-                        <option value="Hypercare">Hypercare</option>
-                        <option value="Design">Design</option>
-                        <option value="Build">Build</option>
-                        <option value="Test">Test</option>
-                        <option value="UAT">UAT</option>
-                        <option value="Support">Support</option>
-                        {currentPhase && !["","Prepare","Explore","Realize","Deploy","Go-live","Hypercare","Design","Build","Test","UAT","Support"].includes(currentPhase) && (
-                          <option value={currentPhase}>{currentPhase}</option>
-                        )}
-                        <option value="__custom__">+ Custom...</option>
-                      </select>
-                    </td>
-                  );
-                })}
-                <td colSpan={10} className="bg-[#F0FDF4]"></td>
               </tr>
             </thead>
             <Droppable droppableId={`wave-${wave.id}`}>
