@@ -223,11 +223,11 @@ export const WaveContent = ({
         </div>
         {(wave.phase_ranges || []).length > 0 ? (
           <div className="space-y-1.5">
-            <div className="grid grid-cols-[1fr_80px_80px_36px] gap-2 text-[10px] font-semibold text-emerald-700 px-1 uppercase tracking-wide">
-              <span>Phase Name</span><span>Start (M)</span><span>End (M)</span><span></span>
+            <div className="grid grid-cols-[1fr_90px_90px_36px] gap-2 text-[10px] font-semibold text-emerald-700 px-1 uppercase tracking-wide">
+              <span>Phase Name</span><span>Start</span><span>End</span><span></span>
             </div>
             {(wave.phase_ranges || []).map((pr, idx) => (
-              <div key={idx} className="grid grid-cols-[1fr_80px_80px_36px] gap-2 items-center" data-testid={`phase-range-row-${idx}`}>
+              <div key={idx} className="grid grid-cols-[1fr_90px_90px_36px] gap-2 items-center" data-testid={`phase-range-row-${idx}`}>
                 <select
                   value={PHASE_OPTIONS.includes(pr.name) ? pr.name : "__custom__"}
                   onChange={(e) => {
@@ -250,10 +250,12 @@ export const WaveContent = ({
                   <option value="__custom__">+ Custom...</option>
                 </select>
                 <Input
-                  type="number" min={1} max={wave.phase_names.length}
+                  type="number" min={0.5} max={wave.phase_names.length} step="0.5"
                   value={pr.start_month}
                   onChange={(e) => {
-                    const val = Math.max(1, Math.min(wave.phase_names.length, parseInt(e.target.value) || 1));
+                    const raw = parseFloat(e.target.value);
+                    if (isNaN(raw)) return;
+                    const val = Math.max(0.5, Math.min(wave.phase_names.length, Math.round(raw * 2) / 2));
                     const ranges = [...(wave.phase_ranges || [])];
                     ranges[idx] = { ...ranges[idx], start_month: val, end_month: Math.max(val, ranges[idx].end_month) };
                     setWaves(waves.map(w => w.id === wave.id ? { ...w, phase_ranges: ranges } : w));
@@ -263,10 +265,12 @@ export const WaveContent = ({
                   data-testid={`phase-range-start-${idx}`}
                 />
                 <Input
-                  type="number" min={pr.start_month} max={wave.phase_names.length}
+                  type="number" min={pr.start_month} max={wave.phase_names.length} step="0.5"
                   value={pr.end_month}
                   onChange={(e) => {
-                    const val = Math.max(pr.start_month, Math.min(wave.phase_names.length, parseInt(e.target.value) || pr.start_month));
+                    const raw = parseFloat(e.target.value);
+                    if (isNaN(raw)) return;
+                    const val = Math.max(pr.start_month, Math.min(wave.phase_names.length, Math.round(raw * 2) / 2));
                     const ranges = [...(wave.phase_ranges || [])];
                     ranges[idx] = { ...ranges[idx], end_month: val };
                     setWaves(waves.map(w => w.id === wave.id ? { ...w, phase_ranges: ranges } : w));
@@ -285,25 +289,43 @@ export const WaveContent = ({
                 )}
               </div>
             ))}
-            {/* Visual timeline */}
+            {/* Visual timeline - continuous bar rendering */}
             <div className="mt-3 pt-2 border-t border-emerald-200">
               <p className="text-[10px] text-emerald-600 mb-1 font-medium">Timeline Preview</p>
-              <div className="flex gap-0.5">
-                {wave.phase_names.map((phaseName, mIdx) => {
-                  const monthNum = mIdx + 1;
-                  const activePhases = (wave.phase_ranges || []).filter(pr => monthNum >= pr.start_month && monthNum <= pr.end_month);
+              <div className="relative">
+                {/* Month grid header */}
+                <div className="flex gap-0.5 mb-1">
+                  {wave.phase_names.map((phaseName, mIdx) => (
+                    <div key={mIdx} className="flex-1 min-w-[28px] text-[9px] text-center text-gray-400">{phaseName}</div>
+                  ))}
+                </div>
+                {/* Phase bars rendered as continuous strips */}
+                {(wave.phase_ranges || []).map((pr, i) => {
+                  const totalMonths = wave.phase_names.length;
+                  const leftPct = ((pr.start_month - 1) / totalMonths) * 100;
+                  const widthPct = ((pr.end_month - pr.start_month + 1) / totalMonths) * 100;
                   return (
-                    <div key={mIdx} className="flex-1 min-w-[28px]">
-                      <div className="text-[9px] text-center text-gray-400 mb-0.5">{phaseName}</div>
-                      {activePhases.length > 0 ? activePhases.map((pr, i) => (
-                        <div key={i} className="h-5 rounded-sm text-[7px] leading-[20px] text-center truncate mb-0.5"
-                          style={{ background: getPhaseColor(pr.name).bg, color: getPhaseColor(pr.name).text, border: `1px solid ${getPhaseColor(pr.name).border}` }}
-                          title={pr.name}>
-                          {pr.name}
-                        </div>
-                      )) : (
-                        <div className="h-5 bg-gray-100 rounded-sm"></div>
-                      )}
+                    <div key={i} className="relative h-6 mb-0.5">
+                      {/* Background grid lines */}
+                      <div className="absolute inset-0 flex gap-0.5">
+                        {wave.phase_names.map((_, mIdx) => (
+                          <div key={mIdx} className="flex-1 bg-gray-50 rounded-sm border border-gray-100"></div>
+                        ))}
+                      </div>
+                      {/* Phase bar */}
+                      <div
+                        className="absolute top-0 h-6 rounded-sm text-[7px] leading-[24px] text-center truncate px-1"
+                        style={{
+                          left: `${leftPct}%`,
+                          width: `${Math.min(widthPct, 100 - leftPct)}%`,
+                          background: getPhaseColor(pr.name).bg,
+                          color: getPhaseColor(pr.name).text,
+                          border: `1px solid ${getPhaseColor(pr.name).border}`,
+                        }}
+                        title={`${pr.name}: ${pr.start_month} → ${pr.end_month}`}
+                      >
+                        {pr.name} ({pr.start_month}–{pr.end_month})
+                      </div>
                     </div>
                   );
                 })}

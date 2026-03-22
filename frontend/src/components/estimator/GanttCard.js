@@ -12,7 +12,8 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 /**
  * Build gantt rows from wave phase_ranges data.
  * Each phase range becomes its own row with absolute month positioning.
- * Supports overlapping phases natively.
+ * Supports overlapping phases and half-month precision natively.
+ * Values like 1.5 mean "middle of month 1".
  */
 const buildGanttRows = (waves) => {
   const rows = [];
@@ -24,18 +25,26 @@ const buildGanttRows = (waves) => {
     const offset = (w.wave_start_month || 1) - 1;
 
     for (const pr of ranges) {
-      const absStart = offset + (pr.start_month || 1) - 1;
-      const absEnd = offset + (pr.end_month || pr.start_month || 1) - 1;
+      const startVal = pr.start_month || 1;
+      const endVal = pr.end_month || startVal;
+      // absStart/absEnd are now continuous values (can be 0, 0.5, 1, 1.5, etc.)
+      const absStart = offset + startVal - 1;
+      const absEnd = offset + endVal;
       rows.push({
         waveName: w.name,
         phase: pr.name,
         absStart,
         absEnd,
+        startLabel: startVal,
+        endLabel: endVal,
         color: getPhaseColor(pr.name),
       });
-      if (absEnd + 1 > maxMonth) maxMonth = absEnd + 1;
+      if (absEnd > maxMonth) maxMonth = absEnd;
     }
   }
+
+  // Ensure maxMonth is at least an integer (round up to nearest whole month)
+  maxMonth = Math.ceil(maxMonth);
 
   return { rows, maxMonth };
 };
@@ -104,31 +113,26 @@ export const GanttCard = ({ projectId, waves, ganttChart, ganttLoading, ganttInp
 
         for (const row of wg.rows) {
           const dataRow = ["", row.phase];
+          for (let m = 0; m < maxMonth; m++) dataRow.push("");
           const argb = row.color.bg.replace("#", "FF");
           const borderArgb = row.color.border.replace("#", "FF");
-          for (let m = 0; m < maxMonth; m++) {
-            if (m >= row.absStart && m <= row.absEnd) {
-              dataRow.push(row.phase);
-            } else {
-              dataRow.push("");
-            }
-          }
           const xlRow = ws.addRow(dataRow);
           xlRow.font = { size: 9 };
           xlRow.alignment = { horizontal: "center" };
-          // Color the phase cells
-          for (let m = 0; m < maxMonth; m++) {
+          // Color the phase cells using integer month boundaries
+          const cellStart = Math.floor(row.absStart);
+          const cellEnd = Math.ceil(row.absEnd) - 1;
+          for (let m = cellStart; m <= cellEnd && m < maxMonth; m++) {
             const cell = xlRow.getCell(m + 3);
-            if (m >= row.absStart && m <= row.absEnd) {
-              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb } };
-              cell.font = { bold: true, size: 9, color: { argb: row.color.text.replace("#", "FF") } };
-              cell.border = {
-                top: { style: "thin", color: { argb: borderArgb } },
-                bottom: { style: "thin", color: { argb: borderArgb } },
-                left: m === row.absStart ? { style: "medium", color: { argb: borderArgb } } : undefined,
-                right: m === row.absEnd ? { style: "medium", color: { argb: borderArgb } } : undefined,
-              };
-            }
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb } };
+            cell.value = row.phase;
+            cell.font = { bold: true, size: 9, color: { argb: row.color.text.replace("#", "FF") } };
+            cell.border = {
+              top: { style: "thin", color: { argb: borderArgb } },
+              bottom: { style: "thin", color: { argb: borderArgb } },
+              left: m === cellStart ? { style: "medium", color: { argb: borderArgb } } : undefined,
+              right: m === cellEnd ? { style: "medium", color: { argb: borderArgb } } : undefined,
+            };
           }
         }
       }
@@ -236,7 +240,7 @@ export const GanttCard = ({ projectId, waves, ganttChart, ganttLoading, ganttInp
                               <span className="text-[9px] text-gray-400 italic block leading-tight mb-0.5">{description}</span>
                             ) : null}
                             <span className="text-[10px] font-medium text-gray-600 truncate">{row.phase}</span>
-                            <span className="text-[9px] text-gray-400 ml-1">M{row.absStart + 1}{row.absEnd > row.absStart ? `–M${row.absEnd + 1}` : ""}</span>
+                            <span className="text-[9px] text-gray-400 ml-1">{row.startLabel}{row.endLabel > row.startLabel ? `–${row.endLabel}` : ""}</span>
                           </div>
                           {/* Bar track */}
                           <div className="flex-1 relative h-7 bg-gray-50/50">
@@ -244,12 +248,12 @@ export const GanttCard = ({ projectId, waves, ganttChart, ganttLoading, ganttInp
                             {Array.from({ length: maxMonth }, (_, i) => (
                               <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100" style={{ left: `${(i / maxMonth) * 100}%` }} />
                             ))}
-                            {/* Phase bar */}
+                            {/* Phase bar - continuous positioning for half-month precision */}
                             <div
                               className="absolute top-0.5 bottom-0.5 rounded-md flex items-center justify-center transition-all group-hover:shadow-md"
                               style={{
                                 left: `${(row.absStart / maxMonth) * 100}%`,
-                                width: `${((row.absEnd - row.absStart + 1) / maxMonth) * 100}%`,
+                                width: `${((row.absEnd - row.absStart) / maxMonth) * 100}%`,
                                 backgroundColor: row.color.bg,
                                 border: `2px solid ${row.color.border}`,
                               }}

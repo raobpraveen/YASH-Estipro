@@ -233,7 +233,7 @@ export async function buildExportWorkbook({
       const prHdr = dws.addRow(["PHASE RANGES (for Gantt Chart)"]);
       prHdr.font = { bold: true, size: 11 };
       prHdr.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD1FAE5" } };
-      const prColHdr = dws.addRow(["Phase Name", "Start Month", "End Month"]);
+      const prColHdr = dws.addRow(["Phase Name", "Start", "End"]);
       prColHdr.eachCell(c => { c.fill = subHeaderFill; c.font = { bold: true }; c.border = thinBorder; });
       phaseRanges.forEach(pr => {
         const prRow = dws.addRow([pr.name, pr.start_month, pr.end_month]);
@@ -256,10 +256,7 @@ export async function buildExportWorkbook({
   });
 
   // ========= SUMMARY SHEET =========
-  const ws = wb.addWorksheet("Summary", { properties: { tabColor: { argb: "FF0F172A" } } });
-  wb.views = [{ activeTab: wb.worksheets.length - 1 }];
-  wb.removeWorksheet(ws.id);
-  const summaryWs = wb.addWorksheet("Summary");
+  const summaryWs = wb.addWorksheet("Summary", { properties: { tabColor: { argb: "FF0F172A" } } });
 
   summaryWs.columns = [{ width: 30 }, { width: 50 }, { width: 22 }];
   summaryWs.addRow(["YASH Technologies - EstiPro"]).font = { bold: true, size: 16, color: { argb: "FF0F172A" } };
@@ -400,6 +397,7 @@ export async function buildExportWorkbook({
     const wavEnd = offset + w.duration_months;
     if (wavEnd > ganttMaxMonth) ganttMaxMonth = wavEnd;
   });
+  ganttMaxMonth = Math.ceil(ganttMaxMonth);
   if (ganttMaxMonth === 0) ganttMaxMonth = 12;
 
   // Build month headers
@@ -431,11 +429,13 @@ export async function buildExportWorkbook({
       gRow.eachCell(c => { c.border = thinBorder; });
       if (i === 0) gRow.getCell(1).font = { bold: true };
 
-      // Fill the phase bar cells
+      // Fill the phase bar cells - use integer boundaries for cell coloring
       const fillArgb = ganttPhaseColors[pr.name] || defaultGanttColor;
-      const absStart = offset + pr.start_month;
-      const absEnd = offset + pr.end_month;
-      for (let m = absStart; m <= absEnd; m++) {
+      const absStartRaw = offset + (pr.start_month || 1);
+      const absEndRaw = offset + (pr.end_month || pr.start_month || 1);
+      const cellStart = Math.ceil(absStartRaw);
+      const cellEnd = Math.floor(absEndRaw);
+      for (let m = cellStart; m <= cellEnd && m <= ganttMaxMonth; m++) {
         const cell = gRow.getCell(m + 2); // +2 because col 1=Wave, col 2=Phase
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fillArgb } };
         cell.value = pr.name;

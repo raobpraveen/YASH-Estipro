@@ -198,12 +198,12 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
         const row = ws.getRow(r);
         const cellA = (getCellVal(row.getCell(1)) || "").toString().trim();
         if (cellA.toUpperCase().includes("PHASE RANGES")) {
-          // Next row is header (Phase Name, Start Month, End Month), skip it
+          // Next row is header (Phase Name, Start, End), skip it
           for (let pr = r + 2; pr <= ws.rowCount; pr++) {
             const prRow = ws.getRow(pr);
             const phaseName = (getCellVal(prRow.getCell(1)) || "").toString().trim();
-            const startMonth = parseInt(getCellVal(prRow.getCell(2))) || 0;
-            const endMonth = parseInt(getCellVal(prRow.getCell(3))) || 0;
+            const startMonth = parseFloat(getCellVal(prRow.getCell(2))) || 0;
+            const endMonth = parseFloat(getCellVal(prRow.getCell(3))) || 0;
             if (!phaseName || !startMonth) break;
             phaseRanges.push({ name: phaseName, start_month: startMonth, end_month: endMonth || startMonth });
           }
