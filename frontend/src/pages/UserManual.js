@@ -346,9 +346,18 @@ export default function UserManual() {
             <KeyValue label="Clone Wave">Create a copy of the current wave.</KeyValue>
             <KeyValue label="Delete Wave">Remove the current wave (with confirmation).</KeyValue>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.8 Phase Assignment &amp; Auto-Generated Gantt Chart</h3>
-            <p>Each month column in the wave grid has a <strong>Phase dropdown</strong> (green row below the month headers). Assign a project phase to each month to auto-generate a Gantt chart.</p>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.8 Phase Ranges &amp; Auto-Generated Gantt Chart</h3>
+            <p>Each wave has a <strong>Phase Range Editor</strong> section below the toolbar buttons. Instead of assigning one phase per month, you define phase <strong>ranges</strong> with a start and end month. Phases can <strong>overlap</strong> — for example, Explore can run M2-M4 while Realize starts at M3 and runs to M6.</p>
             
+            <p className="font-medium mt-3 text-sm">How to Define Phases:</p>
+            <ul className="list-disc pl-6 space-y-0.5 text-sm">
+              <li>Click <strong>"+ Add Phase"</strong> to add a new phase range.</li>
+              <li>Select a <strong>Phase Name</strong> from the dropdown or choose "+ Custom..." for a custom name.</li>
+              <li>Set <strong>Start Month</strong> and <strong>End Month</strong> (1-based, relative to the wave).</li>
+              <li>The <strong>Timeline Preview</strong> below shows a visual bar chart of all phases with color-coded overlaps.</li>
+              <li>Click the delete icon to remove a phase range.</li>
+            </ul>
+
             <p className="font-medium mt-3 text-sm">Predefined Phases:</p>
             <ul className="list-disc pl-6 space-y-0.5 text-sm">
               <li>Prepare, Explore, Realize, Deploy, Go-live, Hypercare</li>
@@ -356,16 +365,22 @@ export default function UserManual() {
               <li>Custom phases via <strong>"+ Custom..."</strong> option</li>
             </ul>
 
-            <p className="font-medium mt-3 text-sm">Gantt Chart (Staircase Layout):</p>
+            <p className="font-medium mt-3 text-sm">Gantt Chart (Overlapping Phases):</p>
             <ul className="list-disc pl-6 space-y-0.5 text-sm">
-              <li>Each phase appears on its own row, creating a <strong>waterfall/staircase</strong> visual.</li>
-              <li>Consecutive months with the same phase merge into a single bar.</li>
+              <li>Each phase range becomes its own row in the Gantt chart.</li>
+              <li><strong>Overlapping phases</strong> are shown as separate stacked bars on the timeline.</li>
               <li>Color-coded by phase type with a legend at the bottom.</li>
               <li>All waves are shown on a <strong>shared project timeline</strong>.</li>
             </ul>
             
             <p className="font-medium mt-3 text-sm">Wave Start Offset (Multi-Wave Projects):</p>
             <p>For projects where waves overlap or start at different times, set the <strong>"Starts at project M"</strong> value in the wave header. For example, if Wave 2 starts in project month 3, set it to 3. The Gantt chart will reflect this offset, showing Wave 2's bars starting from M3 on the shared timeline.</p>
+
+            <p className="font-medium mt-3 text-sm">Excel Export &amp; Import:</p>
+            <ul className="list-disc pl-6 space-y-0.5 text-sm">
+              <li><strong>Export:</strong> Phase ranges are included in each wave sheet, and a dedicated <strong>"Gantt Chart"</strong> sheet with color-coded bars is added.</li>
+              <li><strong>Import:</strong> Phase ranges from wave sheets are parsed and applied. The Gantt Chart sheet is skipped during import.</li>
+            </ul>
             <Tip>The auto-generated Gantt chart appears alongside the option to upload a custom Gantt image. Both can coexist.</Tip>
           </Section>
 

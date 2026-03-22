@@ -8,7 +8,7 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - **Backend**: FastAPI + MongoDB (PyMongo)
 - **Auth**: JWT-based with role-based access control
 
-## What's Been Implemented (as of Feb 2026)
+## What's Been Implemented
 
 ### Core Features
 - Wave-based estimation grid with dynamic monthly phases
@@ -17,9 +17,7 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - Approval workflow (Draft, In Review, Approved, Rejected, Superseded, Obsolete)
 - Dashboard with analytics and filtering
 - Version comparison screen
-- Project archiving functionality
-- Access control (public/restricted)
-- Audit logging
+- Project archiving, access control (public/restricted), audit logging
 
 ### Financial Features
 - Payment Terms in Cashflow (shift Cash-In by N days, auto-extend timeline)
@@ -27,11 +25,16 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - Payment Milestones with copy-to-wave utility
 - Nego Buffer at wave level
 
-### Gantt Chart
-- Per-month phase assignment dropdowns (Prepare, Explore, Realize, Deploy, etc.)
-- Auto-generated staircase/waterfall Gantt chart
+### Gantt Chart & Phase Ranges (Updated Feb 2026)
+- **Phase Range Editor**: Define phases with Name, Start Month, End Month per wave
+- **Overlapping phases supported**: Multiple phases can span the same months (full-month granularity)
+- **Timeline Preview**: Visual bar chart in the Phase Range Editor showing all phases with color-coded overlaps
+- Auto-generated Gantt chart from phase_ranges data
 - Multi-wave support with start-month offset
-- PNG and Excel export
+- PNG and Excel export for Gantt chart
+- **Excel Export**: Phase ranges included per wave sheet + dedicated Gantt Chart sheet with colored bars
+- **Excel Import**: Parses phase ranges from wave sheets, skips Gantt Chart sheet
+- Backward compatibility: Legacy month_phases auto-convert to phase_ranges on load
 
 ### Excel Integration
 - Formula-based Excel export with color coding
@@ -39,64 +42,36 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - Wave template download/upload
 
 ### Documentation
-- User Manual (comprehensive, all features)
-- Support Guide (technical, API reference)
-- Tutorials (step-by-step interactive guides)
+- User Manual, Support Guide, Tutorials (all updated for phase ranges)
 
 ## P1 Refactoring (Completed Feb 2026)
-**ProjectEstimator.js** refactored from 3510 → 2020 lines (42% reduction):
-- `ProjectToolbar.js` (181 lines) — Header bar, action buttons, workflow controls
-- `ProjectInfoCard.js` (276 lines) — Collapsible project info form
-- `WaveContent.js` (788 lines) — Wave grid, logistics breakdown, wave summary
-- `constants.js` (19 lines) — Shared STATUS_CONFIG, PROFICIENCY_LEVELS, GROUP_COLORS
-- All state/handlers remain in `ProjectEstimator.js` for single source of truth
+**ProjectEstimator.js** refactored from 3510 → 2029 lines (42% reduction):
+- `ProjectToolbar.js` — Header bar, action buttons, workflow controls
+- `ProjectInfoCard.js` — Collapsible project info form
+- `WaveContent.js` — Wave grid, phase range editor, logistics breakdown, wave summary
+- `constants.js` — Shared constants (STATUS_CONFIG, PHASE_COLORS, PHASE_OPTIONS, etc.)
+
+## Key Data Model
+- `ProjectWave.phase_ranges`: `List[dict]` — `[{name: str, start_month: int, end_month: int}]`
+- `ProjectWave.month_phases`: `List[str]` — Legacy field, auto-converted to phase_ranges
+- `ProjectWave.wave_start_month`: `int` — Offset for multi-wave timeline
 
 ## File Structure
 ```
 /app/
 ├── backend/
-│   ├── server.py
-│   ├── models.py
-│   └── routers/
-│       ├── auth.py
-│       ├── projects.py
-│       ├── financials.py
-│       └── master_data.py
-├── frontend/
-│   └── src/
-│       ├── components/
-│       │   ├── estimator/
-│       │   │   ├── constants.js
-│       │   │   ├── ProjectToolbar.js
-│       │   │   ├── ProjectInfoCard.js
-│       │   │   ├── WaveContent.js
-│       │   │   ├── GanttCard.js
-│       │   │   ├── OverallSummary.js
-│       │   │   ├── EstimatorDialogs.js
-│       │   │   ├── ResourceGrid.js
-│       │   │   ├── KPICards.js
-│       │   │   ├── WaveSummary.js
-│       │   │   ├── LogisticsBreakdown.js
-│       │   │   ├── SummaryDialog.js
-│       │   │   └── index.js
-│       │   ├── SearchableSelect.js
-│       │   └── ui/ (shadcn)
-│       ├── pages/
-│       │   ├── ProjectEstimator.js (2020 lines, refactored)
-│       │   ├── Projects.js
-│       │   ├── Dashboard.js
-│       │   ├── CashflowStatement.js
-│       │   ├── PaymentMilestones.js
-│       │   ├── UserManual.js
-│       │   ├── SupportGuide.js
-│       │   └── Tutorials.js
-│       └── utils/
-│           ├── estimatorCalcs.js
-│           ├── excelExport.js
-│           ├── excelImport.js
-│           └── constants.js
-└── memory/
-    └── PRD.md
+│   ├── server.py, models.py
+│   └── routers/ (auth, projects, financials, master_data)
+├── frontend/src/
+│   ├── components/estimator/
+│   │   ├── constants.js, ProjectToolbar.js, ProjectInfoCard.js
+│   │   ├── WaveContent.js, GanttCard.js, OverallSummary.js
+│   │   ├── EstimatorDialogs.js, ResourceGrid.js, KPICards.js
+│   │   ├── WaveSummary.js, LogisticsBreakdown.js, SummaryDialog.js
+│   │   └── index.js
+│   ├── pages/ (ProjectEstimator, Projects, Dashboard, Cashflow, Milestones, Docs)
+│   └── utils/ (estimatorCalcs, excelExport, excelImport, constants)
+└── memory/PRD.md
 ```
 
 ## Upcoming Tasks (P2)
