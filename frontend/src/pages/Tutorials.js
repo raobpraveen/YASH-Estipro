@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Joyride, STATUS, ACTIONS, EVENTS } from "react-joyride";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,47 +48,12 @@ const TUTORIAL_IMAGES = {
 };
 
 // Interactive tour steps for each feature
-const TOUR_STEPS = {
-  "create-project": [
-    {
-      target: 'a[data-testid="nav-estimator"]',
-      content: 'Click here to open the Project Estimator where you can create new estimation projects.',
-      disableBeacon: true,
-      placement: 'right',
-    },
-  ],
-  "dashboard-analytics": [
-    {
-      target: 'a[data-testid="nav-dashboard"]',
-      content: 'The Dashboard shows your key metrics and analytics. Click to explore.',
-      disableBeacon: true,
-      placement: 'right',
-    },
-  ],
-  "wave-grid": [
-    {
-      target: 'a[data-testid="nav-estimator"]',
-      content: 'Open the Estimator to work with the wave grid and resource management.',
-      disableBeacon: true,
-      placement: 'right',
-    },
-  ],
-  "version-comparison": [
-    {
-      target: 'a[data-testid="nav-projects"]',
-      content: 'Go to Saved Projects to compare versions. Look for the compare icon in project actions.',
-      disableBeacon: true,
-      placement: 'right',
-    },
-  ],
-  "master-data": [
-    {
-      target: 'a[data-testid="nav-skills"]',
-      content: 'Skills are one of the key master data entities. Click to manage your technology skills catalog.',
-      disableBeacon: true,
-      placement: 'right',
-    },
-  ],
+const TOUR_NAV = {
+  "create-project": "/estimator",
+  "dashboard-analytics": "/",
+  "wave-grid": "/estimator",
+  "version-comparison": "/projects",
+  "master-data": "/skills",
 };
 
 const TUTORIALS = [
@@ -425,11 +389,6 @@ const Tutorials = () => {
   // Slideshow state
   const [slideshowOpen, setSlideshowOpen] = useState(false);
   const [slideshowTutorial, setSlideshowTutorial] = useState(null);
-  
-  // Interactive tour state
-  const [runTour, setRunTour] = useState(false);
-  const [tourSteps, setTourSteps] = useState([]);
-  const [tourTutorialId, setTourTutorialId] = useState(null);
 
   const filtered = TUTORIALS
     .filter(t => selectedCategory === "all" || t.category === selectedCategory)
@@ -440,65 +399,8 @@ const Tutorials = () => {
     setSlideshowOpen(true);
   };
 
-  const startTour = (tutorialId) => {
-    const steps = TOUR_STEPS[tutorialId];
-    if (steps && steps.length > 0) {
-      setTourSteps(steps);
-      setTourTutorialId(tutorialId);
-      setRunTour(true);
-    }
-  };
-
-  const handleJoyrideCallback = useCallback((data) => {
-    const { status, action, type, index, step } = data;
-    
-    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
-      setRunTour(false);
-      setTourSteps([]);
-      setTourTutorialId(null);
-    }
-    
-    // Navigate based on tour step if needed
-    if (type === EVENTS.STEP_AFTER && action === ACTIONS.NEXT) {
-      // Could add navigation logic here
-    }
-  }, []);
-
-  const joyrideStyles = {
-    options: {
-      primaryColor: '#0EA5E9',
-      zIndex: 10000,
-    },
-    tooltip: {
-      borderRadius: 8,
-    },
-    buttonNext: {
-      backgroundColor: '#0EA5E9',
-    },
-    buttonBack: {
-      color: '#64748B',
-    },
-  };
-
   return (
     <div data-testid="tutorials-page" className="max-w-[1200px] mx-auto space-y-6">
-      {/* Joyride Tour */}
-      <Joyride
-        steps={tourSteps}
-        run={runTour}
-        continuous
-        showSkipButton
-        showProgress
-        callback={handleJoyrideCallback}
-        styles={joyrideStyles}
-        locale={{
-          back: 'Back',
-          close: 'Close',
-          last: 'Finish',
-          next: 'Next',
-          skip: 'Skip Tour',
-        }}
-      />
       
       {/* Slideshow Dialog */}
       <TutorialSlideshow
@@ -649,14 +551,14 @@ const Tutorials = () => {
                               <CirclePlay className="w-3 h-3 mr-1" /> Watch Slideshow
                             </Button>
                           )}
-                          {tutorial.hasTour && TOUR_STEPS[tutorial.id] && (
+                          {tutorial.hasTour && TOUR_NAV[tutorial.id] && (
                             <Button
                               size="sm"
                               className="text-xs bg-sky-500 hover:bg-sky-600"
-                              onClick={() => startTour(tutorial.id)}
+                              onClick={() => navigate(TOUR_NAV[tutorial.id])}
                               data-testid={`tour-${tutorial.id}`}
                             >
-                              <MapPin className="w-3 h-3 mr-1" /> Start Tour
+                              <MapPin className="w-3 h-3 mr-1" /> Try It
                             </Button>
                           )}
                         </div>
@@ -732,20 +634,19 @@ const Tutorials = () => {
           </div>
         </TabsContent>
 
-        {/* ===== INTERACTIVE TOURS TAB ===== */}
+        {/* ===== QUICK NAVIGATION TAB ===== */}
         <TabsContent value="tours" className="space-y-4">
           <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start gap-3">
             <MapPin className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-emerald-800">Interactive guided tours</p>
-              <p className="text-xs text-emerald-600 mt-1">Click "Start Tour" to get step-by-step guidance with highlighted elements directly in the app interface.</p>
+              <p className="text-sm font-medium text-emerald-800">Quick Navigation</p>
+              <p className="text-xs text-emerald-600 mt-1">Jump directly to the relevant page to try out features hands-on. Each card links to the area described in the tutorial.</p>
             </div>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {TUTORIALS.filter(t => t.hasTour && TOUR_STEPS[t.id]).map((tutorial) => {
+            {TUTORIALS.filter(t => t.hasTour && TOUR_NAV[t.id]).map((tutorial) => {
               const Icon = tutorial.icon;
-              const tourStepsCount = TOUR_STEPS[tutorial.id]?.length || 0;
               
               return (
                 <Card 
@@ -766,15 +667,15 @@ const Tutorials = () => {
                     <div className="flex items-center justify-between pt-3 border-t">
                       <div className="flex items-center gap-2 text-xs text-gray-400">
                         <MapPin className="w-3 h-3" />
-                        <span>{tourStepsCount} tour step{tourStepsCount !== 1 ? 's' : ''}</span>
+                        <span>{tutorial.steps?.length || 0} steps</span>
                       </div>
                       <Button
                         size="sm"
                         className="text-xs bg-emerald-500 hover:bg-emerald-600"
-                        onClick={() => startTour(tutorial.id)}
+                        onClick={() => navigate(TOUR_NAV[tutorial.id])}
                         data-testid={`start-tour-${tutorial.id}`}
                       >
-                        <MapPin className="w-3 h-3 mr-1" /> Start Tour
+                        <MapPin className="w-3 h-3 mr-1" /> Try It
                       </Button>
                     </div>
                   </CardContent>
@@ -783,8 +684,8 @@ const Tutorials = () => {
             })}
           </div>
 
-          {TUTORIALS.filter(t => t.hasTour && TOUR_STEPS[t.id]).length === 0 && (
-            <div className="text-center py-12 text-gray-400">No interactive tours available yet.</div>
+          {TUTORIALS.filter(t => t.hasTour && TOUR_NAV[t.id]).length === 0 && (
+            <div className="text-center py-12 text-gray-400">No quick navigation links available yet.</div>
           )}
         </TabsContent>
       </Tabs>
