@@ -141,10 +141,6 @@ const Layout = ({ user, onLogout }) => {
     adminItems.push({ path: "/audit-logs", icon: History, label: "Audit Logs" });
   }
 
-  const settingsItems = [
-    { path: "/settings", icon: Settings, label: "Settings" },
-  ];
-
   const helpItems = [
     { path: "/user-manual", icon: BookOpen, label: "User Manual" },
     { path: "/support-guide", icon: LifeBuoy, label: "Support Guide" },
@@ -166,7 +162,6 @@ const Layout = ({ user, onLogout }) => {
     { key: "master", title: "Master Data", icon: Layers, items: masterDataItems },
     ...(adminItems.length > 0 ? [{ key: "admin", title: "Admin", icon: UserCog, items: adminItems }] : []),
     { key: "help", title: "Help", icon: BookOpen, items: helpItems },
-    { key: "settings", title: "", icon: null, items: settingsItems },
   ];
 
   const NavItem = ({ item, onClick }) => (
@@ -355,46 +350,18 @@ const Layout = ({ user, onLogout }) => {
           )}
         </nav>
 
-        {/* User info */}
-        {user && (
-          <div className={`p-3 border-t border-gray-200 ${isCollapsed ? 'flex flex-col items-center' : ''}`}>
-            {!isCollapsed && (
-              <>
-                <div className="flex items-center gap-3 mb-2 px-1">
-                  <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center">
-                    <User className="w-3.5 h-3.5 text-gray-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-gray-700 truncate">{user.name}</p>
-                    <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
-                  </div>
-                </div>
-                <Badge className={`${getRoleBadge(user.role).color} text-[10px] mb-2 ml-1`}>
-                  {getRoleBadge(user.role).label}
-                </Badge>
-              </>
-            )}
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={onLogout}
-                    className={`text-gray-400 hover:text-gray-600 hover:bg-gray-200 ${isCollapsed ? 'w-10 h-10 p-0' : 'w-full'}`}
-                    data-testid="logout-button"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    {!isCollapsed && <span className="ml-2 text-xs">Sign Out</span>}
-                  </Button>
-                </TooltipTrigger>
-                {isCollapsed && (
-                  <TooltipContent side="right" className="bg-[#1E293B] text-white border-white/10">
-                    Sign Out
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
+        {/* User info (display only — actions moved to top-bar profile) */}
+        {user && !isCollapsed && (
+          <div className="p-3 border-t border-gray-200">
+            <div className="flex items-center gap-3 px-1">
+              <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center">
+                <User className="w-3.5 h-3.5 text-gray-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-gray-700 truncate">{user.name}</p>
+                <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -410,8 +377,8 @@ const Layout = ({ user, onLogout }) => {
       {renderFlyout()}
 
       <main className="flex-1 overflow-auto">
-        {/* Top Bar with Notifications */}
-        <div className="sticky top-0 z-10 bg-white border-b px-8 py-3 flex justify-end items-center">
+        {/* Top Bar with Notifications & User Profile */}
+        <div className="sticky top-0 z-10 bg-white border-b px-8 py-3 flex justify-end items-center gap-1">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="relative" data-testid="notification-bell">
@@ -467,6 +434,55 @@ const Layout = ({ user, onLogout }) => {
                   ))
                 )}
               </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* User Profile Dropdown */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="relative rounded-full" data-testid="user-profile-btn">
+                <div className="w-8 h-8 rounded-full bg-[#0F172A] flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-0" align="end">
+              {user && (
+                <>
+                  <div className="p-4 border-b border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#0F172A] flex items-center justify-center shrink-0">
+                        <User className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      </div>
+                    </div>
+                    <Badge className={`${getRoleBadge(user.role).color} text-[10px] mt-2`}>
+                      {getRoleBadge(user.role).label}
+                    </Badge>
+                  </div>
+                  <div className="py-1">
+                    <button
+                      onClick={() => navigate('/settings')}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      data-testid="user-menu-settings"
+                    >
+                      <Settings className="w-4 h-4 text-gray-500" />
+                      Settings
+                    </button>
+                    <button
+                      onClick={onLogout}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      data-testid="logout-button"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                </>
+              )}
             </PopoverContent>
           </Popover>
         </div>
