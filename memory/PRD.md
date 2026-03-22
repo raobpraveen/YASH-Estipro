@@ -43,7 +43,7 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - Wave template download/upload
 
 ### Documentation
-- User Manual, Support Guide, Tutorials (all updated for phase ranges)
+- User Manual, Support Guide (with Backup/Restore procedures), Tutorials (all updated for half-month precision & collapse/expand)
 
 ## P1 Refactoring (Completed Feb 2026)
 **ProjectEstimator.js** refactored from 3510 → 2029 lines (42% reduction):

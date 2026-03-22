@@ -347,16 +347,29 @@ export default function UserManual() {
             <KeyValue label="Delete Wave">Remove the current wave (with confirmation).</KeyValue>
             
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.8 Phase Ranges &amp; Auto-Generated Gantt Chart</h3>
-            <p>Each wave has a <strong>Phase Range Editor</strong> section below the toolbar buttons. Instead of assigning one phase per month, you define phase <strong>ranges</strong> with a start and end month. Phases can <strong>overlap</strong> — for example, Explore can run M2-M4 while Realize starts at M3 and runs to M6.</p>
+            <p>Each wave has a collapsible <strong>Phase Range Editor</strong> section below the toolbar buttons. Define phase <strong>ranges</strong> with a start and end value. Phases can <strong>overlap</strong> and support <strong>half-month precision</strong> (step 0.5).</p>
             
             <p className="font-medium mt-3 text-sm">How to Define Phases:</p>
             <ul className="list-disc pl-6 space-y-0.5 text-sm">
+              <li>Click the <strong>"Phase Ranges"</strong> header to expand the editor (click again to collapse and save screen space).</li>
               <li>Click <strong>"+ Add Phase"</strong> to add a new phase range.</li>
               <li>Select a <strong>Phase Name</strong> from the dropdown or choose "+ Custom..." for a custom name.</li>
-              <li>Set <strong>Start Month</strong> and <strong>End Month</strong> (1-based, relative to the wave).</li>
-              <li>The <strong>Timeline Preview</strong> below shows a visual bar chart of all phases with color-coded overlaps.</li>
-              <li>Click the delete icon to remove a phase range.</li>
+              <li>Set <strong>Start</strong> and <strong>End</strong> values using numeric inputs with <strong>0.5 step increments</strong> (e.g., 1, 1.5, 2, 2.5, 3).</li>
+              <li>Example: Explore starts at <strong>1.5</strong> and ends at <strong>3</strong>, meaning it begins mid-month 1 and runs through the end of month 3.</li>
+              <li>The <strong>Timeline Preview</strong> below shows continuous color-coded bars with precise positioning.</li>
+              <li>Click the trash icon to remove a phase range.</li>
             </ul>
+
+            <p className="font-medium mt-3 text-sm">Half-Month Precision:</p>
+            <ul className="list-disc pl-6 space-y-0.5 text-sm">
+              <li>Integer values (1, 2, 3...) represent full month boundaries.</li>
+              <li>Half values (1.5, 2.5, 3.5...) represent the midpoint of a month.</li>
+              <li>Example: Start=2.5, End=5 means "begin mid-month 2 through end of month 5".</li>
+              <li>The Gantt chart, Timeline Preview, and Excel export all render half-month precision accurately.</li>
+            </ul>
+
+            <p className="font-medium mt-3 text-sm">Collapse / Expand:</p>
+            <p className="text-sm">Click the <strong>Phase Ranges</strong> header to toggle between expanded (full editor) and collapsed (compact summary showing phase count). Collapse the section after defining phases to free up screen space for the resource grid.</p>
 
             <p className="font-medium mt-3 text-sm">Predefined Phases:</p>
             <ul className="list-disc pl-6 space-y-0.5 text-sm">
@@ -369,6 +382,7 @@ export default function UserManual() {
             <ul className="list-disc pl-6 space-y-0.5 text-sm">
               <li>Each phase range becomes its own row in the Gantt chart.</li>
               <li><strong>Overlapping phases</strong> are shown as separate stacked bars on the timeline.</li>
+              <li>Half-month boundaries are rendered with precise positioning (e.g., a bar starting at 1.5 begins halfway through month 1).</li>
               <li>Color-coded by phase type with a legend at the bottom.</li>
               <li>All waves are shown on a <strong>shared project timeline</strong>.</li>
             </ul>
@@ -378,10 +392,10 @@ export default function UserManual() {
 
             <p className="font-medium mt-3 text-sm">Excel Export &amp; Import:</p>
             <ul className="list-disc pl-6 space-y-0.5 text-sm">
-              <li><strong>Export:</strong> Phase ranges are included in each wave sheet, and a dedicated <strong>"Gantt Chart"</strong> sheet with color-coded bars is added.</li>
-              <li><strong>Import:</strong> Phase ranges from wave sheets are parsed and applied. The Gantt Chart sheet is skipped during import.</li>
+              <li><strong>Export:</strong> Phase ranges (with half-month values) are included in each wave sheet, and a dedicated <strong>"Gantt Chart"</strong> sheet with color-coded bars is added.</li>
+              <li><strong>Import:</strong> Phase ranges from wave sheets are parsed (supports both integer and decimal values). The Gantt Chart sheet is skipped during import.</li>
             </ul>
-            <Tip>The auto-generated Gantt chart appears alongside the option to upload a custom Gantt image. Both can coexist.</Tip>
+            <Tip>The auto-generated Gantt chart appears alongside the option to upload a custom Gantt image. Both can coexist. Collapse the Phase Ranges section after setup to maximize your workspace.</Tip>
           </Section>
 
           {/* Section 6: Cost Calculations */}

@@ -351,12 +351,98 @@ SMTP_FROM=noreply@yash.com`}
 {`# Full database backup
 mongodump --uri="mongodb://localhost:27017" --db=estipro --out=/backups/$(date +%Y%m%d)
 
-# Restore from backup
-mongorestore --uri="mongodb://localhost:27017" --db=estipro /backups/20260307/estipro`}
+# Backup a single collection (e.g., projects only)
+mongodump --uri="mongodb://localhost:27017" --db=estipro --collection=projects --out=/backups/$(date +%Y%m%d)_projects`}
             </CodeBlock>
-            <Tip>Schedule automated backups using cron jobs. Recommended: daily backups with 30-day retention.</Tip>
 
-            <h3 className="text-lg font-semibold text-[#10B981] mt-6">7.3 Data Retention</h3>
+            <h3 className="text-lg font-semibold text-[#10B981] mt-6">7.3 Restore Procedures</h3>
+            <p>Restoring from a backup replaces the current database contents. Follow these steps carefully:</p>
+
+            <p className="font-bold text-sm mt-3 text-[#10B981]">Step-by-Step: Full Database Restore</p>
+            <div className="space-y-2 mt-2 text-sm">
+              <div className="flex gap-3 items-start">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#10B981] text-white text-xs font-bold flex items-center justify-center">1</span>
+                <div><strong>Stop the application</strong> to prevent writes during restore:
+                  <CodeBlock>{`docker-compose stop backend`}</CodeBlock>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#10B981] text-white text-xs font-bold flex items-center justify-center">2</span>
+                <div><strong>Create a safety backup</strong> of the current database before overwriting:
+                  <CodeBlock>{`mongodump --uri="mongodb://localhost:27017" --db=estipro --out=/backups/pre_restore_$(date +%Y%m%d_%H%M%S)`}</CodeBlock>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#10B981] text-white text-xs font-bold flex items-center justify-center">3</span>
+                <div><strong>Drop the existing database</strong> (optional — only if you want a clean restore):
+                  <CodeBlock>{`mongosh --eval "use estipro; db.dropDatabase()"`}</CodeBlock>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#10B981] text-white text-xs font-bold flex items-center justify-center">4</span>
+                <div><strong>Restore from backup</strong>:
+                  <CodeBlock>{`# Restore full database from a specific backup date
+mongorestore --uri="mongodb://localhost:27017" --db=estipro /backups/20260307/estipro
+
+# Restore with --drop flag to replace existing collections
+mongorestore --uri="mongodb://localhost:27017" --db=estipro --drop /backups/20260307/estipro`}</CodeBlock>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#10B981] text-white text-xs font-bold flex items-center justify-center">5</span>
+                <div><strong>Restart the application</strong>:
+                  <CodeBlock>{`docker-compose start backend
+
+# Verify services are running
+docker-compose ps`}</CodeBlock>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#10B981] text-white text-xs font-bold flex items-center justify-center">6</span>
+                <div><strong>Verify the restore</strong> by logging in and checking project data:
+                  <CodeBlock>{`# Quick verification
+mongosh --eval "use estipro; db.projects.countDocuments()"
+mongosh --eval "use estipro; db.users.countDocuments()"`}</CodeBlock>
+                </div>
+              </div>
+            </div>
+
+            <p className="font-bold text-sm mt-4 text-[#10B981]">Restoring a Single Collection</p>
+            <p className="text-sm">If you only need to restore one collection (e.g., projects):</p>
+            <CodeBlock>{`# Restore only the projects collection
+mongorestore --uri="mongodb://localhost:27017" --db=estipro --collection=projects --drop /backups/20260307/estipro/projects.bson
+
+# Restore only proficiency_rates
+mongorestore --uri="mongodb://localhost:27017" --db=estipro --collection=proficiency_rates --drop /backups/20260307/estipro/proficiency_rates.bson`}</CodeBlock>
+
+            <p className="font-bold text-sm mt-4 text-[#10B981]">Automated Backup Script</p>
+            <CodeBlock title="backup.sh — Save to /opt/estipro/backup.sh">
+{`#!/bin/bash
+BACKUP_DIR="/backups"
+RETENTION_DAYS=30
+DATE=$(date +%Y%m%d_%H%M%S)
+
+# Create backup
+mongodump --uri="mongodb://localhost:27017" --db=estipro --out="$BACKUP_DIR/$DATE"
+
+# Remove backups older than retention period
+find "$BACKUP_DIR" -maxdepth 1 -type d -mtime +$RETENTION_DAYS -exec rm -rf {} +
+
+echo "Backup completed: $BACKUP_DIR/$DATE"
+echo "Cleaned up backups older than $RETENTION_DAYS days"`}
+            </CodeBlock>
+            <CodeBlock title="Add to crontab (daily at 2 AM)">
+{`# Edit crontab
+crontab -e
+
+# Add this line:
+0 2 * * * /opt/estipro/backup.sh >> /var/log/estipro-backup.log 2>&1`}
+            </CodeBlock>
+
+            <Warning>Always create a safety backup before restoring. A restore with the <code className="bg-red-100 px-1 rounded">--drop</code> flag permanently deletes the current collection data before restoring. Verify the backup file path and date before executing.</Warning>
+            <Tip>Schedule automated backups using the cron job above. Recommended: daily backups with 30-day retention. Store off-site copies (S3, NAS, or another server) for disaster recovery.</Tip>
+
+            <h3 className="text-lg font-semibold text-[#10B981] mt-6">7.4 Data Retention</h3>
             <p>Archived projects are soft-deleted and can be restored by an admin. Audit logs are retained indefinitely by default. Configure retention policies based on your organization's compliance requirements.</p>
           </Section>
 
@@ -688,7 +774,7 @@ mongosh --eval "db.adminCommand('ping')"`}
               </div>
               <div>
                 <p className="font-bold text-sm">Q: How do I generate a Gantt chart?</p>
-                <p className="text-sm text-gray-600 mt-1">A: In the Estimator, use the green <strong>Phase row</strong> below the month headers to assign phases (Prepare, Explore, Realize, etc.) to each month. The Gantt chart auto-generates in the Timeline section with a staircase layout. For multi-wave projects, set the "Starts at project M" value in the wave header to offset waves on the shared timeline.</p>
+                <p className="text-sm text-gray-600 mt-1">A: In the Estimator, expand the <strong>Phase Ranges</strong> section within any wave. Click "+ Add Phase" to define phase ranges with Start and End values (supports half-month precision, e.g., 1.5 = mid-month 1). The Gantt chart auto-generates in the Timeline section with each phase as a separate bar. For multi-wave projects, set the "Starts at project M" value in the wave header. Collapse the Phase Ranges section after setup to save screen space.</p>
               </div>
               <div>
                 <p className="font-bold text-sm">Q: How do I export multiple waves to Excel?</p>
