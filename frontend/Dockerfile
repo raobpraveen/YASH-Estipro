@@ -10,7 +10,7 @@ COPY package.json yarn.lock ./
 # Install dependencies with extended timeout and retries
 RUN yarn config set registry https://registry.npmjs.org && \
     yarn config set network-timeout 600000 && \
-    (yarn install --frozen-lockfile --network-concurrency 1 || (sleep 5 && yarn install --frozen-lockfile --network-concurrency 1))
+    yarn install --network-concurrency 1
 
 # Copy source code
 COPY . .
