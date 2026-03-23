@@ -1764,30 +1764,46 @@ const ProjectEstimator = () => {
         try {
           const response = await axios.post(`${API}/projects/${projectId}/new-version`, payload, { headers: apiHeaders });
 
-          // Copy milestones to the new version with updated wave names
-          const oldWaveNames = waves.map(w => w.name);
-          const newWaveNames = newWaves.map(w => w.name);
-          const waveNameMap = {};
-          oldWaveNames.forEach((oldName, i) => {
-            if (i < newWaveNames.length) waveNameMap[oldName] = newWaveNames[i];
-          });
-          const currentMilestones = ganttMilestones.length > 0 ? ganttMilestones : [];
-          const updatedMilestones = currentMilestones.map(m => ({
-            ...m,
-            wave_name: waveNameMap[m.wave_name] || m.wave_name,
-          }));
-          if (updatedMilestones.length > 0 || ganttPaymentTermsDays) {
+          // Determine milestones for the new version:
+          // If Excel contains milestones sheets, use imported data (overwrite)
+          // Otherwise, copy existing milestones with wave name mapping
+          const importedMs = smartImportData.milestones || [];
+          let finalMilestones = [];
+          let finalPaymentTerms = ganttPaymentTermsDays;
+
+          if (importedMs.length > 0) {
+            // Use imported milestones (overwrite existing)
+            finalMilestones = importedMs.flatMap(wm => wm.milestones || []);
+            // Use imported payment terms if available
+            const firstWithTerms = importedMs.find(wm => wm.payment_terms_days > 0);
+            if (firstWithTerms) finalPaymentTerms = firstWithTerms.payment_terms_days;
+          } else {
+            // No milestones in Excel — carry over existing with wave name mapping
+            const oldWaveNames = waves.map(w => w.name);
+            const newWaveNames = newWaves.map(w => w.name);
+            const waveNameMap = {};
+            oldWaveNames.forEach((oldName, i) => {
+              if (i < newWaveNames.length) waveNameMap[oldName] = newWaveNames[i];
+            });
+            finalMilestones = (ganttMilestones || []).map(m => ({
+              ...m,
+              wave_name: waveNameMap[m.wave_name] || m.wave_name,
+            }));
+          }
+
+          if (finalMilestones.length > 0 || finalPaymentTerms) {
             try {
               await axios.put(`${API}/projects/${response.data.id}/milestones`, {
-                milestones: updatedMilestones,
-                payment_terms_days: ganttPaymentTermsDays,
+                milestones: finalMilestones,
+                payment_terms_days: finalPaymentTerms,
               }, { headers: apiHeaders });
             } catch (msErr) {
-              console.error("Failed to copy milestones to new version:", msErr);
-              toast.error("Warning: Milestones could not be copied to the new version.");
+              console.error("Failed to save milestones to new version:", msErr);
+              toast.error("Warning: Milestones could not be saved to the new version.");
             }
           }
-          setGanttMilestones(updatedMilestones);
+          setGanttMilestones(finalMilestones);
+          setGanttPaymentTermsDays(finalPaymentTerms);
 
           setProjectId(response.data.id);
           setProjectVersion(response.data.version);
@@ -1813,6 +1829,21 @@ const ProjectEstimator = () => {
         }
         if (smartImportData.negoBuffer !== null && smartImportData.negoBuffer !== undefined) {
           setNegoBufferPercentage(smartImportData.negoBuffer);
+        }
+        // If Excel contains milestones, overwrite in current project
+        const importedMs = smartImportData.milestones || [];
+        if (importedMs.length > 0 && projectId) {
+          const allMs = importedMs.flatMap(wm => wm.milestones || []);
+          const firstWithTerms = importedMs.find(wm => wm.payment_terms_days > 0);
+          const terms = firstWithTerms ? firstWithTerms.payment_terms_days : ganttPaymentTermsDays;
+          try {
+            await axios.put(`${API}/projects/${projectId}/milestones`, {
+              milestones: allMs,
+              payment_terms_days: terms,
+            }, { headers: apiHeaders });
+            setGanttMilestones(allMs);
+            setGanttPaymentTermsDays(terms);
+          } catch { /* ignore */ }
         }
         toast.success(`Imported ${newWaves.length} wave(s) with ${smartImportData.totalResources} resource(s). Save the project to persist.`);
       }

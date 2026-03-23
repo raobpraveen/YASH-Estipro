@@ -397,6 +397,9 @@ async def delete_project(project_id: str, user: dict = Depends(get_current_user)
     result = await db.projects.delete_one({"id": project_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Project not found")
+    # Cascade delete: clean up dependent data
+    await db.payment_milestones.delete_many({"project_id": project_id})
+    await db.project_activities.delete_many({"project_id": project_id})
     if was_latest and project_number:
         next_latest = await db.projects.find_one({"project_number": project_number}, {"_id": 0}, sort=[("version", -1)])
         if next_latest:

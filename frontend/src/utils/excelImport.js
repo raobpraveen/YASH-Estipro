@@ -26,6 +26,7 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
   const parsedWaves = [];
   const missingSkills = new Set();
   const missingLocations = new Set();
+  const parsedMilestones = []; // { wave_name, milestones: [], payment_terms_days }
 
   // Parse Summary sheet for Profit Margin and Nego Buffer
   let importedPM = null;
@@ -44,10 +45,30 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
     }
   }
 
+  // Pre-scan for milestone sheets and parse them
+  const milestoneSheetNames = new Set();
+  wb.eachSheet((ws) => {
+    const name = ws.name;
+    if (name.toLowerCase().includes("milestones")) {
+      milestoneSheetNames.add(name);
+      // Parse milestone sheet
+      const msData = parseMilestoneSheet(ws, getCellVal);
+      if (msData) parsedMilestones.push(msData);
+    }
+  });
+
+  // Pre-scan for activities sheets (skip them from wave parsing)
+  const activitySheetNames = new Set();
+  wb.eachSheet((ws) => {
+    if (ws.name.toLowerCase().includes("activities")) activitySheetNames.add(ws.name);
+  });
+
   wb.eachSheet((ws) => {
     const name = ws.name;
     if (name.toLowerCase() === "summary") return;
     if (name.toLowerCase() === "gantt chart") return;
+    if (milestoneSheetNames.has(name)) return;
+    if (activitySheetNames.has(name)) return;
 
     // Find the header row
     let headerRowNum = 1;
@@ -238,5 +259,116 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
     totalResources: parsedWaves.reduce((s, w) => s + w.allocations.length, 0),
     profitMargin: importedPM,
     negoBuffer: importedNB,
+    milestones: parsedMilestones,
   };
+}
+
+/**
+ * Parse a Milestones sheet from the Excel export.
+ * @returns {{ wave_name: string, milestones: Array, payment_terms_days: number } | null}
+ */
+function parseMilestoneSheet(ws, getCellVal) {
+  // Row 2 has metadata: "", "Wave:", waveName, ..., "Type:payment"
+  let waveName = "";
+  let paymentTermsDays = 0;
+  const milestones = [];
+
+  // Try to extract wave name from row 2
+  const row2 = ws.getRow(2);
+  const cellB2 = (getCellVal(row2.getCell(2)) || "").toString().trim();
+  const cellC2 = (getCellVal(row2.getCell(3)) || "").toString().trim();
+  if (cellB2.toLowerCase().includes("wave")) {
+    waveName = cellC2;
+  }
+  // Fallback: derive wave name from sheet title (row 1)
+  if (!waveName) {
+    const title = (getCellVal(ws.getRow(1).getCell(1)) || "").toString().trim();
+    const match = title.match(/^(.+?)\s*[—-]\s*Milestones/i);
+    if (match) waveName = match[1].trim();
+  }
+  if (!waveName) return null;
+
+  // Check for payment terms
+  for (let r = 3; r <= 6; r++) {
+    const label = (getCellVal(ws.getRow(r).getCell(2)) || "").toString().trim().toLowerCase();
+    if (label.includes("payment terms")) {
+      const val = getCellVal(ws.getRow(r).getCell(3));
+      paymentTermsDays = parseInt(val) || 0;
+    }
+  }
+
+  // Scan for data rows — look for header rows with "Milestone Name"
+  let inPayment = false;
+  let inMarker = false;
+
+  for (let r = 1; r <= ws.rowCount; r++) {
+    const row = ws.getRow(r);
+    const cellB = (getCellVal(row.getCell(2)) || "").toString().trim();
+    const cellBLower = cellB.toLowerCase();
+
+    // Detect section headers
+    if (cellBLower === "payment milestones") { inPayment = true; inMarker = false; continue; }
+    if (cellBLower === "marker milestones") { inMarker = true; inPayment = false; continue; }
+    if (cellBLower === "summary" || cellBLower === "total") { inPayment = false; inMarker = false; continue; }
+
+    // Skip header rows
+    if (cellBLower === "milestone name") continue;
+
+    // Check if this is a data row (col A has a number)
+    const cellA = getCellVal(row.getCell(1));
+    const rowNum = parseInt(cellA);
+    if (!rowNum || rowNum <= 0) continue;
+
+    const milestoneName = cellB;
+    if (!milestoneName) continue;
+
+    const phaseName = (getCellVal(row.getCell(3)) || "").toString().trim();
+    const position = (getCellVal(row.getCell(4)) || "").toString().trim().replace("%", "");
+    const targetMonth = (getCellVal(row.getCell(5)) || "").toString().trim();
+    const description = (getCellVal(row.getCell(8)) || "").toString().trim();
+    // Check milestone type from column I
+    const typeCell = (getCellVal(row.getCell(9)) || "").toString().trim().toLowerCase();
+    let msType = inPayment ? "payment" : (inMarker ? "marker" : "payment");
+    if (typeCell === "marker" || typeCell === "payment") msType = typeCell;
+
+    const generateId = () => `imp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    if (msType === "payment") {
+      const pctRaw = getCellVal(row.getCell(6));
+      let pct = 0;
+      if (typeof pctRaw === "number") pct = pctRaw < 1 ? pctRaw * 100 : pctRaw;
+      else pct = parseFloat(pctRaw) || 0;
+
+      const amtRaw = getCellVal(row.getCell(7));
+      const amt = parseFloat(amtRaw) || 0;
+
+      milestones.push({
+        id: generateId(),
+        wave_name: waveName,
+        milestone_name: milestoneName,
+        milestone_type: "payment",
+        phase_name: phaseName,
+        position: position || "mid",
+        target_month: targetMonth,
+        payment_percentage: Math.round(pct * 10) / 10,
+        payment_amount: amt,
+        description,
+      });
+    } else {
+      milestones.push({
+        id: generateId(),
+        wave_name: waveName,
+        milestone_name: milestoneName,
+        milestone_type: "marker",
+        phase_name: phaseName,
+        position: position || "50",
+        target_month: targetMonth,
+        payment_percentage: 0,
+        payment_amount: 0,
+        description,
+      });
+    }
+  }
+
+  return { wave_name: waveName, milestones, payment_terms_days: paymentTermsDays };
 }
