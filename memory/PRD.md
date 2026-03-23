@@ -29,12 +29,15 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - **Phase Range Editor**: Define phases with Name, Start, End per wave
 - **Half-month precision**: Start/End accept 0.5-step values (e.g., 1, 1.5, 2, 2.5) for precise phase boundaries
 - **Overlapping phases supported**: Multiple phases can span the same months
+- **Phase Dependencies**: Finish-to-Start arrows between phases within a wave (dashed purple SVG)
+- **Milestones on Gantt**: Diamond markers linked to Payment Milestones (per-wave, positioned by target_month)
+- **Collapsible sections**: Phase Ranges + Dependencies editor collapse/expand to save space
 - **Timeline Preview**: Continuous bar rendering with precise positioning based on float start/end values
 - Auto-generated Gantt chart from phase_ranges data with half-month precision positioning
 - Multi-wave support with start-month offset
-- PNG and Excel export for Gantt chart
-- **Excel Export**: Phase ranges included per wave sheet + dedicated Gantt Chart sheet with colored bars (integer cell mapping via Math.ceil/floor for half-month values)
-- **Excel Import**: Parses phase ranges with parseFloat for half-month support
+- PNG and Excel export for Gantt chart (includes dependencies + milestones sections)
+- **Excel Export**: Phase ranges + dependencies included per wave sheet + dedicated Gantt Chart sheet
+- **Excel Import**: Parses phase ranges and dependencies with parseFloat for half-month support
 - Backward compatibility: Legacy month_phases auto-convert to phase_ranges on load
 
 ### Excel Integration
@@ -54,6 +57,7 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 
 ## Key Data Model
 - `ProjectWave.phase_ranges`: `List[dict]` — `[{name: str, start_month: float, end_month: float}]` (supports 0.5 increments)
+- `ProjectWave.phase_dependencies`: `List[dict]` — `[{from_phase: str, to_phase: str, type: str}]` (Finish-to-Start)
 - `ProjectWave.month_phases`: `List[str]` — Legacy field, auto-converted to phase_ranges
 - `ProjectWave.wave_start_month`: `int` — Offset for multi-wave timeline
 
