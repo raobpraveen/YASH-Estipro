@@ -11,7 +11,7 @@ import {
   Play, BookOpen, Search, ChevronRight, ChevronLeft, Clock, FileSpreadsheet,
   BarChart3, GitCompare, Upload, Shield, Settings, Users, Layers, DollarSign,
   Video, ExternalLink, Monitor, Pause, SkipForward, SkipBack, Maximize2,
-  X, CirclePlay, MapPin
+  X, CirclePlay, MapPin, ListChecks
 } from "lucide-react";
 
 // Tutorial slide images mapping
@@ -102,16 +102,18 @@ const TUTORIALS = [
   {
     id: "excel-export",
     title: "Excel Export & Smart Import",
-    description: "Export formula-powered Excel files and re-import them to update or create new project versions.",
+    description: "Export formula-powered Excel files with Milestones, Activities, Cashflow, and Gantt sheets. Re-import to update projects or create new versions.",
     duration: "4 min",
     category: "Data Management",
     icon: FileSpreadsheet,
     color: "bg-emerald-500",
     steps: [
-      { target: "Click 'Export Excel' in the toolbar.", action: "Downloads a formula-based .xlsx file with color coding, calculations, and a color legend." },
-      { target: "The Excel file contains live formulas.", action: "Modify values in Excel (e.g., salary, FTE) and see recalculated results instantly." },
-      { target: "To re-import, click 'Smart Import'.", action: "Upload a previously exported EstiPro Excel file." },
-      { target: "Review the parsed data.", action: "The system shows detected waves, resources, missing master data, and logistics config." },
+      { target: "Click 'Export Excel' in the toolbar.", action: "Downloads a formula-based .xlsx file with Summary, Wave Detail, Milestones, Activities, Cashflow, and Gantt Chart sheets." },
+      { target: "The Excel file contains live formulas.", action: "Modify values in Excel (e.g., salary, FTE) and see recalculated results instantly. Milestone amounts also use formulas." },
+      { target: "Review the Milestones sheets.", action: "Each wave gets a Milestones sheet with payment amounts calculated via formulas. Edit milestone data here for re-import." },
+      { target: "Review Activities and Cashflow sheets.", action: "Activities shows adopted and wave-specific items per phase. Cashflow shows monthly Cash-Out, Cash-In, Net, and Cumulative. Both are informational and skipped on import." },
+      { target: "To re-import, click 'Smart Import'.", action: "Upload a previously exported EstiPro Excel file. The system parses waves, resources, logistics, and milestones." },
+      { target: "Milestone data is imported and overwrites existing milestones.", action: "If Milestones sheets are present in the Excel, they replace the project's current milestones." },
       { target: "Choose 'Replace Current' or 'Import as New Version'.", action: "'Replace' overwrites locally. 'New Version' creates a new version and suspends the old one." },
       { target: "Logistics data is parsed from formulas.", action: "If you modified per-diem, accommodation, or flight costs in the Excel formulas, those changes are imported." },
     ],
@@ -236,7 +238,7 @@ const TUTORIALS = [
   {
     id: "gantt-chart",
     title: "Phase Ranges, Milestones & Gantt Chart",
-    description: "Define project phases, add payment and marker milestones, and auto-generate a Gantt chart with milestone diamonds on phase bars.",
+    description: "Define project phases, add payment and marker milestones, drag-and-drop milestone diamonds, and auto-generate a Gantt chart.",
     duration: "4 min",
     category: "Core Features",
     icon: FileSpreadsheet,
@@ -248,10 +250,34 @@ const TUTORIALS = [
       { target: "Set Start and End values with half-month precision.", action: "Use the numeric inputs (step 0.5). Example: Start=1, End=2 covers months 1-2. Start=1.5, End=3 means 'begin mid-month 1 through end of month 3'." },
       { target: "Add milestones to phases.", action: "Below the phase list, the Phase Milestones section shows '+ Payment' and '+ Marker' buttons per phase. Payment milestones have Start/Mid/End position; markers have a 0-100% slider for flexible placement." },
       { target: "Check the total payment % badge.", action: "The Phase Milestones header shows total payment % and dollar amount. Color-coded: amber < 100%, green = 100%, red > 100%." },
+      { target: "Drag-and-drop milestones on the Gantt chart.", action: "Click and drag any milestone diamond horizontally on its phase bar. Payment milestones snap to Start/Mid/End; markers update their 0-100% position freely." },
       { target: "Scroll down to the Timeline / Gantt Chart section.", action: "The chart auto-generates with wave headers, phase bars, and milestone diamonds (amber for payment, blue for markers). Labels are stacked when milestones are close together." },
       { target: "For multi-wave projects, set the 'Starts at project M' value.", action: "In the wave header, enter the project month where this wave begins. The Gantt chart reflects this offset." },
       { target: "Export the chart.", action: "Click PNG for an image export or Excel for a spreadsheet with color-coded bars and a milestones summary table." },
       { target: "Save the project to persist phases and milestones.", action: "Press Ctrl+S or click Save. Phase ranges and milestones are stored per-wave and synced with the Milestones page." },
+    ],
+    hasSlideshow: false,
+    hasTour: false,
+  },
+  {
+    id: "activity-templates",
+    title: "Activity Templates & Deliverables",
+    description: "Manage phase-wise activity templates, seed SAP templates, use Excel import/export for bulk management, and adopt templates into projects.",
+    duration: "5 min",
+    category: "Administration",
+    icon: ListChecks,
+    color: "bg-purple-500",
+    steps: [
+      { target: "Navigate to Activity Templates from the sidebar.", action: "Click 'Activity Templates' in the left sidebar to open the master data page." },
+      { target: "Select Technology, Sub-Technology, and Project Type.", action: "Use the three filter dropdowns to narrow down templates. Templates are keyed by this combination." },
+      { target: "Browse templates grouped by phase.", action: "Templates appear grouped by phase name (e.g., Prepare, Explore, Realize). Click a phase to expand and view activities and deliverables." },
+      { target: "Add a new phase template.", action: "Click '+ Add Phase', enter a phase name, add activities and deliverables, then click Save." },
+      { target: "Use pre-seeded SAP templates.", action: "For SAP S/4HANA implementations, the system includes pre-built Private Cloud and Public Cloud templates with six SAP Activate phases each." },
+      { target: "Export templates to Excel.", action: "Click 'Export Excel' to download all templates for the selected combination as a structured Excel file." },
+      { target: "Import templates from Excel.", action: "Click 'Import Excel' to upload a bulk template file. Use the exported file as a format reference." },
+      { target: "Adopt templates into a project.", action: "In the Estimator, click the 'Activities' button in the toolbar. Select phases from the master template, then click 'Adopt Selected' to copy them into the current wave." },
+      { target: "Add wave-specific activities.", action: "In the Phase Activities modal, add custom activities unique to this wave that are not part of the master template." },
+      { target: "View activities in Excel export.", action: "Adopted and wave-specific activities appear in dedicated Activities sheets in the project's Excel export." },
     ],
     hasSlideshow: false,
     hasTour: false,
@@ -535,6 +561,10 @@ const Tutorials = () => {
                                 "approval-workflow": "/estimator",
                                 "dashboard-analytics": "/dashboard",
                                 "master-data": "/skills",
+                                "payment-milestones": "/milestones",
+                                "cashflow-statement": "/cashflow",
+                                "gantt-chart": "/estimator",
+                                "activity-templates": "/activity-templates",
                               };
                               navigate(routes[tutorial.id] || "/dashboard");
                             }}

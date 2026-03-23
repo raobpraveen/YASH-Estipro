@@ -11,7 +11,7 @@ import requests
 import os
 import json
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://milestone-track-10.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://yash-estpro.preview.emergentagent.com')
 
 class TestPhaseDependencies:
     """Test Phase Dependencies feature"""

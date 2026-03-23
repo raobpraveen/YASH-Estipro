@@ -159,7 +159,8 @@ export default function SupportGuide() {
      project_types, sales_managers,
      proficiency_rates, audit_logs,
      notifications, change_logs,
-     milestones)
+     milestones, activity_templates,
+     project_activities)
 
 Backend Modular Structure:
   server.py → routers/
@@ -170,7 +171,8 @@ Backend Modular Structure:
     ├── financials.py
     ├── files.py
     ├── notifications.py
-    └── users.py`}
+    ├── users.py
+    └── activities.py`}
             </CodeBlock>
 
             <h3 className="text-lg font-semibold text-[#10B981] mt-6">1.3 Key Libraries</h3>
@@ -181,6 +183,7 @@ Backend Modular Structure:
             <KeyValue label="Axios">HTTP client for API communication.</KeyValue>
             <KeyValue label="python-jose">JWT token generation and validation.</KeyValue>
             <KeyValue label="passlib[bcrypt]">Password hashing for user authentication.</KeyValue>
+            <KeyValue label="html2canvas">Gantt chart PNG export.</KeyValue>
           </Section>
 
           {/* Section 2: User Management */}
@@ -342,6 +345,8 @@ SMTP_FROM=noreply@yash.com`}
                   <tr className="border-b"><td className="p-2 font-mono text-xs">audit_logs</td><td className="p-2">System audit trail.</td><td className="p-2 text-xs">user_id, action, entity, timestamp</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-xs">notifications</td><td className="p-2">In-app notification queue.</td><td className="p-2 text-xs">user_id, title, message, is_read</td></tr>
                   <tr><td className="p-2 font-mono text-xs">payment_milestones</td><td className="p-2">Payment milestones and markers per project version.</td><td className="p-2 text-xs">project_id, milestones[{'{'}id, wave_name, milestone_name, milestone_type, phase_name, position, target_month, payment_percentage, payment_amount, description{'}'}], payment_terms_days</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-xs">activity_templates</td><td className="p-2">Master data templates for phase-wise activities and deliverables.</td><td className="p-2 text-xs">technology_id, sub_technology_id, project_type_id, phase_name, activities[], deliverables[]</td></tr>
+                  <tr><td className="p-2 font-mono text-xs">project_activities</td><td className="p-2">Activities adopted from templates and wave-specific items per project.</td><td className="p-2 text-xs">project_id, wave_name, phase_name, activities[], wave_activities[], adopted_from_template_id</td></tr>
                 </tbody>
               </table>
             </div>
@@ -492,6 +497,27 @@ crontab -e
                   <p className="text-sm text-gray-600"><strong>Fix:</strong> Only Draft projects support drag-and-drop. Clone the project to create an editable version.</p>
                 </CardContent>
               </Card>
+              <Card className="border-l-4 border-l-amber-500">
+                <CardContent className="p-4">
+                  <h4 className="font-bold text-sm">Activity Templates not showing in the Phase Activities modal</h4>
+                  <p className="text-sm text-gray-600 mt-1"><strong>Cause:</strong> No templates exist for the project's Technology + Sub-Technology + Project Type combination.</p>
+                  <p className="text-sm text-gray-600"><strong>Fix:</strong> Navigate to Activity Templates in the sidebar and create templates for the matching combination. You can also use the "Seed" button to auto-generate SAP templates, or import templates from Excel.</p>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-amber-500">
+                <CardContent className="p-4">
+                  <h4 className="font-bold text-sm">Excel export missing Activities or Cashflow sheets</h4>
+                  <p className="text-sm text-gray-600 mt-1"><strong>Cause:</strong> No activities have been adopted for any wave, or the project has no resource allocations for cashflow data.</p>
+                  <p className="text-sm text-gray-600"><strong>Fix:</strong> Use the "Activities" button in the Estimator toolbar to adopt template activities. Ensure at least one wave has resource allocations for cashflow. Re-export after making changes.</p>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-amber-500">
+                <CardContent className="p-4">
+                  <h4 className="font-bold text-sm">Smart Import overwrote my milestones unexpectedly</h4>
+                  <p className="text-sm text-gray-600 mt-1"><strong>Cause:</strong> The imported Excel file contained Milestones sheets, which triggered a full overwrite of the project's milestones.</p>
+                  <p className="text-sm text-gray-600"><strong>Fix:</strong> This is by design &mdash; milestone data in the Excel replaces existing milestones. If you want to preserve milestones, remove the Milestones sheets from the Excel file before importing, or ensure the Excel milestones match your desired state.</p>
+                </CardContent>
+              </Card>
             </div>
 
             <h3 className="text-lg font-semibold text-[#10B981] mt-6">8.2 Log Locations</h3>
@@ -553,6 +579,15 @@ Response: { "token": "eyJ...", "user": { "id", "name", "email", "role" } }`}
                   <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/milestones</td><td className="p-2">Get milestones (payment + marker) and payment_terms_days. Each milestone includes: milestone_type (payment/marker), phase_name, position (start/mid/end or 0-100 slider), target_month.</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-amber-600">PUT</td><td className="p-2 font-mono">/api/projects/{'{id}'}/milestones</td><td className="p-2">Save milestones array + payment_terms_days. Body: {'{'}milestones: [...], payment_terms_days: number{'}'}</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/cashflow</td><td className="p-2">Cashflow with payment term shifting, extended months, break-even data</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/activity-templates</td><td className="p-2">List all activity templates</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/activity-templates</td><td className="p-2">Create or update an activity template</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-red-600">DELETE</td><td className="p-2 font-mono">/api/activity-templates/{'{id}'}</td><td className="p-2">Delete an activity template</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/activity-templates/by-combo</td><td className="p-2">Get templates filtered by technology + sub-technology + project type</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/activity-templates/seed/{'{type}'}</td><td className="p-2">Seed pre-built SAP templates (private-cloud / public-cloud)</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/activity-templates/export-excel</td><td className="p-2">Export all templates as Excel file</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/activity-templates/import-excel</td><td className="p-2">Import templates from Excel file</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/activities</td><td className="p-2">Get project-specific activities per wave and phase</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-amber-600">PUT</td><td className="p-2 font-mono">/api/projects/{'{id}'}/activities</td><td className="p-2">Save project-specific activities</td></tr>
                   <tr><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/download-file</td><td className="p-2">Upload file for download proxy</td></tr>
                 </tbody>
               </table>
@@ -787,6 +822,26 @@ mongosh --eval "db.adminCommand('ping')"`}
               <div>
                 <p className="font-bold text-sm">Q: How do I export multiple waves to Excel?</p>
                 <p className="text-sm text-gray-600 mt-1">A: The Excel export automatically includes all waves. Each wave gets its own detail sheet, plus a Summary sheet that aggregates across all waves.</p>
+              </div>
+              <div>
+                <p className="font-bold text-sm">Q: What are Activity Templates?</p>
+                <p className="text-sm text-gray-600 mt-1">A: Activity Templates are master data entries that define standard activities and deliverables for each phase of a project. They are keyed by Technology + Sub-Technology + Project Type (e.g., SAP S/4HANA + Private Cloud + Implementation). Templates can be adopted into projects via the "Activities" button in the Estimator toolbar.</p>
+              </div>
+              <div>
+                <p className="font-bold text-sm">Q: How do I manage Activity Templates?</p>
+                <p className="text-sm text-gray-600 mt-1">A: Navigate to the <strong>Activity Templates</strong> page from the sidebar. Select a Technology, Sub-Technology, and Project Type to filter. You can add/edit/delete phases and their activities. For bulk management, use Excel import/export. Two SAP templates are pre-seeded and can be used as a starting point.</p>
+              </div>
+              <div>
+                <p className="font-bold text-sm">Q: What happens when I delete a project?</p>
+                <p className="text-sm text-gray-600 mt-1">A: The system performs a <strong>cascade delete</strong> — the project, all its payment milestones, and all its adopted activities are permanently removed. This ensures no orphan data remains in the database.</p>
+              </div>
+              <div>
+                <p className="font-bold text-sm">Q: Can I drag milestones on the Gantt chart?</p>
+                <p className="text-sm text-gray-600 mt-1">A: Yes. Milestone diamonds on the Gantt chart are draggable. Payment milestones snap to Start/Mid/End positions, while marker milestones can be dragged freely along the 0-100% range. Save the project to persist the new positions.</p>
+              </div>
+              <div>
+                <p className="font-bold text-sm">Q: Does Smart Import update milestones?</p>
+                <p className="text-sm text-gray-600 mt-1">A: Yes. If the imported Excel file contains Milestones sheets, the system parses them and <strong>overwrites</strong> the project's existing milestones. To avoid this, remove the Milestones sheets from the Excel before importing.</p>
               </div>
             </div>
 

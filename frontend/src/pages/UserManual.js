@@ -29,6 +29,7 @@ const TOC = [
   { id: "tutorials", title: "18. Tutorials & Help", icon: BookOpen },
   { id: "settings", title: "19. Settings & Profile", icon: Settings },
   { id: "shortcuts", title: "20. Keyboard Shortcuts & Tips", icon: Info },
+  { id: "activity-templates", title: "21. Activity Templates & Deliverables", icon: Layers },
 ];
 
 const Section = ({ id, title, children }) => (
@@ -173,6 +174,7 @@ export default function UserManual() {
             <KeyValue label="Milestones">Define payment schedules and milestones per wave for any project version.</KeyValue>
             <KeyValue label="Cashflow">View monthly cash outflows vs. inflows with combined summary and charts.</KeyValue>
             <KeyValue label="Master Data">Manage Skills, Locations, Technologies, Sub Technologies, Customers, and more.</KeyValue>
+            <KeyValue label="Activity Templates">Define and manage phase-wise activity and deliverable templates by Technology, Sub-Technology, and Project Type.</KeyValue>
             <KeyValue label="Help">Access User Manual, Support Guide, and Tutorials from the collapsible Help section.</KeyValue>
             <KeyValue label="Settings">Personal profile, theme, and date format preferences.</KeyValue>
             <Tip>Use <strong>Ctrl+B</strong> (or <strong>Cmd+B</strong> on Mac) to toggle the sidebar between expanded and collapsed modes.</Tip>
@@ -223,6 +225,14 @@ export default function UserManual() {
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">3.4 Cloning Projects</h3>
             <p>To create a new project based on an existing estimation, use the <strong>Clone</strong> action from the Projects list. This copies all waves, resources, and configurations into a new draft project.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">3.5 Deleting Projects</h3>
+            <p>When a project is deleted, the system performs a <strong>cascade delete</strong> to ensure data integrity:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>Payment Milestones</strong> &mdash; All milestones and markers linked to the project are removed.</li>
+              <li><strong>Project Activities</strong> &mdash; All adopted template activities and wave-specific activities are removed.</li>
+            </ul>
+            <Warning>Project deletion is permanent and cannot be undone. Consider archiving projects instead if you may need the data later.</Warning>
           </Section>
 
           {/* Section 4: Estimator */}
@@ -470,6 +480,10 @@ export default function UserManual() {
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">8.2 Sheet Structure</h3>
             <KeyValue label="Summary Sheet">Cross-wave summary with formulas referencing detail sheets. Includes Total MM, Onsite/Offshore breakdown, Logistics, and Grand Total.</KeyValue>
             <KeyValue label="Wave Detail Sheets">One sheet per wave with all resource rows, monthly allocations, cost formulas, logistics breakdown, and wave totals.</KeyValue>
+            <KeyValue label="Milestones Sheets">One sheet per wave listing all payment milestones and markers. Payment amounts use Excel formulas so changing the wave's selling price automatically recalculates amounts.</KeyValue>
+            <KeyValue label="Activities Sheets">One sheet per wave listing adopted template activities and wave-specific items, grouped by phase. Skipped during Smart Import.</KeyValue>
+            <KeyValue label="Cashflow Sheet">Monthly cashflow data with Cash-Out, Cash-In, Net, and Cumulative rows plus a wave-by-wave breakdown. Skipped during Smart Import.</KeyValue>
+            <KeyValue label="Gantt Chart Sheet">Color-coded phase bars and a milestones summary table. Skipped during Smart Import.</KeyValue>
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">8.3 Formula-Powered</h3>
             <p>All cost calculations in the Excel use <strong>live formulas</strong> &mdash; not static values. If you modify a salary or allocation in Excel, all derived values (costs, selling prices, logistics) will automatically recalculate.</p>
@@ -614,6 +628,23 @@ export default function UserManual() {
             <KeyValue label="Logistics Parsing">Logistics data (per-diem, accommodation, flights, etc.) is automatically parsed from both the description text and formulas in the Excel file.</KeyValue>
             <KeyValue label="Missing Master Data">If the Excel contains skills or locations not in the system, they are auto-created during import.</KeyValue>
             <KeyValue label="Overhead Percentage">Overhead is looked up from the Base Location master data. If not set, defaults to 0%.</KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">13.2 Milestone Re-Import</h3>
+            <p>When re-importing an Excel file that contains Milestones sheets, the system <strong>parses and overwrites</strong> the project's payment milestones with the data from the Excel file.</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li>Milestone names, types, phases, positions, and payment percentages are all imported.</li>
+              <li>Payment amounts are recalculated based on the wave's new selling price after import.</li>
+              <li>This allows you to edit milestone schedules in Excel and re-import them seamlessly.</li>
+            </ul>
+            <Warning>Importing milestones fully replaces existing milestone data for the project. Any milestones not in the Excel file will be removed.</Warning>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">13.3 Sheets Skipped on Import</h3>
+            <p>The following sheets are <strong>informational only</strong> and ignored during Smart Import:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>Activities</strong> sheets &mdash; Manage activities via the Activity Templates master data or the in-app modal.</li>
+              <li><strong>Cashflow</strong> sheet &mdash; Cashflow is computed from resource data and milestones.</li>
+              <li><strong>Gantt Chart</strong> sheet &mdash; The Gantt chart auto-generates from phase ranges.</li>
+            </ul>
           </Section>
 
           {/* Section 14: Tutorials */}
@@ -636,7 +667,17 @@ export default function UserManual() {
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">14.3 Custom Gantt Image</h3>
             <p>You can also upload a custom Gantt chart image (PNG, JPG, WEBP — max 10MB). Click <strong>"Upload Custom Image"</strong> in the timeline card. Click <strong>"Remove"</strong> to delete it. The image is version-specific.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">14.4 Exporting</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">14.4 Drag-and-Drop Milestones</h3>
+            <p>Milestone diamonds on the Gantt chart can be <strong>dragged and repositioned</strong> directly on the phase bars:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li>Click and drag any milestone diamond horizontally along its phase bar.</li>
+              <li>For <strong>payment milestones</strong>, dragging snaps to Start, Mid, or End positions.</li>
+              <li>For <strong>marker milestones</strong>, dragging updates the 0-100% slider position with finer granularity.</li>
+              <li>Changes are saved when you save the project (Ctrl+S).</li>
+            </ul>
+            <Tip>Drag-and-drop is especially useful for quickly fine-tuning marker positions during planning reviews without opening the milestone editor.</Tip>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">14.5 Exporting</h3>
             <p>Click <strong>PNG</strong> to export as an image, or <strong>Excel</strong> for a spreadsheet with color-coded phase bars and a milestones summary table.</p>
             
             <Tip>Use the auto-generated chart for estimation reviews and export it alongside the custom image for client deliverables. Both coexist in the same section.</Tip>
@@ -761,7 +802,7 @@ export default function UserManual() {
             <p>Access the <strong>Tutorials</strong> page from the sidebar for guided learning resources.</p>
             
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">18.1 Guided Walkthroughs</h3>
-            <p>Step-by-step text instructions for key features: Creating Projects, Wave Grid, Excel Export, Version Comparison, Approval Workflow, Dashboard Analytics, Master Data Management, Payment Milestones, Cashflow Statement, and Gantt Chart Upload.</p>
+            <p>Step-by-step text instructions for key features: Creating Projects, Wave Grid, Excel Export &amp; Smart Import, Version Comparison, Approval Workflow, Dashboard Analytics, Master Data Management, Payment Milestones, Cashflow Statement, Gantt Chart &amp; Milestones, and Activity Templates.</p>
             
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">18.2 Video Slideshows</h3>
             <p>Screenshot-based slideshows that auto-play through key application screens. Click any tutorial card to watch the slideshow with play/pause controls.</p>
@@ -815,6 +856,41 @@ export default function UserManual() {
               <li>Upload a <strong>Gantt chart image</strong> to a project so reviewers can see the timeline without switching tools.</li>
               <li>Use the <strong>Copy Skill</strong> button in Proficiency Rates to quickly duplicate entries when setting up similar rate cards.</li>
             </ul>
+          </Section>
+
+          {/* Section 21: Activity Templates */}
+          <Section id="activity-templates" title="21. Activity Templates & Deliverables">
+            <p>Activity Templates provide a centralized master data system for defining phase-wise activities and deliverables. Templates are reusable across projects and keyed by <strong>Technology + Sub-Technology + Project Type</strong>.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">21.1 Activity Templates Page</h3>
+            <p>Navigate to <strong>Activity Templates</strong> in the sidebar to manage templates.</p>
+            <Step num="1">Select a <strong>Technology</strong>, <strong>Sub-Technology</strong>, and <strong>Project Type</strong> from the filter dropdowns.</Step>
+            <Step num="2">Templates are grouped by <strong>Phase Name</strong> (e.g., Prepare, Explore, Realize, Deploy, Go-live, Hypercare).</Step>
+            <Step num="3">Click a phase to expand it and view/edit activities and deliverables.</Step>
+            <Step num="4">Click <strong>"+ Add Phase"</strong> to create a new phase template with a custom name.</Step>
+            <Step num="5">Add activities and deliverables within each phase, then click <strong>Save</strong>.</Step>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">21.2 Pre-Seeded Templates</h3>
+            <p>The system comes with two pre-seeded SAP implementation templates:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>SAP S/4HANA + Private Cloud + Implementation</strong> &mdash; Six SAP Activate phases (Discover, Prepare, Explore, Realize, Deploy, Run) with detailed activities and deliverables for each.</li>
+              <li><strong>SAP S/4HANA + Public Cloud + Implementation</strong> &mdash; Six phases tailored for public cloud implementations with fit-to-standard workshops, guided configuration, and cloud-specific activities.</li>
+            </ul>
+            <Tip>Use the pre-seeded templates as a starting point. You can customize them or create new templates for other technologies and project types.</Tip>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">21.3 Excel Import/Export for Templates</h3>
+            <p>Manage templates in bulk using Excel:</p>
+            <KeyValue label="Export">Click <strong>"Export Excel"</strong> on the Activity Templates page to download all templates as a structured Excel file with columns for Technology, Sub-Technology, Project Type, Phase, Activities, and Deliverables.</KeyValue>
+            <KeyValue label="Import">Click <strong>"Import Excel"</strong> and upload an Excel file in the same format. The system will create or update templates based on the data. Use the exported file as a template for bulk editing.</KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">21.4 Using Templates in Projects (Phase Activities Modal)</h3>
+            <p>From the Estimator, click the <strong>"Activities"</strong> button in the toolbar to open the Phase Activities modal:</p>
+            <Step num="1">The modal shows phases from the <strong>master data template</strong> matching the project's Technology, Sub-Technology, and Project Type.</Step>
+            <Step num="2">Select one or more phases using checkboxes for <strong>bulk adoption</strong>.</Step>
+            <Step num="3">Click <strong>"Adopt Selected"</strong> to copy template activities into the project for the current wave.</Step>
+            <Step num="4">Add <strong>wave-specific activities</strong> that are unique to this wave (not from templates).</Step>
+            <Step num="5">Activities are saved per wave and per phase, and appear in the Excel export.</Step>
+            <Warning>Template activities are copied into the project at adoption time. Later changes to the master template do not automatically update already-adopted project activities.</Warning>
           </Section>
 
           {/* Footer */}
