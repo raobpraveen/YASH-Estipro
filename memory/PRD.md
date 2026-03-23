@@ -28,39 +28,42 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 
 ### Gantt Chart & Phase-Based Milestones
 - Phase Range Editor with half-month precision
-- Payment milestones (amber diamonds, Start/Mid/End) and Marker milestones (blue diamonds, 0-100% slider)
+- Payment milestones (amber) and Marker milestones (blue, 0-100% slider)
 - Gantt Drag-and-Drop: Milestone diamonds draggable along phase bars
-- Smart label positioning (stacking overlapping labels)
-- Gantt chart PNG export
+- Smart label positioning, Gantt chart PNG export
 
 ### Excel Integration
 - Formula-based Excel export with color coding
-- Smart Import from Excel files with milestone preservation
-- **Milestones Excel Sheets**: Per-wave sheets with formula-based Amount (=FinalPrice*Pct), type tags, metadata for import
-- **Milestone Import**: parseMilestoneSheet parses milestone sheets from Excel, overwrites on reimport
-- **Activities Excel Sheets**: Per-wave sheets with template + wave-specific activities/deliverables
-- **Separate Activities Export**: Dedicated Excel export from Activities modal
+- Smart Import with milestone import/overwrite support
+- **Milestones Sheets**: Per-wave with formula Amount (=FinalPrice*Pct), type tags
+- **Activities Sheets**: Per-wave with template + wave-specific items
+- **Cashflow Sheet**: Monthly data with Cash-Out, Cash-In, Net, Cumulative, wave breakdown
+- Cashflow and Activities sheets skipped during import
 
 ### Phase Activities & Deliverables
 - **Activity Templates Master Data** (sidebar page at /activity-templates):
   - Key: Technology + Sub-Technology + Project Type + Phase
-  - Pre-seeded SAP S/4HANA Private Cloud Implementation template (6 SAP Activate phases)
-  - Template phases shown from master data, not wave-level phases
+  - Excel download and upload for easy data entry
+  - Pre-seeded templates:
+    - SAP S/4HANA + Private Cloud + Implementation (6 SAP Activate phases)
+    - SAP S/4HANA + Public Cloud + Implementation (6 SAP Activate phases)
 - **Project Activities Modal** (from estimator toolbar):
+  - Template phases from master data (not wave phases)
   - Multi-phase selection with bulk adopt from templates
   - Wave-dependent activities (additive to template items)
-  - Per-phase editing with template + wave-specific sections
+  - Dedicated Activities Excel export
 
 ### Documentation
 - User Manual, Support Guide (with Backup/Restore), Tutorials
 
 ## Bug Fixes (Feb 2026)
 - Fixed: `crypto.randomUUID()` fallback for non-HTTPS environments
-- Fixed: Milestone copying on new version creation (UI and Excel import paths)
-- Fixed: Excel Import erasing milestones — inline milestone copy with wave name mapping
-- Fixed: Ctrl+S on PaymentMilestones not saving Payment Terms — useRef pattern
+- Fixed: Milestone copying on version creation
+- Fixed: Excel Import erasing milestones
+- Fixed: Ctrl+S on PaymentMilestones not saving Payment Terms
 - Fixed: Activities modal showing wave phases instead of template phases
-- Fixed: Cascade delete — project deletion now cleans up milestones and activities
+- Fixed: Cascade delete for orphan data cleanup
+- Fixed: Activities not appearing in Excel export (apiHeaders scope bug)
 
 ## Key Data Model
 - `PaymentMilestone`: `{id, wave_name, milestone_name, milestone_type, phase_name, position, target_month, payment_percentage, payment_amount, description}`
