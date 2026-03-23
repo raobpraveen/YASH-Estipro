@@ -225,7 +225,7 @@ export const GanttCard = ({
       {!isCollapsed && (
         <CardContent>
           {rows.length > 0 && (
-            <div ref={chartRef} className="bg-white p-4 rounded-lg border" data-testid="gantt-auto-chart">
+            <div ref={chartRef} className="bg-white p-4 pr-10 rounded-lg border" data-testid="gantt-auto-chart">
               <h4 className="text-sm font-semibold text-[#0F172A] mb-3">Auto-Generated Gantt Chart</h4>
 
               {/* Month headers */}
@@ -260,15 +260,38 @@ export const GanttCard = ({
                       const phaseMilestones = milestoneMarkers.filter(m => m.waveName === row.waveName && m.phaseName === row.phase);
                       const hasMilestones = phaseMilestones.length > 0;
 
+                      // Group nearby milestones to avoid label overlap
+                      const msGroups = (() => {
+                        if (!phaseMilestones.length) return [];
+                        const sorted = [...phaseMilestones].sort((a, b) => a.absPos - b.absPos);
+                        const threshold = maxMonth * 0.04;
+                        const groups = [];
+                        let cur = { pos: sorted[0].absPos, items: [sorted[0]] };
+                        for (let i = 1; i < sorted.length; i++) {
+                          if (sorted[i].absPos - cur.items[cur.items.length - 1].absPos <= threshold) {
+                            cur.items.push(sorted[i]);
+                            cur.pos = cur.items.reduce((s, m) => s + m.absPos, 0) / cur.items.length;
+                          } else {
+                            groups.push(cur);
+                            cur = { pos: sorted[i].absPos, items: [sorted[i]] };
+                          }
+                        }
+                        groups.push(cur);
+                        return groups;
+                      })();
+
+                      // Compute row height: taller when milestones have stacked labels
+                      const maxStackSize = msGroups.reduce((mx, g) => Math.max(mx, g.items.length), 0);
+                      const rowH = hasMilestones ? Math.max(ROW_H, 30 + maxStackSize * 10) : ROW_H;
+
                       return (
                         <div key={rIdx} data-testid={`gantt-row-${row.phase}`}>
-                          {/* Phase bar row */}
-                          <div className="flex items-center" style={{ height: ROW_H }}>
-                            <div style={{ width: LABEL_W }} className="pr-2 text-right shrink-0">
+                          <div className="flex items-start" style={{ minHeight: rowH }}>
+                            <div style={{ width: LABEL_W }} className="pr-2 text-right shrink-0 pt-1.5">
                               <span className="text-[10px] font-medium text-gray-600 truncate">{row.phase}</span>
                               <span className="text-[9px] text-gray-400 ml-1">{row.startLabel}{row.endLabel > row.startLabel ? `\u2013${row.endLabel}` : ""}</span>
                             </div>
-                            <div className="flex-1 relative" style={{ height: ROW_H }}>
+                            <div className="flex-1 relative overflow-visible" style={{ minHeight: rowH }}>
                               {/* Grid lines */}
                               {Array.from({ length: maxMonth }, (_, i) => (
                                 <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100" style={{ left: `${(i / maxMonth) * 100}%` }} />
@@ -279,7 +302,7 @@ export const GanttCard = ({
                                 style={{
                                   left: `${(row.absStart / maxMonth) * 100}%`,
                                   width: `${((row.absEnd - row.absStart) / maxMonth) * 100}%`,
-                                  height: hasMilestones ? 18 : 22,
+                                  height: 20,
                                   backgroundColor: row.color.bg,
                                   border: `2px solid ${row.color.border}`,
                                 }}
@@ -287,24 +310,45 @@ export const GanttCard = ({
                               >
                                 <span className="text-[10px] font-semibold truncate px-1" style={{ color: row.color.text }}>{row.phase}</span>
                               </div>
-                              {/* Milestone diamonds on the phase bar */}
-                              {phaseMilestones.map((ms, mIdx) => {
-                                const leftPct = (ms.absPos / maxMonth) * 100;
-                                const isMarker = ms.type === "marker";
-                                const fillColor = isMarker ? "#3B82F6" : "#F59E0B";
-                                const strokeColor = isMarker ? "#1D4ED8" : "#D97706";
+                              {/* Milestone groups on the phase bar */}
+                              {msGroups.map((group, gIdx) => {
+                                const leftPct = (group.pos / maxMonth) * 100;
+                                // Determine label alignment based on absolute position in chart
+                                const isNearEnd = leftPct > 70;
+                                const isNearStart = leftPct < 15;
+
                                 return (
-                                  <div key={mIdx} className="absolute flex flex-col items-center z-10"
-                                    style={{ left: `${leftPct}%`, top: hasMilestones ? 16 : 18, transform: "translateX(-50%)" }}
-                                    title={`${ms.name}${isMarker ? " (Marker)" : ""}${ms.position ? ` @ ${ms.position}` : ""}${ms.percentage ? ` | ${ms.percentage}%` : ""}`}
-                                    data-testid={`gantt-milestone-${ms.name}`}
+                                  <div key={gIdx} className="absolute z-10"
+                                    style={{
+                                      left: `${leftPct}%`,
+                                      top: 18,
+                                      transform: isNearEnd ? "translateX(-100%)" : isNearStart ? "translateX(0%)" : "translateX(-50%)",
+                                    }}
                                   >
-                                    <svg width="14" height="14" viewBox="0 0 14 14">
-                                      <polygon points="7,1 13,7 7,13 1,7" fill={fillColor} stroke={strokeColor} strokeWidth="1.5" />
-                                    </svg>
-                                    <span className={`text-[7px] font-semibold whitespace-nowrap max-w-[65px] truncate ${isMarker ? "text-blue-600" : "text-amber-700"}`}>
-                                      {ms.name}
-                                    </span>
+                                    <div className={`flex ${isNearEnd ? "flex-row-reverse" : "flex-row"} items-start gap-0.5`}>
+                                      {/* Diamond icons */}
+                                      <div className={`flex ${group.items.length > 1 ? "flex-col gap-0" : ""} shrink-0 pt-0.5`}>
+                                        {group.items.map((ms, mIdx) => (
+                                          <svg key={mIdx} width="12" height="12" viewBox="0 0 14 14"
+                                            data-testid={`gantt-milestone-${ms.name}`}>
+                                            <polygon points="7,1 13,7 7,13 1,7"
+                                              fill={ms.type === "marker" ? "#3B82F6" : "#F59E0B"}
+                                              stroke={ms.type === "marker" ? "#1D4ED8" : "#D97706"} strokeWidth="1.5" />
+                                          </svg>
+                                        ))}
+                                      </div>
+                                      {/* Stacked labels beside diamonds */}
+                                      <div className={`flex flex-col ${isNearEnd ? "items-end" : "items-start"}`}>
+                                        {group.items.map((ms, mIdx) => (
+                                          <span key={mIdx}
+                                            className={`text-[8px] font-semibold leading-tight whitespace-nowrap ${ms.type === "marker" ? "text-blue-600" : "text-amber-700"}`}
+                                            title={`${ms.name}${ms.type === "marker" ? " (Marker)" : ""}${ms.position ? ` @ ${ms.position}` : ""}${ms.percentage ? ` | ${ms.percentage}%` : ""}`}
+                                          >
+                                            {ms.name}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
                                   </div>
                                 );
                               })}

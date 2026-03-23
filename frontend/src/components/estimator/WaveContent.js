@@ -360,7 +360,7 @@ export const WaveContent = ({
             {(() => {
               const wavePayMs = milestones.filter(m => m.wave_name === wave.name && (m.milestone_type || "payment") === "payment");
               const totalPct = wavePayMs.reduce((s, m) => s + (m.payment_percentage || 0), 0);
-              const totalAmt = wavePayMs.reduce((s, m) => s + (m.payment_amount || 0), 0);
+              const totalAmt = Math.round((waveSummary?.finalPrice || 0) * (totalPct / 100) * 100) / 100;
               const markerCount = milestones.filter(m => m.wave_name === wave.name && (m.milestone_type || "payment") === "marker").length;
               return (
                 <div className="flex items-center justify-between mb-2">
