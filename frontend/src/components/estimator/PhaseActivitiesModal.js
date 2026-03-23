@@ -31,6 +31,9 @@ export const PhaseActivitiesModal = ({ open, onOpenChange, projectId, waves, pro
   const [adoptProjTypeId, setAdoptProjTypeId] = useState("");
   const [adopting, setAdopting] = useState(false);
 
+  // Template phases from master data
+  const [templatePhases, setTemplatePhases] = useState([]);
+
   // All project activities (for overview)
   const [allActivities, setAllActivities] = useState([]);
   const [exporting, setExporting] = useState(false);
@@ -38,9 +41,28 @@ export const PhaseActivitiesModal = ({ open, onOpenChange, projectId, waves, pro
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
 
-  const currentWave = waves.find(w => w.name === selectedWave);
-  const phases = currentWave ? (currentWave.phase_ranges || []).map(p => p.name).filter(Boolean) : [];
   const filteredSubTechs = (subTechnologies || []).filter(s => s.technology_id === adoptTechId);
+
+  // Fetch template phases whenever the adopt selectors change
+  useEffect(() => {
+    if (adoptTechId && adoptProjTypeId) {
+      loadTemplatePhases();
+    } else {
+      setTemplatePhases([]);
+    }
+  }, [adoptTechId, adoptSubTechId, adoptProjTypeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadTemplatePhases = async () => {
+    try {
+      const params = new URLSearchParams();
+      params.set("technology_id", adoptTechId);
+      if (adoptSubTechId && adoptSubTechId !== "__none") params.set("sub_technology_id", adoptSubTechId);
+      params.set("project_type_id", adoptProjTypeId);
+      const res = await axios.get(`${API}/activity-templates/by-combo?${params.toString()}`, { headers });
+      const phases = [...new Set((res.data || []).map(t => t.phase_name))];
+      setTemplatePhases(phases);
+    } catch { setTemplatePhases([]); }
+  };
 
   useEffect(() => {
     if (open && projectId) {
@@ -118,7 +140,7 @@ export const PhaseActivitiesModal = ({ open, onOpenChange, projectId, waves, pro
     setSelectedPhases(prev => prev.includes(phase) ? prev.filter(p => p !== phase) : [...prev, phase]);
   };
   const selectAllPhases = () => {
-    setSelectedPhases(prev => prev.length === phases.length ? [] : [...phases]);
+    setSelectedPhases(prev => prev.length === templatePhases.length ? [] : [...templatePhases]);
   };
 
   const addItem = (list, setter, isDeliverable) => {
@@ -272,7 +294,7 @@ export const PhaseActivitiesModal = ({ open, onOpenChange, projectId, waves, pro
         </div>
 
         {/* Adopt Templates Section */}
-        {selectedWave && phases.length > 0 && (
+        {selectedWave && templatePhases.length > 0 && (
           <div className="border rounded-lg p-3 bg-indigo-50/30 space-y-3">
             <p className="text-sm font-semibold text-[#0F172A]">Adopt from Template</p>
             <div className="grid grid-cols-3 gap-2">
@@ -294,9 +316,9 @@ export const PhaseActivitiesModal = ({ open, onOpenChange, projectId, waves, pro
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Button variant="outline" size="sm" className="text-xs h-7" onClick={selectAllPhases}>
-                {selectedPhases.length === phases.length ? "Deselect All" : "Select All"}
+                {selectedPhases.length === templatePhases.length ? "Deselect All" : "Select All"}
               </Button>
-              {phases.map(p => (
+              {templatePhases.map(p => (
                 <label key={p} className="flex items-center gap-1.5 text-xs cursor-pointer bg-white border rounded-md px-2 py-1 hover:border-indigo-300">
                   <Checkbox checked={selectedPhases.includes(p)} onCheckedChange={() => togglePhaseSelect(p)} className="w-3.5 h-3.5" />
                   {p}
@@ -315,7 +337,7 @@ export const PhaseActivitiesModal = ({ open, onOpenChange, projectId, waves, pro
           <div className="space-y-2">
             <p className="text-sm font-semibold text-[#0F172A]">Phases — {selectedWave}</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {phases.map(p => {
+              {templatePhases.map(p => {
                 const stats = getPhaseStats(selectedWave, p);
                 const total = stats.activities + stats.deliverables + stats.waveItems;
                 return (
