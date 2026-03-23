@@ -76,10 +76,14 @@ const buildMilestoneMarkers = (milestones, waves) => {
     let absPos;
 
     if (phase) {
-      // Position based on phase start/mid/end
+      // Position based on phase start/mid/end or numeric percentage (0-100)
       const phaseStart = offset + (phase.start_month || 1) - 1;
       const phaseEnd = offset + (phase.end_month || phase.start_month || 1);
-      if (ms.position === "start") absPos = phaseStart;
+      const numPos = parseFloat(ms.position);
+      if (!isNaN(numPos) && ms.position !== "start" && ms.position !== "mid" && ms.position !== "end") {
+        // Numeric percentage position (0-100)
+        absPos = phaseStart + (phaseEnd - phaseStart) * (numPos / 100);
+      } else if (ms.position === "start") absPos = phaseStart;
       else if (ms.position === "mid") absPos = (phaseStart + phaseEnd) / 2;
       else absPos = phaseEnd; // "end" or default
     } else {

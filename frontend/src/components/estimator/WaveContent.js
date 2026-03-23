@@ -356,7 +356,24 @@ export const WaveContent = ({
         {/* Milestones per Phase */}
         {(wave.phase_ranges || []).length > 0 && (
           <div className="mt-3 pt-2 border-t border-emerald-200">
-            <p className="text-[10px] text-gray-600 font-semibold uppercase tracking-wide mb-2">Phase Milestones</p>
+            {/* Header with total % */}
+            {(() => {
+              const wavePayMs = milestones.filter(m => m.wave_name === wave.name && (m.milestone_type || "payment") === "payment");
+              const totalPct = wavePayMs.reduce((s, m) => s + (m.payment_percentage || 0), 0);
+              const totalAmt = wavePayMs.reduce((s, m) => s + (m.payment_amount || 0), 0);
+              const markerCount = milestones.filter(m => m.wave_name === wave.name && (m.milestone_type || "payment") === "marker").length;
+              return (
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] text-gray-600 font-semibold uppercase tracking-wide">Phase Milestones</p>
+                  <div className="flex items-center gap-3">
+                    {markerCount > 0 && <span className="text-[9px] text-blue-500 font-medium">{markerCount} marker{markerCount !== 1 ? "s" : ""}</span>}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${totalPct > 100 ? "bg-red-100 text-red-700" : totalPct === 100 ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`} data-testid="wave-total-pct">
+                      {totalPct.toFixed(1)}%{totalAmt > 0 ? ` ($${totalAmt.toLocaleString(undefined, { maximumFractionDigits: 0 })})` : ""}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
             {(wave.phase_ranges || []).map((pr, pIdx) => {
               const phaseMilestones = milestones.filter(m => m.wave_name === wave.name && m.phase_name === pr.name);
               const phaseColor = getPhaseColor(pr.name);
@@ -388,14 +405,15 @@ export const WaveContent = ({
                           <Plus className="w-3 h-3 mr-0.5" /> Payment
                         </Button>
                         <Button variant="ghost" size="sm" className="h-5 text-[9px] text-blue-600 hover:bg-blue-50 px-1.5" onClick={() => {
-                          const targetMonth = `M${Math.ceil(pr.end_month)}`;
+                          const midMonth = pr.start_month + (pr.end_month - pr.start_month) * 0.5;
+                          const targetMonth = `M${Math.ceil(midMonth)}`;
                           const newMs = {
                             id: crypto.randomUUID(),
                             wave_name: wave.name,
                             milestone_name: "",
                             milestone_type: "marker",
                             phase_name: pr.name,
-                            position: "end",
+                            position: "50",
                             target_month: targetMonth,
                             completion_percentage: 0,
                             payment_percentage: 0,
@@ -415,47 +433,90 @@ export const WaveContent = ({
                         const msIdx = milestones.findIndex(m => m.id === ms.id);
                         const isMarker = (ms.milestone_type || "payment") === "marker";
                         return (
-                          <div key={ms.id} className={`grid gap-1.5 items-center ${isMarker ? "grid-cols-[16px_70px_1fr_28px]" : "grid-cols-[16px_70px_1fr_60px_60px_28px]"}`} data-testid={`milestone-row-${ms.id}`}>
+                          <div key={ms.id} className={`grid gap-1.5 items-center ${isMarker ? "grid-cols-[16px_1fr_100px_40px_28px]" : "grid-cols-[16px_70px_1fr_60px_60px_28px]"}`} data-testid={`milestone-row-${ms.id}`}>
                             {/* Type indicator */}
                             <div title={isMarker ? "Marker (no payment)" : "Payment milestone"}>
                               <svg width="10" height="10" viewBox="0 0 14 14">
                                 <polygon points="7,1 13,7 7,13 1,7" fill={isMarker ? "#3B82F6" : "#F59E0B"} stroke={isMarker ? "#1D4ED8" : "#D97706"} strokeWidth="1.5" />
                               </svg>
                             </div>
-                            <select
-                              value={ms.position || "end"}
-                              onChange={(e) => {
-                                const pos = e.target.value;
-                                let targetMonth;
-                                if (pos === "start") targetMonth = `M${Math.ceil(pr.start_month)}`;
-                                else if (pos === "mid") targetMonth = `M${Math.ceil((pr.start_month + pr.end_month) / 2)}`;
-                                else targetMonth = `M${Math.ceil(pr.end_month)}`;
-                                const updated = [...milestones];
-                                updated[msIdx] = { ...updated[msIdx], position: pos, target_month: targetMonth };
-                                onSaveMilestones(updated);
-                              }}
-                              className={`h-6 text-[10px] border rounded bg-white px-1 ${isMarker ? "border-blue-200" : "border-amber-200"}`}
-                              disabled={isReadOnly}
-                              data-testid={`ms-position-${ms.id}`}
-                            >
-                              <option value="start">Start</option>
-                              <option value="mid">Mid</option>
-                              <option value="end">End</option>
-                            </select>
-                            <Input
-                              value={ms.milestone_name}
-                              onChange={(e) => {
-                                const updated = [...milestones];
-                                updated[msIdx] = { ...updated[msIdx], milestone_name: e.target.value };
-                                onSaveMilestones(updated);
-                              }}
-                              placeholder={isMarker ? "Marker name..." : "Milestone name..."}
-                              className="h-6 text-[10px] px-1.5"
-                              disabled={isReadOnly}
-                              data-testid={`ms-name-${ms.id}`}
-                            />
-                            {!isMarker && (
+                            {isMarker ? (
                               <>
+                                {/* Marker: Name first, then slider */}
+                                <Input
+                                  value={ms.milestone_name}
+                                  onChange={(e) => {
+                                    const updated = [...milestones];
+                                    updated[msIdx] = { ...updated[msIdx], milestone_name: e.target.value };
+                                    onSaveMilestones(updated);
+                                  }}
+                                  placeholder="e.g. Sprint 1, UAT, Phase Closure..."
+                                  className="h-6 text-[10px] px-1.5"
+                                  disabled={isReadOnly}
+                                  data-testid={`ms-name-${ms.id}`}
+                                />
+                                {/* Range slider for flexible placement */}
+                                <input
+                                  type="range" min="0" max="100" step="5"
+                                  value={(() => {
+                                    const p = ms.position;
+                                    if (p === "start") return 0;
+                                    if (p === "mid") return 50;
+                                    if (p === "end") return 100;
+                                    return parseFloat(p) || 50;
+                                  })()}
+                                  onChange={(e) => {
+                                    const pct = parseInt(e.target.value);
+                                    const monthFloat = pr.start_month + (pr.end_month - pr.start_month) * (pct / 100);
+                                    const targetMonth = `M${Math.ceil(monthFloat)}`;
+                                    const updated = [...milestones];
+                                    updated[msIdx] = { ...updated[msIdx], position: String(pct), target_month: targetMonth };
+                                    onSaveMilestones(updated);
+                                  }}
+                                  className="h-1.5 w-full accent-blue-500 cursor-pointer"
+                                  disabled={isReadOnly}
+                                  title={`Position: ${(() => { const p = ms.position; if (p === "start") return "0%"; if (p === "mid") return "50%"; if (p === "end") return "100%"; return `${parseFloat(p) || 50}%`; })()} along phase`}
+                                  data-testid={`ms-slider-${ms.id}`}
+                                />
+                                <span className="text-[9px] text-blue-500 font-mono text-center whitespace-nowrap" data-testid={`ms-pct-display-${ms.id}`}>
+                                  {(() => { const p = ms.position; if (p === "start") return "0%"; if (p === "mid") return "50%"; if (p === "end") return "100%"; return `${parseFloat(p) || 50}%`; })()}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                {/* Payment: Position dropdown + name + % + month */}
+                                <select
+                                  value={ms.position || "end"}
+                                  onChange={(e) => {
+                                    const pos = e.target.value;
+                                    let targetMonth;
+                                    if (pos === "start") targetMonth = `M${Math.ceil(pr.start_month)}`;
+                                    else if (pos === "mid") targetMonth = `M${Math.ceil((pr.start_month + pr.end_month) / 2)}`;
+                                    else targetMonth = `M${Math.ceil(pr.end_month)}`;
+                                    const updated = [...milestones];
+                                    updated[msIdx] = { ...updated[msIdx], position: pos, target_month: targetMonth };
+                                    onSaveMilestones(updated);
+                                  }}
+                                  className="h-6 text-[10px] border border-amber-200 rounded bg-white px-1"
+                                  disabled={isReadOnly}
+                                  data-testid={`ms-position-${ms.id}`}
+                                >
+                                  <option value="start">Start</option>
+                                  <option value="mid">Mid</option>
+                                  <option value="end">End</option>
+                                </select>
+                                <Input
+                                  value={ms.milestone_name}
+                                  onChange={(e) => {
+                                    const updated = [...milestones];
+                                    updated[msIdx] = { ...updated[msIdx], milestone_name: e.target.value };
+                                    onSaveMilestones(updated);
+                                  }}
+                                  placeholder="Milestone name..."
+                                  className="h-6 text-[10px] px-1.5"
+                                  disabled={isReadOnly}
+                                  data-testid={`ms-name-${ms.id}`}
+                                />
                                 <Input
                                   type="number" min={0} max={100} step={1}
                                   value={ms.payment_percentage || ""}
