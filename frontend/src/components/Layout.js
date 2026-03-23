@@ -25,7 +25,8 @@ import {
   LifeBuoy,
   Video,
   Target,
-  BarChart3
+  BarChart3,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -133,6 +134,7 @@ const Layout = ({ user, onLogout }) => {
     { path: "/skills", icon: Layers, label: "Skills" },
     { path: "/proficiency-rates", icon: Briefcase, label: "Proficiency Rates" },
     { path: "/sales-managers", icon: UserCircle, label: "Sales Managers" },
+    { path: "/activity-templates", icon: FileText, label: "Activity Templates" },
   ];
 
   const adminItems = [];

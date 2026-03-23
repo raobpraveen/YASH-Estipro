@@ -24,6 +24,7 @@ import SupportGuide from "@/pages/SupportGuide";
 import Tutorials from "@/pages/Tutorials";
 import PaymentMilestones from "@/pages/PaymentMilestones";
 import CashflowStatement from "@/pages/CashflowStatement";
+import ActivityTemplates from "@/pages/ActivityTemplates";
 import { Toaster } from "@/components/ui/sonner";
 
 function App() {
@@ -91,6 +92,7 @@ function App() {
               <Route path="tutorials" element={<Tutorials />} />
               <Route path="payment-milestones" element={<PaymentMilestones />} />
               <Route path="cashflow" element={<CashflowStatement />} />
+              <Route path="activity-templates" element={<ActivityTemplates />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
           )}

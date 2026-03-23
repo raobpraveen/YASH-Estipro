@@ -17,6 +17,7 @@ export async function buildExportWorkbook({
   subTechnologyIds, subTechnologies, projectTypeIds, projectTypes,
   salesManagerId, salesManagers, crmId, COUNTRIES,
   milestones = [], paymentTermsDays = 0,
+  projectActivities = [],
 }) {
   const selectedCustomer = customers.find(c => c.id === customerId);
   const wb = new ExcelJS.Workbook();
@@ -572,6 +573,83 @@ export async function buildExportWorkbook({
       const amtR = msWs.addRow(["", "Total Payment Amount", totalAmt]);
       amtR.getCell(2).font = { bold: true };
       amtR.getCell(3).numFmt = moneyFmt;
+    }
+  }
+
+  // ========= ACTIVITIES SHEETS (per wave) =========
+  if (projectActivities && projectActivities.length > 0) {
+    const actHeaderFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F172A" } };
+    const actHeaderFont = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+    const actFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } };
+    const delFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0FDF4" } };
+    const waveFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFBEB" } };
+
+    // Group by wave
+    const actByWave = {};
+    projectActivities.forEach(d => {
+      if (!actByWave[d.wave_name]) actByWave[d.wave_name] = [];
+      actByWave[d.wave_name].push(d);
+    });
+
+    for (const wave of waves) {
+      const waveData = actByWave[wave.name];
+      if (!waveData || waveData.length === 0) continue;
+
+      let actSheetName = `${wave.name} Activities`.replace(/[\\/*?\[\]:]/g, "").substring(0, 31);
+      let actCounter = 2;
+      while (usedNames.has(actSheetName)) { actSheetName = `${wave.name} Act`.substring(0, 28) + `_${actCounter++}`; }
+      usedNames.add(actSheetName);
+
+      const actWs = wb.addWorksheet(actSheetName, { properties: { tabColor: { argb: "FF6366F1" } } });
+      actWs.columns = [{ width: 5 }, { width: 5 }, { width: 30 }, { width: 40 }, { width: 16 }, { width: 12 }];
+
+      actWs.addRow([`${wave.name} — Activities & Deliverables`]).font = { bold: true, size: 14 };
+      actWs.addRow([]);
+
+      // Sort phases by wave's phase_ranges order
+      const sortedData = waveData.sort((a, b) => {
+        const ai = (wave.phase_ranges || []).findIndex(p => p.name === a.phase_name);
+        const bi = (wave.phase_ranges || []).findIndex(p => p.name === b.phase_name);
+        return ai - bi;
+      });
+
+      for (const pd of sortedData) {
+        const tplActs = (pd.activities || []).filter(a => !a.is_deliverable);
+        const tplDels = (pd.activities || []).filter(a => a.is_deliverable);
+        const waveItems = pd.wave_activities || [];
+        if (tplActs.length + tplDels.length + waveItems.length === 0) continue;
+
+        // Phase header
+        const phR = actWs.addRow(["", pd.phase_name]);
+        phR.getCell(2).font = { bold: true, size: 12, color: { argb: "FF0F172A" } };
+        phR.getCell(2).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
+
+        if (tplActs.length > 0) {
+          const hdr = actWs.addRow(["", "#", "Activity", "Description", "Owner", "Source"]);
+          hdr.eachCell(c => { c.fill = actHeaderFill; c.font = actHeaderFont; c.border = thinBorder; });
+          tplActs.forEach((a, i) => {
+            const r = actWs.addRow(["", i + 1, a.name, a.description || "", a.owner || "", "Template"]);
+            r.eachCell(c => { c.fill = actFill; c.border = thinBorder; });
+          });
+        }
+        if (tplDels.length > 0) {
+          const hdr = actWs.addRow(["", "#", "Deliverable", "Description", "Owner", "Source"]);
+          hdr.eachCell(c => { c.fill = actHeaderFill; c.font = actHeaderFont; c.border = thinBorder; });
+          tplDels.forEach((d, i) => {
+            const r = actWs.addRow(["", i + 1, d.name, d.description || "", d.owner || "", "Template"]);
+            r.eachCell(c => { c.fill = delFill; c.border = thinBorder; });
+          });
+        }
+        if (waveItems.length > 0) {
+          const hdr = actWs.addRow(["", "#", "Wave-Specific", "Description", "Owner", "Source"]);
+          hdr.eachCell(c => { c.fill = actHeaderFill; c.font = actHeaderFont; c.border = thinBorder; });
+          waveItems.forEach((w, i) => {
+            const r = actWs.addRow(["", i + 1, w.name, w.description || "", w.owner || "", "Wave"]);
+            r.eachCell(c => { c.fill = waveFill; c.border = thinBorder; });
+          });
+        }
+        actWs.addRow([]);
+      }
     }
   }
 

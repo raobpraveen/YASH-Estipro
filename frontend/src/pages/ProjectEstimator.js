@@ -1642,6 +1642,15 @@ const ProjectEstimator = () => {
     }
 
     try {
+      // Fetch project activities for export
+      let projectActivities = [];
+      if (projectId) {
+        try {
+          const actRes = await axios.get(`${API}/projects/${projectId}/activities`, { headers: apiHeaders });
+          projectActivities = actRes.data || [];
+        } catch { /* ignore */ }
+      }
+
       const { buffer, fileName } = await buildExportWorkbook({
         waves, profitMarginPercentage, negoBufferPercentage,
         projectName, projectDescription, projectNumber, projectVersion, projectStatus,
@@ -1649,6 +1658,7 @@ const ProjectEstimator = () => {
         subTechnologyIds, subTechnologies, projectTypeIds, projectTypes,
         salesManagerId, salesManagers, crmId, COUNTRIES,
         milestones: ganttMilestones, paymentTermsDays: ganttPaymentTermsDays,
+        projectActivities,
       });
       // Upload to backend and trigger download via hidden iframe
       const uploadRes = await fetch(`${API}/download-file`, {
@@ -2098,7 +2108,7 @@ const ProjectEstimator = () => {
       <QuickEstimatorDialog open={quickEstimateOpen} onOpenChange={setQuickEstimateOpen} quickEstimate={quickEstimate} setQuickEstimate={setQuickEstimate} quickEstimateResult={quickEstimateResult} negoBufferPercentage={negoBufferPercentage} />
 
       {/* Phase Activities & Deliverables Modal */}
-      <PhaseActivitiesModal open={activitiesModalOpen} onOpenChange={setActivitiesModalOpen} projectId={projectId} waves={waves} projectTypes={projectTypes} projectTypeIds={projectTypeIds} />
+      <PhaseActivitiesModal open={activitiesModalOpen} onOpenChange={setActivitiesModalOpen} projectId={projectId} waves={waves} projectName={projectName} projectNumber={projectNumber} technologies={technologies} subTechnologies={subTechnologies} projectTypes={projectTypes} projectTypeIds={projectTypeIds} technologyIds={technologyIds} subTechnologyIds={subTechnologyIds} />
 
     </div>
     </TooltipProvider>
