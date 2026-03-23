@@ -260,7 +260,10 @@ const ProjectEstimator = () => {
       
       // Fetch milestones for Gantt chart display
       try {
-        const msRes = await axios.get(`${API}/projects/${id}/milestones`);
+        const token = localStorage.getItem("token");
+        const msRes = await axios.get(`${API}/projects/${id}/milestones`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         setGanttMilestones(msRes.data.milestones || []);
       } catch { setGanttMilestones([]); }
       
