@@ -116,6 +116,19 @@ const ProjectEstimator = () => {
   
   // Milestones for Gantt (fetched from payment milestones)
   const [ganttMilestones, setGanttMilestones] = useState([]);
+  
+  // Save milestones to backend (used by phase editor for bidirectional sync)
+  const saveGanttMilestones = async (updatedMilestones) => {
+    setGanttMilestones(updatedMilestones);
+    if (!projectId) return;
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`${API}/projects/${projectId}/milestones`, {
+        milestones: updatedMilestones,
+        payment_terms_days: 0,
+      }, { headers: { Authorization: `Bearer ${token}` } });
+    } catch (e) { console.error("Failed to save milestones:", e); }
+  };
 
   // Section collapse/expand
   const [collapsedSections, setCollapsedSections] = useState({});
@@ -408,7 +421,6 @@ const ProjectEstimator = () => {
       phase_names: phaseNames,
       month_phases: Array(numMonths).fill(""),
       phase_ranges: [],
-      phase_dependencies: [],
       wave_start_month: 1,
       logistics_config: { ...waveLogistics },
       nego_buffer_percentage: 0,
@@ -981,7 +993,6 @@ const ProjectEstimator = () => {
         phase_names: w.phase_names,
         month_phases: w.month_phases || w.phase_names.map(() => ""),
         phase_ranges: w.phase_ranges || [],
-        phase_dependencies: w.phase_dependencies || [],
         wave_start_month: w.wave_start_month || 1,
         logistics_config: w.logistics_config,
         nego_buffer_percentage: w.nego_buffer_percentage || 0,
@@ -1695,7 +1706,6 @@ const ProjectEstimator = () => {
         duration_months: pw.phaseNames.length,
         phase_names: pw.phaseNames,
         phase_ranges: pw.phaseRanges || [],
-        phase_dependencies: pw.phaseDependencies || [],
         logistics_config: pw.logistics || waves[0]?.logistics_config || {},
         grid_allocations: pw.allocations.map(a => ({
           ...a,
@@ -2003,6 +2013,7 @@ const ProjectEstimator = () => {
                     onDownloadWaveData={handleDownloadWaveData} onUploadWaveGrid={handleUploadWaveGrid}
                     onCloneWave={handleCloneWave} onDeleteWave={handleDeleteWave}
                     onGridFieldChange={handleGridFieldChange}
+                    milestones={ganttMilestones} onSaveMilestones={saveGanttMilestones}
                   />
                 </TabsContent>
                 );

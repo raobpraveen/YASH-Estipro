@@ -125,6 +125,8 @@ const PaymentMilestones = () => {
         id: newId,
         wave_name: waveName,
         milestone_name: `Milestone ${waveMilestones.length + 1}`,
+        phase_name: "",
+        position: "end",
         target_month: "M1",
         payment_percentage: 0,
         payment_amount: 0,
@@ -524,6 +526,8 @@ const PaymentMilestones = () => {
                           <TableRow>
                             <TableHead className="w-10">#</TableHead>
                             <TableHead>Milestone Name</TableHead>
+                            <TableHead className="w-32">Linked Phase</TableHead>
+                            <TableHead className="w-24">Position</TableHead>
                             <TableHead className="w-28">Target Month</TableHead>
                             <TableHead className="w-28">Payment %</TableHead>
                             <TableHead className="text-right w-36">Payment Amount</TableHead>
@@ -532,10 +536,50 @@ const PaymentMilestones = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {waveMilestones.map((ms, idx) => (
+                          {waveMilestones.map((ms, idx) => {
+                            const wavePhases = (wave.phase_ranges || []).map(p => p.name);
+                            return (
                             <TableRow key={ms.id} data-testid={`milestone-row-${ms.id}`}>
                               <TableCell className="font-mono text-gray-400">{idx + 1}</TableCell>
                               <TableCell><Input value={ms.milestone_name} onChange={(e) => updateMilestone(ms.id, "milestone_name", e.target.value)} className="w-48" data-testid={`ms-name-${ms.id}`} /></TableCell>
+                              <TableCell>
+                                <Select value={ms.phase_name || ""} onValueChange={(v) => {
+                                  const ph = (wave.phase_ranges || []).find(p => p.name === v);
+                                  const pos = ms.position || "end";
+                                  let targetMonth = ms.target_month;
+                                  if (ph) {
+                                    if (pos === "start") targetMonth = `M${Math.ceil(ph.start_month)}`;
+                                    else if (pos === "mid") targetMonth = `M${Math.ceil((ph.start_month + ph.end_month) / 2)}`;
+                                    else targetMonth = `M${Math.ceil(ph.end_month)}`;
+                                  }
+                                  setMilestones(milestones.map(m => m.id === ms.id ? { ...m, phase_name: v, target_month: targetMonth } : m));
+                                }}>
+                                  <SelectTrigger className="w-28" data-testid={`ms-phase-${ms.id}`}><SelectValue placeholder="Select..." /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="">— None —</SelectItem>
+                                    {wavePhases.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select value={ms.position || "end"} onValueChange={(v) => {
+                                  const ph = (wave.phase_ranges || []).find(p => p.name === ms.phase_name);
+                                  let targetMonth = ms.target_month;
+                                  if (ph) {
+                                    if (v === "start") targetMonth = `M${Math.ceil(ph.start_month)}`;
+                                    else if (v === "mid") targetMonth = `M${Math.ceil((ph.start_month + ph.end_month) / 2)}`;
+                                    else targetMonth = `M${Math.ceil(ph.end_month)}`;
+                                  }
+                                  setMilestones(milestones.map(m => m.id === ms.id ? { ...m, position: v, target_month: targetMonth } : m));
+                                }}>
+                                  <SelectTrigger className="w-20" data-testid={`ms-pos-${ms.id}`}><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="start">Start</SelectItem>
+                                    <SelectItem value="mid">Mid</SelectItem>
+                                    <SelectItem value="end">End</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
                               <TableCell>
                                 <Select value={ms.target_month || "M1"} onValueChange={(v) => updateMilestone(ms.id, "target_month", v)}>
                                   <SelectTrigger className="w-24" data-testid={`ms-month-${ms.id}`}><SelectValue /></SelectTrigger>
@@ -547,7 +591,8 @@ const PaymentMilestones = () => {
                               <TableCell><Input value={ms.description || ""} onChange={(e) => updateMilestone(ms.id, "description", e.target.value)} className="w-40" placeholder="Optional" data-testid={`ms-desc-${ms.id}`} /></TableCell>
                               <TableCell><Button variant="ghost" size="sm" onClick={() => removeMilestone(ms.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50" data-testid={`ms-delete-${ms.id}`}><Trash2 className="w-4 h-4" /></Button></TableCell>
                             </TableRow>
-                          ))}
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </div>

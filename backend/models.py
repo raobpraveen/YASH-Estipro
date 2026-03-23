@@ -232,7 +232,6 @@ class ProjectWave(BaseModel):
     phase_names: List[str] = []
     month_phases: List[str] = []  # Phase assignment per month for Gantt chart (legacy)
     phase_ranges: Optional[List[dict]] = []  # Phase ranges: [{name, start_month, end_month}]
-    phase_dependencies: Optional[List[dict]] = []  # Dependencies: [{from_phase, to_phase, type}]
     wave_start_month: int = 1  # Offset for wave start in project timeline
     logistics_defaults: Dict[str, float] = {}
     logistics_config: Dict[str, float] = {}
@@ -397,6 +396,9 @@ class PaymentMilestone(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     wave_name: str
     milestone_name: str
+    phase_name: str = ""  # Linked phase (e.g., "Explore")
+    position: str = ""  # "start", "mid", "end" within the phase
+    target_month: str = ""  # Computed: "M3" based on phase + position
     completion_percentage: float = 0
     payment_percentage: float = 0
     payment_amount: float = 0

@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, Upload, Image, Trash2, Download, FileSpreadsheet } from "lucide-react";
+import { ChevronDown, ChevronRight, Upload, Image, Trash2, FileSpreadsheet } from "lucide-react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import html2canvas from "html2canvas";
@@ -26,7 +26,7 @@ const getPhaseColor = (name) => PHASE_COLORS[name] || DEFAULT_COLOR;
 
 /**
  * Build gantt rows from wave phase_ranges data.
- * Supports half-month precision (float start/end values).
+ * Supports half-month precision.
  */
 const buildGanttRows = (waves) => {
   const rows = [];
@@ -61,8 +61,8 @@ const buildGanttRows = (waves) => {
 };
 
 /**
- * Build milestone markers from PaymentMilestones data.
- * Each milestone has a wave_name and target_month (e.g., "M3").
+ * Build milestone markers positioned at phase start/mid/end.
+ * Uses phase_name + position to compute exact position on the Gantt.
  */
 const buildMilestoneMarkers = (milestones, waves) => {
   const markers = [];
@@ -70,12 +70,29 @@ const buildMilestoneMarkers = (milestones, waves) => {
     const wave = waves.find(w => w.name === ms.wave_name);
     if (!wave) continue;
     const offset = (wave.wave_start_month || 1) - 1;
-    const monthNum = parseInt(ms.target_month?.replace("M", "") || "0");
-    if (!monthNum) continue;
-    // Position: center of the target month
-    const absPos = offset + monthNum - 0.5;
+
+    // Find the linked phase
+    const phase = (wave.phase_ranges || []).find(p => p.name === ms.phase_name);
+    let absPos;
+
+    if (phase) {
+      // Position based on phase start/mid/end
+      const phaseStart = offset + (phase.start_month || 1) - 1;
+      const phaseEnd = offset + (phase.end_month || phase.start_month || 1);
+      if (ms.position === "start") absPos = phaseStart;
+      else if (ms.position === "mid") absPos = (phaseStart + phaseEnd) / 2;
+      else absPos = phaseEnd; // "end" or default
+    } else {
+      // Fallback: use target_month
+      const monthNum = parseInt(ms.target_month?.replace("M", "") || "0");
+      if (!monthNum) continue;
+      absPos = offset + monthNum - 0.5;
+    }
+
     markers.push({
       waveName: ms.wave_name,
+      phaseName: ms.phase_name || "",
+      position: ms.position || "",
       name: ms.milestone_name,
       absPos,
       month: ms.target_month,
@@ -86,33 +103,6 @@ const buildMilestoneMarkers = (milestones, waves) => {
   return markers;
 };
 
-/**
- * Build dependency arrows from wave phase_dependencies.
- * Each dependency: { from_phase, to_phase, type: "FS" }
- */
-const buildDependencyArrows = (waves, rows) => {
-  const arrows = [];
-  for (const w of waves) {
-    const deps = w.phase_dependencies || [];
-    for (const dep of deps) {
-      const fromRow = rows.find(r => r.waveName === w.name && r.phase === dep.from_phase);
-      const toRow = rows.find(r => r.waveName === w.name && r.phase === dep.to_phase);
-      if (fromRow && toRow) {
-        arrows.push({
-          fromPhase: dep.from_phase,
-          toPhase: dep.to_phase,
-          fromEnd: fromRow.absEnd,
-          toStart: toRow.absStart,
-          fromIdx: rows.indexOf(fromRow),
-          toIdx: rows.indexOf(toRow),
-          waveName: w.name,
-        });
-      }
-    }
-  }
-  return arrows;
-};
-
 export const GanttCard = ({
   projectId, waves, setWaves, milestones = [], ganttChart, ganttLoading,
   ganttInputRef, handleGanttUpload, handleGanttDelete,
@@ -121,7 +111,6 @@ export const GanttCard = ({
   const chartRef = useRef(null);
   const { rows, maxMonth } = buildGanttRows(waves);
   const milestoneMarkers = buildMilestoneMarkers(milestones, waves);
-  const dependencyArrows = buildDependencyArrows(waves, rows);
 
   // Group rows by wave
   const waveGroups = [];
@@ -135,8 +124,8 @@ export const GanttCard = ({
     }
   }
 
-  const ROW_H = 32; // Height of each phase row in px
-  const LABEL_W = 140; // Left label column width
+  const ROW_H = 32;
+  const LABEL_W = 140;
 
   const exportGanttPNG = async () => {
     if (!chartRef.current) return;
@@ -153,14 +142,14 @@ export const GanttCard = ({
       const ws = wb.addWorksheet("Gantt Chart");
       const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
 
-      // Header row
+      // Header
       const headerData = ["Wave", "Phase"];
       for (let m = 1; m <= maxMonth; m++) headerData.push(`M${m}`);
       const headerRow = ws.addRow(headerData);
       headerRow.font = { bold: true, size: 10 };
       headerRow.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F172A" } }; c.font = { bold: true, color: { argb: "FFFFFFFF" } }; c.border = thinBorder; });
 
-      // Phase data rows
+      // Phase bars
       for (const wg of waveGroups) {
         const wave = waves.find(w => w.name === wg.waveName);
         const desc = wave?.description ? ` (${wave.description})` : "";
@@ -168,7 +157,6 @@ export const GanttCard = ({
         sepRow.font = { bold: true, size: 11 };
         ws.mergeCells(sepRow.number, 1, sepRow.number, maxMonth + 2);
         sepRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
-        sepRow.getCell(1).border = { top: { style: "medium", color: { argb: "FF94A3B8" } } };
 
         for (const row of wg.rows) {
           const dataRow = ["", row.phase];
@@ -176,8 +164,7 @@ export const GanttCard = ({
           const argb = row.color.bg.replace("#", "FF");
           const borderArgb = row.color.border.replace("#", "FF");
           const xlRow = ws.addRow(dataRow);
-          xlRow.font = { size: 9 };
-          xlRow.alignment = { horizontal: "center" };
+          xlRow.font = { size: 9 }; xlRow.alignment = { horizontal: "center" };
           const cellStart = Math.floor(row.absStart);
           const cellEnd = Math.ceil(row.absEnd) - 1;
           for (let m = cellStart; m <= cellEnd && m < maxMonth; m++) {
@@ -185,12 +172,9 @@ export const GanttCard = ({
             cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb } };
             cell.value = row.phase;
             cell.font = { bold: true, size: 9, color: { argb: row.color.text.replace("#", "FF") } };
-            cell.border = {
-              top: { style: "thin", color: { argb: borderArgb } },
-              bottom: { style: "thin", color: { argb: borderArgb } },
+            cell.border = { top: { style: "thin", color: { argb: borderArgb } }, bottom: { style: "thin", color: { argb: borderArgb } },
               left: m === cellStart ? { style: "medium", color: { argb: borderArgb } } : undefined,
-              right: m === cellEnd ? { style: "medium", color: { argb: borderArgb } } : undefined,
-            };
+              right: m === cellEnd ? { style: "medium", color: { argb: borderArgb } } : undefined };
           }
         }
       }
@@ -200,30 +184,15 @@ export const GanttCard = ({
         ws.addRow([]);
         const msHdr = ws.addRow(["MILESTONES"]);
         msHdr.font = { bold: true, size: 11 };
-        const msColHdr = ws.addRow(["Wave", "Milestone", "Month", "Payment %", "Amount"]);
+        const msColHdr = ws.addRow(["Wave", "Phase", "Position", "Milestone", "Month", "Payment %", "Amount"]);
         msColHdr.eachCell(c => { c.font = { bold: true }; c.border = thinBorder; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF7ED" } }; });
         for (const ms of milestoneMarkers) {
-          const r = ws.addRow([ms.waveName, ms.name, ms.month, ms.percentage || "", ms.amount || ""]);
+          const r = ws.addRow([ms.waveName, ms.phaseName, ms.position, ms.name, ms.month, ms.percentage || "", ms.amount || ""]);
           r.eachCell(c => { c.border = thinBorder; });
         }
       }
 
-      // Dependencies section
-      const allDeps = waves.flatMap(w => (w.phase_dependencies || []).map(d => ({ wave: w.name, ...d })));
-      if (allDeps.length > 0) {
-        ws.addRow([]);
-        const depHdr = ws.addRow(["DEPENDENCIES"]);
-        depHdr.font = { bold: true, size: 11 };
-        const depColHdr = ws.addRow(["Wave", "From Phase", "To Phase", "Type"]);
-        depColHdr.eachCell(c => { c.font = { bold: true }; c.border = thinBorder; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } }; });
-        for (const d of allDeps) {
-          const r = ws.addRow([d.wave, d.from_phase, d.to_phase, d.type || "FS"]);
-          r.eachCell(c => { c.border = thinBorder; });
-        }
-      }
-
-      ws.getColumn(1).width = 18;
-      ws.getColumn(2).width = 16;
+      ws.getColumn(1).width = 18; ws.getColumn(2).width = 16;
       const buffer = await wb.xlsx.writeBuffer();
       saveAs(new Blob([buffer]), "gantt-chart.xlsx");
     } catch (e) { console.error("Excel export failed:", e); }
@@ -264,18 +233,19 @@ export const GanttCard = ({
                 </div>
               </div>
 
-              {/* Chart area with relative positioning for arrows + milestones */}
-              <div className="relative">
-                {/* Phase bars */}
-                {waveGroups.map((wg, wIdx) => {
-                  const wave = waves.find(w => w.name === wg.waveName);
-                  const description = wave?.description;
-                  const midIdx = Math.floor(wg.rows.length / 2);
+              {/* Phase bars */}
+              {waveGroups.map((wg, wIdx) => {
+                const wave = waves.find(w => w.name === wg.waveName);
+                const description = wave?.description;
+                const midIdx = Math.floor(wg.rows.length / 2);
 
-                  return (
-                    <div key={wIdx} data-testid={`gantt-wave-${wg.waveName}`}>
-                      {wIdx > 0 && <div className="h-3" />}
-                      {wg.rows.map((row, rIdx) => (
+                return (
+                  <div key={wIdx} data-testid={`gantt-wave-${wg.waveName}`}>
+                    {wIdx > 0 && <div className="h-3" />}
+                    {wg.rows.map((row, rIdx) => {
+                      // Find milestones for this phase in this wave
+                      const phaseMilestones = milestoneMarkers.filter(m => m.waveName === row.waveName && m.phaseName === row.phase);
+                      return (
                         <div key={rIdx} className="flex items-center" style={{ height: ROW_H }} data-testid={`gantt-row-${row.phase}`}>
                           <div style={{ width: LABEL_W }} className="pr-2 text-right shrink-0">
                             {rIdx === midIdx && description ? (
@@ -302,98 +272,50 @@ export const GanttCard = ({
                             >
                               <span className="text-[10px] font-semibold truncate px-1" style={{ color: row.color.text }}>{row.phase}</span>
                             </div>
+                            {/* Milestone diamonds on this phase bar */}
+                            {phaseMilestones.map((ms, mIdx) => {
+                              const leftPct = (ms.absPos / maxMonth) * 100;
+                              return (
+                                <div key={mIdx} className="absolute flex flex-col items-center z-10" style={{ left: `${leftPct}%`, top: -2, transform: "translateX(-50%)" }}
+                                  title={`${ms.name} (${ms.position}${ms.percentage ? `, ${ms.percentage}%` : ""})`}
+                                  data-testid={`gantt-milestone-${ms.name}`}
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 14 14">
+                                    <polygon points="7,1 13,7 7,13 1,7" fill="#F59E0B" stroke="#D97706" strokeWidth="1.5" />
+                                  </svg>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                );
+              })}
 
-                {/* SVG overlay for dependency arrows - positioned over the bar track area */}
-                {dependencyArrows.length > 0 && (() => {
-                  // Calculate total chart height
-                  let totalRows = 0;
-                  waveGroups.forEach((wg, wIdx) => {
-                    if (wIdx > 0) totalRows += 0.4; // spacer
-                    totalRows += wg.rows.length;
-                  });
-                  const totalH = totalRows * ROW_H;
-
-                  // Build a cumulative row Y map
-                  const rowYMap = {};
-                  let cumRow = 0;
-                  waveGroups.forEach((wg, wIdx) => {
-                    if (wIdx > 0) cumRow += 0.4; // spacer
-                    wg.rows.forEach((row) => {
-                      const globalIdx = rows.indexOf(row);
-                      rowYMap[globalIdx] = cumRow * ROW_H + ROW_H / 2;
-                      cumRow++;
-                    });
-                  });
-
-                  return (
-                    <svg
-                      className="absolute top-0 pointer-events-none"
-                      style={{ left: LABEL_W, width: `calc(100% - ${LABEL_W}px)`, height: totalH }}
-                    >
-                      <defs>
-                        <marker id="dep-arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-                          <polygon points="0 0, 8 3, 0 6" fill="#6366F1" />
-                        </marker>
-                      </defs>
-                      {dependencyArrows.map((arrow, aIdx) => {
-                        const fromX = `${(arrow.fromEnd / maxMonth) * 100}%`;
-                        const toX = `${(arrow.toStart / maxMonth) * 100}%`;
-                        const fromY = rowYMap[arrow.fromIdx] || 0;
-                        const toY = rowYMap[arrow.toIdx] || 0;
-                        // Percentage X values don't work in SVG path, so use line elements
-                        return (
-                          <g key={aIdx}>
-                            <line
-                              x1={fromX} y1={fromY}
-                              x2={fromX} y2={(fromY + toY) / 2}
-                              stroke="#6366F1" strokeWidth="2" strokeDasharray="5,3" opacity="0.8"
-                            />
-                            <line
-                              x1={fromX} y1={(fromY + toY) / 2}
-                              x2={toX} y2={(fromY + toY) / 2}
-                              stroke="#6366F1" strokeWidth="2" strokeDasharray="5,3" opacity="0.8"
-                            />
-                            <line
-                              x1={toX} y1={(fromY + toY) / 2}
-                              x2={toX} y2={toY}
-                              stroke="#6366F1" strokeWidth="2" strokeDasharray="5,3" opacity="0.8"
-                              markerEnd="url(#dep-arrowhead)"
-                            />
-                          </g>
-                        );
-                      })}
-                    </svg>
-                  );
-                })()}
-              </div>
-
-              {/* Milestone markers row */}
+              {/* Milestone summary row */}
               {milestoneMarkers.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-gray-100">
-                  <div className="flex items-center mb-1">
+                  <div className="flex items-center">
                     <div style={{ width: LABEL_W }} className="shrink-0 text-right pr-2">
                       <span className="text-[10px] font-semibold text-amber-700">Milestones</span>
                     </div>
-                    <div className="flex-1 relative" style={{ height: 36 }}>
-                      {/* Grid lines */}
+                    <div className="flex-1 relative" style={{ height: 28 }}>
                       {Array.from({ length: maxMonth }, (_, i) => (
                         <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100" style={{ left: `${(i / maxMonth) * 100}%` }} />
                       ))}
-                      {/* Diamond markers */}
                       {milestoneMarkers.map((ms, mIdx) => {
                         const leftPct = (ms.absPos / maxMonth) * 100;
                         return (
-                          <div key={mIdx} className="absolute flex flex-col items-center" style={{ left: `${leftPct}%`, top: 0, transform: "translateX(-50%)" }} title={`${ms.name} (${ms.month}${ms.percentage ? `, ${ms.percentage}%` : ""})`} data-testid={`gantt-milestone-${mIdx}`}>
-                            <svg width="14" height="14" viewBox="0 0 14 14">
+                          <div key={mIdx} className="absolute flex flex-col items-center" style={{ left: `${leftPct}%`, top: 0, transform: "translateX(-50%)" }}
+                            title={`${ms.name} (${ms.phaseName} ${ms.position}${ms.percentage ? `, ${ms.percentage}%` : ""})`}
+                            data-testid={`gantt-ms-summary-${mIdx}`}
+                          >
+                            <svg width="11" height="11" viewBox="0 0 14 14">
                               <polygon points="7,1 13,7 7,13 1,7" fill="#F59E0B" stroke="#D97706" strokeWidth="1.5" />
                             </svg>
-                            <span className="text-[8px] text-amber-700 font-medium whitespace-nowrap max-w-[60px] truncate mt-0.5">{ms.name}</span>
+                            <span className="text-[7px] text-amber-700 font-medium whitespace-nowrap max-w-[55px] truncate">{ms.name}</span>
                           </div>
                         );
                       })}
@@ -419,12 +341,6 @@ export const GanttCard = ({
                     <span className="text-[10px] text-gray-600">Milestone</span>
                   </div>
                 )}
-                {dependencyArrows.length > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <svg width="20" height="12"><line x1="0" y1="6" x2="16" y2="6" stroke="#6366F1" strokeWidth="2" strokeDasharray="4,2" /><polygon points="16,3 20,6 16,9" fill="#6366F1" /></svg>
-                    <span className="text-[10px] text-gray-600">Dependency</span>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -433,7 +349,6 @@ export const GanttCard = ({
             <p className="text-sm text-gray-400 italic">No phase ranges defined yet. Add phases in the wave editor above to auto-generate a Gantt chart.</p>
           )}
 
-          {/* Custom Gantt Image */}
           {ganttChart && (
             <div className="mt-4">
               <div className="flex items-center justify-between mb-2">

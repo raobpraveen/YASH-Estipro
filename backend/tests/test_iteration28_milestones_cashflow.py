@@ -11,7 +11,7 @@ import os
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://phase-estimator.preview.emergentagent.com"
+    BASE_URL = "https://estpro-payment-flow.preview.emergentagent.com"
 
 
 class TestMilestonesCashflowFeatures:
