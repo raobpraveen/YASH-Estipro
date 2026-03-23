@@ -1,11 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Printer, Search, ChevronDown, ChevronRight, Shield,
   Server, Users, Database, Settings, FileText, AlertTriangle,
-  Lock, Mail, Activity, Info, Terminal, HardDrive, RefreshCw
+  Lock, Mail, Activity, Info, Terminal, HardDrive, RefreshCw, ArrowUp
 } from "lucide-react";
 
 const TOC = [
@@ -63,6 +63,7 @@ const KeyValue = ({ label, children }) => (
 export default function SupportGuide() {
   const [search, setSearch] = useState("");
   const [expandedToc, setExpandedToc] = useState(true);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const contentRef = useRef(null);
 
   const handlePrint = () => window.print();
@@ -70,6 +71,16 @@ export default function SupportGuide() {
   const scrollTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    const handleScroll = () => setShowBackToTop(window.scrollY > 400);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const filteredTOC = TOC.filter(t => t.title.toLowerCase().includes(search.toLowerCase()));
 
@@ -865,6 +876,18 @@ mongosh --eval "db.adminCommand('ping')"`}
           </div>
         </div>
       </div>
+
+      {/* Back to Top Button */}
+      {showBackToTop && (
+        <button
+          onClick={scrollToTop}
+          data-testid="back-to-top-btn"
+          className="fixed bottom-6 right-6 z-50 w-10 h-10 rounded-full bg-[#10B981] text-white shadow-lg hover:bg-[#059669] transition-all flex items-center justify-center print:hidden"
+          aria-label="Back to top"
+        >
+          <ArrowUp className="w-5 h-5" />
+        </button>
+      )}
     </div>
   );
 }
