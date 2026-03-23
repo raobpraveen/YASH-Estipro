@@ -22,6 +22,7 @@ import { ProjectToolbar } from "@/components/estimator/ProjectToolbar";
 import { ProjectInfoCard } from "@/components/estimator/ProjectInfoCard";
 import { WaveContent } from "@/components/estimator/WaveContent";
 import { PROFICIENCY_LEVELS, convertMonthPhasesToRanges } from "@/components/estimator/constants";
+import { PhaseActivitiesModal } from "@/components/estimator/PhaseActivitiesModal";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -862,6 +863,7 @@ const ProjectEstimator = () => {
   const [smartImportDialog, setSmartImportDialog] = useState(false);
   const [smartImportData, setSmartImportData] = useState(null);
   const [smartImportLoading, setSmartImportLoading] = useState(false);
+  const [activitiesModalOpen, setActivitiesModalOpen] = useState(false);
   const [quickEstimate, setQuickEstimate] = useState({
     onsiteMM: 10,
     offshoreMM: 20,
@@ -1646,6 +1648,7 @@ const ProjectEstimator = () => {
         versionNotes, customerId, customers, projectLocations, technologyIds: technologyIds, technologies,
         subTechnologyIds, subTechnologies, projectTypeIds, projectTypes,
         salesManagerId, salesManagers, crmId, COUNTRIES,
+        milestones: ganttMilestones, paymentTermsDays: ganttPaymentTermsDays,
       });
       // Upload to backend and trigger download via hidden iframe
       const uploadRes = await fetch(`${API}/download-file`, {
@@ -1859,6 +1862,7 @@ const ProjectEstimator = () => {
         onReject={() => { setApprovalAction("reject"); setApprovalActionDialog(true); }}
         onOpenObsolete={() => setObsoleteConfirmOpen(true)}
         onSaveProject={handleSaveProject}
+        onOpenActivities={() => setActivitiesModalOpen(true)}
       />
 
       <SubmitReviewDialog open={submitForReviewDialog} onOpenChange={setSubmitForReviewDialog} approverEmail={approverEmail} setApproverEmail={setApproverEmail} approversList={approversList} onSubmit={handleSubmitForReview} />
@@ -1886,7 +1890,7 @@ const ProjectEstimator = () => {
       />
 
       {/* Gantt Chart */}
-      <GanttCard projectId={projectId} waves={waves} setWaves={setWaves} milestones={ganttMilestones} ganttChart={ganttChart} ganttLoading={ganttLoading} ganttInputRef={ganttInputRef} handleGanttUpload={handleGanttUpload} handleGanttDelete={handleGanttDelete} isReadOnly={isReadOnly} collapsedSections={collapsedSections} toggleSection={toggleSection} />
+      <GanttCard projectId={projectId} waves={waves} setWaves={setWaves} milestones={ganttMilestones} ganttChart={ganttChart} ganttLoading={ganttLoading} ganttInputRef={ganttInputRef} handleGanttUpload={handleGanttUpload} handleGanttDelete={handleGanttDelete} isReadOnly={isReadOnly} collapsedSections={collapsedSections} toggleSection={toggleSection} onSaveMilestones={saveGanttMilestones} />
 
       {/* Overall Summary Cards */}
       <OverallSummary overall={overall} profitMarginPercentage={profitMarginPercentage} collapsedSections={collapsedSections} toggleSection={toggleSection} />
@@ -2092,6 +2096,9 @@ const ProjectEstimator = () => {
 
       {/* Quick Estimate Calculator Dialog */}
       <QuickEstimatorDialog open={quickEstimateOpen} onOpenChange={setQuickEstimateOpen} quickEstimate={quickEstimate} setQuickEstimate={setQuickEstimate} quickEstimateResult={quickEstimateResult} negoBufferPercentage={negoBufferPercentage} />
+
+      {/* Phase Activities & Deliverables Modal */}
+      <PhaseActivitiesModal open={activitiesModalOpen} onOpenChange={setActivitiesModalOpen} projectId={projectId} waves={waves} projectTypes={projectTypes} projectTypeIds={projectTypeIds} />
 
     </div>
     </TooltipProvider>

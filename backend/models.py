@@ -404,3 +404,45 @@ class PaymentMilestone(BaseModel):
     payment_percentage: float = 0
     payment_amount: float = 0
     description: str = ""
+
+
+
+# ========== Phase Activities & Deliverables Models ==========
+
+class ActivityItem(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str = ""
+    is_deliverable: bool = False  # True = deliverable, False = activity
+    owner: str = ""
+    sort_order: int = 0
+
+class PhaseActivityTemplate(BaseModel):
+    """Template of activities/deliverables for a given phase name."""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_type_id: str  # Linked to project type (e.g., "SAP", "Custom Dev")
+    project_type_name: str = ""
+    phase_name: str  # e.g., "Prepare", "Explore", "Realize"
+    activities: List[Dict] = []  # List of ActivityItem dicts
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class PhaseActivityTemplateCreate(BaseModel):
+    project_type_id: str
+    project_type_name: str = ""
+    phase_name: str
+    activities: List[Dict] = []
+
+class PhaseActivityTemplateUpdate(BaseModel):
+    activities: Optional[List[Dict]] = None
+
+class ProjectPhaseActivities(BaseModel):
+    """Per-project override of phase activities/deliverables."""
+    model_config = ConfigDict(extra="ignore")
+    project_id: str
+    wave_name: str
+    phase_name: str
+    activities: List[Dict] = []  # List of ActivityItem dicts
+    adopted_from_template_id: str = ""
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

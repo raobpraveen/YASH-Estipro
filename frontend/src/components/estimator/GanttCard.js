@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, Upload, Image, Trash2, FileSpreadsheet } fro
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import html2canvas from "html2canvas";
-import { useRef } from "react";
+import { useRef, useState, useCallback } from "react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -112,13 +112,84 @@ export const GanttCard = ({
   projectId, waves, setWaves, milestones = [], ganttChart, ganttLoading,
   ganttInputRef, handleGanttUpload, handleGanttDelete,
   isReadOnly, collapsedSections, toggleSection,
+  onSaveMilestones,
 }) => {
   const chartRef = useRef(null);
+  const [dragState, setDragState] = useState(null); // { msIndex, startX, barLeft, barWidth, phaseStart, phaseEnd, waveName }
   const { rows, maxMonth } = buildGanttRows(waves);
   const milestoneMarkers = buildMilestoneMarkers(milestones, waves);
 
   // Group rows by wave
   const waveGroups = [];
+
+  // ---- Drag-and-drop milestone handlers ----
+  const handleMilestoneDragStart = useCallback((e, ms, chartContainerEl) => {
+    if (isReadOnly || !onSaveMilestones) return;
+    e.preventDefault();
+    e.stopPropagation();
+    // Find the chart area (the flex-1 relative container) from the event target
+    const barContainer = e.target.closest('[data-phase-bar-container]');
+    if (!barContainer) return;
+    const rect = barContainer.getBoundingClientRect();
+
+    // Find the phase row to get absStart/absEnd
+    const wave = waves.find(w => w.name === ms.waveName);
+    if (!wave) return;
+    const offset = (wave.wave_start_month || 1) - 1;
+    const phase = (wave.phase_ranges || []).find(p => p.name === ms.phaseName);
+    if (!phase) return;
+    const phaseStart = offset + (phase.start_month || 1) - 1;
+    const phaseEnd = offset + (phase.end_month || phase.start_month || 1);
+
+    setDragState({
+      msName: ms.name,
+      msWave: ms.waveName,
+      msPhase: ms.phaseName,
+      msType: ms.type,
+      startX: e.clientX,
+      barLeft: rect.left,
+      barWidth: rect.width,
+      phaseStart,
+      phaseEnd,
+      currentPct: null,
+    });
+  }, [isReadOnly, onSaveMilestones, waves]);
+
+  const handleMilestoneDragMove = useCallback((e) => {
+    if (!dragState) return;
+    const { barLeft, barWidth, phaseStart, phaseEnd } = dragState;
+    const relX = Math.max(0, Math.min(e.clientX - barLeft, barWidth));
+    const absPos = (relX / barWidth) * maxMonth;
+    // Clamp to phase bounds
+    const clamped = Math.max(phaseStart, Math.min(phaseEnd, absPos));
+    const pct = ((clamped - phaseStart) / (phaseEnd - phaseStart)) * 100;
+    setDragState(prev => prev ? { ...prev, currentPct: Math.round(pct) } : null);
+  }, [dragState, maxMonth]);
+
+  const handleMilestoneDragEnd = useCallback(() => {
+    if (!dragState || dragState.currentPct === null || !onSaveMilestones) {
+      setDragState(null);
+      return;
+    }
+    const { msName, msWave, msPhase, msType, currentPct } = dragState;
+    const updated = milestones.map(m => {
+      if (m.milestone_name === msName && m.wave_name === msWave && m.phase_name === msPhase) {
+        if (msType === "marker") {
+          return { ...m, position: String(currentPct) };
+        } else {
+          // Payment: snap to start/mid/end
+          let newPos = "mid";
+          if (currentPct <= 20) newPos = "start";
+          else if (currentPct >= 80) newPos = "end";
+          return { ...m, position: newPos };
+        }
+      }
+      return m;
+    });
+    onSaveMilestones(updated);
+    setDragState(null);
+  }, [dragState, milestones, onSaveMilestones]);
+
   let lastWave = null;
   for (const row of rows) {
     if (row.waveName !== lastWave) {
@@ -206,8 +277,20 @@ export const GanttCard = ({
   const hasContent = rows.length > 0 || ganttChart;
   const isCollapsed = collapsedSections["gantt"];
 
+  // Compute drag preview position for the currently dragged milestone
+  const getDragPreviewPos = (ms) => {
+    if (!dragState || dragState.msName !== ms.name || dragState.msWave !== ms.waveName || dragState.msPhase !== ms.phaseName || dragState.currentPct === null) return null;
+    const { phaseStart, phaseEnd, currentPct } = dragState;
+    const absPos = phaseStart + (phaseEnd - phaseStart) * (currentPct / 100);
+    return (absPos / maxMonth) * 100;
+  };
+
   return (
-    <Card className="border border-[#E2E8F0] shadow-sm" data-testid="gantt-card">
+    <Card className="border border-[#E2E8F0] shadow-sm" data-testid="gantt-card"
+      onMouseMove={dragState ? handleMilestoneDragMove : undefined}
+      onMouseUp={dragState ? handleMilestoneDragEnd : undefined}
+      onMouseLeave={dragState ? handleMilestoneDragEnd : undefined}
+    >
       <CardHeader className="cursor-pointer select-none" onClick={() => toggleSection("gantt")}>
         <div className="flex items-center justify-between">
           <CardTitle className="text-xl font-bold text-[#0F172A] flex items-center gap-2">
@@ -291,7 +374,7 @@ export const GanttCard = ({
                               <span className="text-[10px] font-medium text-gray-600 truncate">{row.phase}</span>
                               <span className="text-[9px] text-gray-400 ml-1">{row.startLabel}{row.endLabel > row.startLabel ? `\u2013${row.endLabel}` : ""}</span>
                             </div>
-                            <div className="flex-1 relative overflow-visible" style={{ minHeight: rowH }}>
+                            <div className="flex-1 relative overflow-visible" style={{ minHeight: rowH }} data-phase-bar-container>
                               {/* Grid lines */}
                               {Array.from({ length: maxMonth }, (_, i) => (
                                 <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100" style={{ left: `${(i / maxMonth) * 100}%` }} />
@@ -312,30 +395,41 @@ export const GanttCard = ({
                               </div>
                               {/* Milestone groups on the phase bar */}
                               {msGroups.map((group, gIdx) => {
-                                const leftPct = (group.pos / maxMonth) * 100;
+                                // Check if any milestone in this group is being dragged
+                                const draggedMs = group.items.find(ms => getDragPreviewPos(ms) !== null);
+                                const dragPreviewPct = draggedMs ? getDragPreviewPos(draggedMs) : null;
+                                const leftPct = dragPreviewPct !== null ? dragPreviewPct : (group.pos / maxMonth) * 100;
                                 // Determine label alignment based on absolute position in chart
                                 const isNearEnd = leftPct > 70;
                                 const isNearStart = leftPct < 15;
 
                                 return (
-                                  <div key={gIdx} className="absolute z-10"
+                                  <div key={gIdx} className={`absolute z-10 ${dragPreviewPct !== null ? "opacity-80" : ""}`}
                                     style={{
                                       left: `${leftPct}%`,
                                       top: 18,
                                       transform: isNearEnd ? "translateX(-100%)" : isNearStart ? "translateX(0%)" : "translateX(-50%)",
+                                      transition: dragPreviewPct !== null ? "none" : undefined,
                                     }}
                                   >
                                     <div className={`flex ${isNearEnd ? "flex-row-reverse" : "flex-row"} items-start gap-0.5`}>
-                                      {/* Diamond icons */}
+                                      {/* Diamond icons — draggable */}
                                       <div className={`flex ${group.items.length > 1 ? "flex-col gap-0" : ""} shrink-0 pt-0.5`}>
-                                        {group.items.map((ms, mIdx) => (
-                                          <svg key={mIdx} width="12" height="12" viewBox="0 0 14 14"
-                                            data-testid={`gantt-milestone-${ms.name}`}>
-                                            <polygon points="7,1 13,7 7,13 1,7"
-                                              fill={ms.type === "marker" ? "#3B82F6" : "#F59E0B"}
-                                              stroke={ms.type === "marker" ? "#1D4ED8" : "#D97706"} strokeWidth="1.5" />
-                                          </svg>
-                                        ))}
+                                        {group.items.map((ms, mIdx) => {
+                                          const isDragging = dragState && dragState.msName === ms.name && dragState.msWave === ms.waveName;
+                                          const canDrag = !isReadOnly && onSaveMilestones && ms.phaseName;
+                                          return (
+                                            <svg key={mIdx} width="12" height="12" viewBox="0 0 14 14"
+                                              className={canDrag ? "cursor-grab active:cursor-grabbing" : ""}
+                                              style={isDragging ? { filter: "drop-shadow(0 0 3px rgba(0,0,0,0.4))" } : undefined}
+                                              onMouseDown={canDrag ? (e) => handleMilestoneDragStart(e, ms, chartRef.current) : undefined}
+                                              data-testid={`gantt-milestone-${ms.name}`}>
+                                              <polygon points="7,1 13,7 7,13 1,7"
+                                                fill={isDragging ? (ms.type === "marker" ? "#60A5FA" : "#FCD34D") : (ms.type === "marker" ? "#3B82F6" : "#F59E0B")}
+                                                stroke={ms.type === "marker" ? "#1D4ED8" : "#D97706"} strokeWidth="1.5" />
+                                            </svg>
+                                          );
+                                        })}
                                       </div>
                                       {/* Stacked labels beside diamonds */}
                                       <div className={`flex flex-col ${isNearEnd ? "items-end" : "items-start"}`}>

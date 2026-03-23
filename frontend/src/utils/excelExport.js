@@ -16,6 +16,7 @@ export async function buildExportWorkbook({
   versionNotes, customerId, customers, projectLocations, technologyIds, technologies,
   subTechnologyIds, subTechnologies, projectTypeIds, projectTypes,
   salesManagerId, salesManagers, crmId, COUNTRIES,
+  milestones = [], paymentTermsDays = 0,
 }) {
   const selectedCustomer = customers.find(c => c.id === customerId);
   const wb = new ExcelJS.Workbook();
@@ -460,6 +461,119 @@ export async function buildExportWorkbook({
     lr.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
     lr.getCell(1).border = thinBorder;
   });
+
+  // ========= MILESTONES SHEETS (per wave) =========
+  if (milestones && milestones.length > 0) {
+    const msThinBorder = thinBorder;
+    const msHeaderFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F172A" } };
+    const msHeaderFont = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+    const paymentFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFBEB" } };
+    const markerFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } };
+    const summaryFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0FDF4" } };
+
+    for (const wave of waves) {
+      const waveName = wave.name;
+      const waveMs = milestones.filter(m => m.wave_name === waveName);
+      if (waveMs.length === 0) continue;
+
+      const payMs = waveMs.filter(m => (m.milestone_type || "payment") === "payment");
+      const markMs = waveMs.filter(m => (m.milestone_type || "payment") === "marker");
+
+      let msSheetName = `${waveName} Milestones`.replace(/[\\/*?\[\]:]/g, "").substring(0, 31);
+      let msCounter = 2;
+      while (usedNames.has(msSheetName)) { msSheetName = `${waveName} MS`.substring(0, 28) + `_${msCounter++}`; }
+      usedNames.add(msSheetName);
+
+      const msWs = wb.addWorksheet(msSheetName, { properties: { tabColor: { argb: "FFF59E0B" } } });
+      msWs.columns = [{ width: 5 }, { width: 28 }, { width: 16 }, { width: 12 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 32 }];
+
+      // Title
+      msWs.addRow([`${waveName} — Milestones`]).font = { bold: true, size: 14 };
+      msWs.addRow([]);
+
+      // Wave reference info
+      const waveRef = waveRefs.find(r => r.name === waveName);
+      if (waveRef) {
+        const infoR = msWs.addRow(["", "Wave Final Price:", { formula: waveRef.finalPrice, result: 0 }]);
+        infoR.getCell(2).font = { bold: true };
+        infoR.getCell(3).numFmt = moneyFmt;
+        infoR.getCell(3).font = { bold: true, color: { argb: "FF059669" } };
+      }
+      if (paymentTermsDays > 0) {
+        const ptR = msWs.addRow(["", "Payment Terms:", `${paymentTermsDays} days (+${Math.ceil(paymentTermsDays / 30)} month${Math.ceil(paymentTermsDays / 30) > 1 ? "s" : ""})`]);
+        ptR.getCell(2).font = { bold: true };
+        ptR.getCell(3).font = { color: { argb: "FF6366F1" } };
+      }
+      msWs.addRow([]);
+
+      // Payment Milestones section
+      if (payMs.length > 0) {
+        const secR = msWs.addRow(["", "PAYMENT MILESTONES"]);
+        secR.getCell(2).font = { bold: true, size: 12, color: { argb: "FF92400E" } };
+        secR.getCell(2).fill = paymentFill;
+
+        const hdr = msWs.addRow(["#", "Milestone Name", "Phase", "Position", "Target Month", "Payment %", "Amount", "Description"]);
+        hdr.eachCell(c => { c.fill = msHeaderFill; c.font = msHeaderFont; c.border = msThinBorder; });
+
+        payMs.forEach((ms, idx) => {
+          const r = msWs.addRow([
+            idx + 1, ms.milestone_name, ms.phase_name || "", ms.position || "",
+            ms.target_month || "", (ms.payment_percentage || 0) / 100, ms.payment_amount || 0,
+            ms.description || "",
+          ]);
+          r.getCell(6).numFmt = "0.0%";
+          r.getCell(7).numFmt = moneyFmt;
+          r.eachCell(c => { c.border = msThinBorder; });
+        });
+
+        // Totals row
+        const startR = msWs.rowCount - payMs.length + 1;
+        const endR = msWs.rowCount;
+        const totR = msWs.addRow(["", "TOTAL", "", "", "", { formula: `SUM(F${startR}:F${endR})`, result: 0 }, { formula: `SUM(G${startR}:G${endR})`, result: 0 }, ""]);
+        totR.getCell(6).numFmt = "0.0%";
+        totR.getCell(7).numFmt = moneyFmt;
+        totR.eachCell(c => { c.fill = summaryFill; c.font = { bold: true }; c.border = msThinBorder; });
+        msWs.addRow([]);
+      }
+
+      // Marker Milestones section
+      if (markMs.length > 0) {
+        const secR = msWs.addRow(["", "MARKER MILESTONES"]);
+        secR.getCell(2).font = { bold: true, size: 12, color: { argb: "FF1E40AF" } };
+        secR.getCell(2).fill = markerFill;
+
+        const hdr = msWs.addRow(["#", "Milestone Name", "Phase", "Position (%)", "Target Month", "", "", "Description"]);
+        hdr.eachCell(c => { c.fill = msHeaderFill; c.font = msHeaderFont; c.border = msThinBorder; });
+
+        markMs.forEach((ms, idx) => {
+          const r = msWs.addRow([
+            idx + 1, ms.milestone_name, ms.phase_name || "",
+            !isNaN(parseFloat(ms.position)) ? `${ms.position}%` : (ms.position || ""),
+            ms.target_month || "", "", "", ms.description || "",
+          ]);
+          r.eachCell(c => { c.border = msThinBorder; });
+        });
+        msWs.addRow([]);
+      }
+
+      // Summary
+      const totalPct = payMs.reduce((s, m) => s + (m.payment_percentage || 0), 0);
+      const totalAmt = payMs.reduce((s, m) => s + (m.payment_amount || 0), 0);
+      msWs.addRow([]);
+      const sumHdr = msWs.addRow(["", "SUMMARY"]);
+      sumHdr.getCell(2).font = { bold: true, size: 11 };
+      sumHdr.getCell(2).fill = summaryFill;
+      msWs.addRow(["", "Payment Milestones", payMs.length]).getCell(2).font = { bold: true };
+      msWs.addRow(["", "Marker Milestones", markMs.length]).getCell(2).font = { bold: true };
+      const covR = msWs.addRow(["", "Total Coverage", totalPct / 100]);
+      covR.getCell(2).font = { bold: true };
+      covR.getCell(3).numFmt = "0.0%";
+      covR.getCell(3).font = { bold: true, color: { argb: Math.abs(totalPct - 100) < 1 ? "FF059669" : "FFDC2626" } };
+      const amtR = msWs.addRow(["", "Total Payment Amount", totalAmt]);
+      amtR.getCell(2).font = { bold: true };
+      amtR.getCell(3).numFmt = moneyFmt;
+    }
+  }
 
   const buffer = await wb.xlsx.writeBuffer();
   const fileName = `${projectNumber || projectName || "Project"}_v${projectVersion}_Estimate.xlsx`;

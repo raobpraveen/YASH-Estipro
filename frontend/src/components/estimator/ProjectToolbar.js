@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Save, FileDown, Copy, History, Send, CheckCircle, XCircle, Upload, Eye, Target, BarChart3, Zap } from "lucide-react";
+import { Plus, Save, FileDown, Copy, History, Send, CheckCircle, XCircle, Upload, Eye, Target, BarChart3, Zap, FileText } from "lucide-react";
 import { STATUS_CONFIG } from "./constants";
 
 export const ProjectToolbar = ({
@@ -13,7 +13,7 @@ export const ProjectToolbar = ({
   onExportExcel, onSmartImportFile,
   onOpenSummary, onOpenQuickEstimate,
   onOpenSubmitReview, onOpenApproverSave, onReject, onOpenObsolete,
-  onSaveProject,
+  onSaveProject, onOpenActivities,
 }) => {
   const getStatusBadge = () => {
     const config = STATUS_CONFIG[projectStatus] || STATUS_CONFIG.draft;
@@ -135,6 +135,11 @@ export const ProjectToolbar = ({
                 <BarChart3 className="w-4 h-4 mr-1" /> Cashflow
               </Button>
             </TooltipTrigger><TooltipContent>Cashflow Statement</TooltipContent></Tooltip>
+            <Tooltip><TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-2.5 text-indigo-600 hover:bg-indigo-50" onClick={onOpenActivities} data-testid="activities-button">
+                <FileText className="w-4 h-4 mr-1" /> Activities
+              </Button>
+            </TooltipTrigger><TooltipContent>Phase Activities & Deliverables</TooltipContent></Tooltip>
           </div>
         )}
 
