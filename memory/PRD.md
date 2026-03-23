@@ -53,8 +53,10 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
   - Wave-dependent activities (additive to template items)
   - Dedicated Activities Excel export
 
-### Documentation
-- User Manual, Support Guide (with Backup/Restore), Tutorials
+### Documentation (Updated Feb 2026)
+- **User Manual**: Comprehensive 21-section manual covering all features including Activity Templates (Section 21), Gantt drag-and-drop (14.4), Milestone re-import (13.2), cascade delete (3.5), and updated Excel export sheets (8.2)
+- **Support Guide**: Updated with activities.py router in architecture, activity_templates/project_activities collections, activity template API endpoints, troubleshooting entries, and FAQ additions
+- **Tutorials**: Added Activity Templates tutorial (10 steps, Administration category), updated Excel Export tutorial to cover new sheets
 
 ## Bug Fixes (Feb 2026)
 - Fixed: `crypto.randomUUID()` fallback for non-HTTPS environments
@@ -78,6 +80,7 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - What-If Scenario Comparison
 - AI Integration (Estimation Suggestions)
 - Actuals Tracking & Profitability Module
+- Refactor global shortcut handling to React Context
 
 ## Credentials
 - Admin: admin@yash.com / password
