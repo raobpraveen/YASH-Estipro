@@ -120,7 +120,7 @@ const PaymentMilestones = () => {
     return wave.phase_names?.length || 12;
   };
 
-  const addMilestoneToWave = (waveName) => {
+  const addMilestoneToWave = (waveName, type = "payment") => {
     const waveMilestones = milestones.filter((m) => m.wave_name === waveName);
     const newId = typeof crypto !== "undefined" && crypto.randomUUID
       ? crypto.randomUUID()
@@ -130,7 +130,8 @@ const PaymentMilestones = () => {
       {
         id: newId,
         wave_name: waveName,
-        milestone_name: `Milestone ${waveMilestones.length + 1}`,
+        milestone_type: type,
+        milestone_name: type === "marker" ? `Marker ${waveMilestones.filter(m => (m.milestone_type || "payment") === "marker").length + 1}` : `Milestone ${waveMilestones.filter(m => (m.milestone_type || "payment") === "payment").length + 1}`,
         phase_name: "",
         position: "end",
         target_month: "M1",
@@ -300,7 +301,9 @@ const PaymentMilestones = () => {
     }
   };
 
-  const totalPayment = milestones.reduce((s, m) => s + (m.payment_amount || 0), 0);
+  const paymentOnly = milestones.filter(m => (m.milestone_type || "payment") === "payment");
+  const markerOnly = milestones.filter(m => (m.milestone_type || "payment") === "marker");
+  const totalPayment = paymentOnly.reduce((s, m) => s + (m.payment_amount || 0), 0);
   const totalProjectFinalPrice = (project?.waves || []).reduce((sum, w) => sum + getWaveFinalPrice(w.name), 0);
 
   // ========== PROJECT LIST VIEW ==========
@@ -436,7 +439,7 @@ const PaymentMilestones = () => {
         <Card className="border-l-4 border-l-[#0EA5E9]">
           <CardContent className="pt-4 pb-4">
             <p className="text-sm text-gray-500">Total Milestones</p>
-            <p className="text-2xl font-bold text-[#0F172A]" data-testid="total-milestones">{milestones.length}</p>
+            <p className="text-2xl font-bold text-[#0F172A]" data-testid="total-milestones">{paymentOnly.length}{markerOnly.length > 0 && <span className="text-sm font-normal text-blue-500 ml-1">+{markerOnly.length} markers</span>}</p>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-[#8B5CF6]">
@@ -502,11 +505,14 @@ const PaymentMilestones = () => {
         {waves.map((wave) => {
           const waveName = wave.name;
           const waveMilestones = milestones.filter((m) => m.wave_name === waveName);
+          const paymentMilestones = waveMilestones.filter(m => (m.milestone_type || "payment") === "payment");
+          const markerMilestones = waveMilestones.filter(m => (m.milestone_type || "payment") === "marker");
           const isCollapsed = collapsedWaves[waveName] ?? false;
           const waveFP = getWaveFinalPrice(waveName);
-          const wavePctTotal = waveMilestones.reduce((s, m) => s + (m.payment_percentage || 0), 0);
-          const wavePayTotal = waveMilestones.reduce((s, m) => s + (m.payment_amount || 0), 0);
+          const wavePctTotal = paymentMilestones.reduce((s, m) => s + (m.payment_percentage || 0), 0);
+          const wavePayTotal = paymentMilestones.reduce((s, m) => s + (m.payment_amount || 0), 0);
           const monthCount = getWaveMonthCount(waveName);
+          const wavePhases = (wave.phase_ranges || []).map(p => p.name).filter(n => n);
 
           return (
             <Card key={waveName} className="border border-[#E2E8F0] shadow-sm" data-testid={`wave-section-${waveName}`}>
@@ -514,7 +520,8 @@ const PaymentMilestones = () => {
                 <div className="flex items-center gap-3">
                   {isCollapsed ? <ChevronRight className="w-5 h-5 text-gray-500" /> : <ChevronDown className="w-5 h-5 text-gray-500" />}
                   <CardTitle className="text-lg font-bold text-[#0F172A]">{waveName}</CardTitle>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{waveMilestones.length} milestone{waveMilestones.length !== 1 ? "s" : ""}</span>
+                  <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">{paymentMilestones.length} payment</span>
+                  {markerMilestones.length > 0 && <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{markerMilestones.length} marker</span>}
                   <span className="text-xs text-gray-400">{monthCount} months</span>
                 </div>
                 <div className="flex items-center gap-4 text-sm" onClick={(e) => e.stopPropagation()}>
@@ -525,8 +532,13 @@ const PaymentMilestones = () => {
               </CardHeader>
               {!isCollapsed && (
                 <CardContent className="pt-0 pb-4">
-                  {waveMilestones.length > 0 && (
-                    <div className="overflow-x-auto">
+                  {/* Payment Milestones Table */}
+                  {paymentMilestones.length > 0 && (
+                    <div className="overflow-x-auto mb-4">
+                      <p className="text-xs font-semibold text-amber-700 mb-2 flex items-center gap-1.5">
+                        <svg width="10" height="10" viewBox="0 0 14 14"><polygon points="7,1 13,7 7,13 1,7" fill="#F59E0B" stroke="#D97706" strokeWidth="1.5" /></svg>
+                        Payment Milestones
+                      </p>
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -542,9 +554,7 @@ const PaymentMilestones = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {waveMilestones.map((ms, idx) => {
-                            const wavePhases = (wave.phase_ranges || []).map(p => p.name);
-                            return (
+                          {paymentMilestones.map((ms, idx) => (
                             <TableRow key={ms.id} data-testid={`milestone-row-${ms.id}`}>
                               <TableCell className="font-mono text-gray-400">{idx + 1}</TableCell>
                               <TableCell><Input value={ms.milestone_name} onChange={(e) => updateMilestone(ms.id, "milestone_name", e.target.value)} className="w-48" data-testid={`ms-name-${ms.id}`} /></TableCell>
@@ -598,16 +608,97 @@ const PaymentMilestones = () => {
                               <TableCell><Input value={ms.description || ""} onChange={(e) => updateMilestone(ms.id, "description", e.target.value)} className="w-40" placeholder="Optional" data-testid={`ms-desc-${ms.id}`} /></TableCell>
                               <TableCell><Button variant="ghost" size="sm" onClick={() => removeMilestone(ms.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50" data-testid={`ms-delete-${ms.id}`}><Trash2 className="w-4 h-4" /></Button></TableCell>
                             </TableRow>
-                            );
-                          })}
+                          ))}
                         </TableBody>
                       </Table>
                     </div>
                   )}
+
+                  {/* Marker Milestones Table */}
+                  {markerMilestones.length > 0 && (
+                    <div className="overflow-x-auto mb-4">
+                      <p className="text-xs font-semibold text-blue-700 mb-2 flex items-center gap-1.5">
+                        <svg width="10" height="10" viewBox="0 0 14 14"><polygon points="7,1 13,7 7,13 1,7" fill="#3B82F6" stroke="#1D4ED8" strokeWidth="1.5" /></svg>
+                        Marker Milestones (no payment linkage)
+                      </p>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-10">#</TableHead>
+                            <TableHead>Marker Name</TableHead>
+                            <TableHead className="w-32">Linked Phase</TableHead>
+                            <TableHead className="w-24">Position</TableHead>
+                            <TableHead className="w-28">Target Month</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead className="w-12"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {markerMilestones.map((ms, idx) => (
+                            <TableRow key={ms.id} data-testid={`marker-row-${ms.id}`}>
+                              <TableCell className="font-mono text-gray-400">{idx + 1}</TableCell>
+                              <TableCell><Input value={ms.milestone_name} onChange={(e) => updateMilestone(ms.id, "milestone_name", e.target.value)} className="w-48" data-testid={`mk-name-${ms.id}`} /></TableCell>
+                              <TableCell>
+                                <Select value={ms.phase_name || "__none__"} onValueChange={(v) => {
+                                  const actualValue = v === "__none__" ? "" : v;
+                                  const ph = (wave.phase_ranges || []).find(p => p.name === actualValue);
+                                  const pos = ms.position || "end";
+                                  let targetMonth = ms.target_month;
+                                  if (ph) {
+                                    if (pos === "start") targetMonth = `M${Math.ceil(ph.start_month)}`;
+                                    else if (pos === "mid") targetMonth = `M${Math.ceil((ph.start_month + ph.end_month) / 2)}`;
+                                    else targetMonth = `M${Math.ceil(ph.end_month)}`;
+                                  }
+                                  setMilestones(milestones.map(m => m.id === ms.id ? { ...m, phase_name: actualValue, target_month: targetMonth } : m));
+                                }}>
+                                  <SelectTrigger className="w-28" data-testid={`mk-phase-${ms.id}`}><SelectValue placeholder="Select..." /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="__none__">-- None --</SelectItem>
+                                    {wavePhases.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select value={ms.position || "end"} onValueChange={(v) => {
+                                  const ph = (wave.phase_ranges || []).find(p => p.name === ms.phase_name);
+                                  let targetMonth = ms.target_month;
+                                  if (ph) {
+                                    if (v === "start") targetMonth = `M${Math.ceil(ph.start_month)}`;
+                                    else if (v === "mid") targetMonth = `M${Math.ceil((ph.start_month + ph.end_month) / 2)}`;
+                                    else targetMonth = `M${Math.ceil(ph.end_month)}`;
+                                  }
+                                  setMilestones(milestones.map(m => m.id === ms.id ? { ...m, position: v, target_month: targetMonth } : m));
+                                }}>
+                                  <SelectTrigger className="w-20" data-testid={`mk-pos-${ms.id}`}><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="start">Start</SelectItem>
+                                    <SelectItem value="mid">Mid</SelectItem>
+                                    <SelectItem value="end">End</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select value={ms.target_month || "M1"} onValueChange={(v) => updateMilestone(ms.id, "target_month", v)}>
+                                  <SelectTrigger className="w-24" data-testid={`mk-month-${ms.id}`}><SelectValue /></SelectTrigger>
+                                  <SelectContent>{Array.from({ length: monthCount }, (_, i) => (<SelectItem key={i} value={`M${i + 1}`}>M{i + 1}</SelectItem>))}</SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell><Input value={ms.description || ""} onChange={(e) => updateMilestone(ms.id, "description", e.target.value)} className="w-full" placeholder="Description..." data-testid={`mk-desc-${ms.id}`} /></TableCell>
+                              <TableCell><Button variant="ghost" size="sm" onClick={() => removeMilestone(ms.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50" data-testid={`mk-delete-${ms.id}`}><Trash2 className="w-4 h-4" /></Button></TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+
                   {!waveMilestones.length && <p className="text-sm text-gray-400 py-3 text-center">No milestones for this wave yet.</p>}
                   <div className="mt-3 flex justify-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => addMilestoneToWave(waveName)} className="text-[#0EA5E9] border-[#0EA5E9]/30 hover:bg-[#0EA5E9]/5" data-testid={`add-ms-${waveName}`}>
-                      <Plus className="w-4 h-4 mr-1" /> Add Milestone
+                    <Button variant="outline" size="sm" onClick={() => addMilestoneToWave(waveName, "payment")} className="text-amber-600 border-amber-300 hover:bg-amber-50" data-testid={`add-ms-${waveName}`}>
+                      <Plus className="w-4 h-4 mr-1" /> Payment Milestone
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => addMilestoneToWave(waveName, "marker")} className="text-blue-600 border-blue-300 hover:bg-blue-50" data-testid={`add-marker-${waveName}`}>
+                      <Plus className="w-4 h-4 mr-1" /> Marker Milestone
                     </Button>
                     {waves.length > 1 && waveMilestones.length > 0 && (
                       <Select onValueChange={(targetWave) => copyMilestonesToWave(waveName, targetWave)}>

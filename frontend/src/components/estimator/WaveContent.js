@@ -356,7 +356,7 @@ export const WaveContent = ({
         {/* Milestones per Phase */}
         {(wave.phase_ranges || []).length > 0 && (
           <div className="mt-3 pt-2 border-t border-emerald-200">
-            <p className="text-[10px] text-amber-700 font-semibold uppercase tracking-wide mb-2">Phase Milestones (linked to payments)</p>
+            <p className="text-[10px] text-gray-600 font-semibold uppercase tracking-wide mb-2">Phase Milestones</p>
             {(wave.phase_ranges || []).map((pr, pIdx) => {
               const phaseMilestones = milestones.filter(m => m.wave_name === wave.name && m.phase_name === pr.name);
               const phaseColor = getPhaseColor(pr.name);
@@ -367,33 +367,61 @@ export const WaveContent = ({
                     <span className="text-[11px] font-semibold" style={{ color: phaseColor.text }}>{pr.name}</span>
                     <span className="text-[9px] text-gray-400">({pr.start_month} → {pr.end_month})</span>
                     {!isReadOnly && (
-                      <Button variant="ghost" size="sm" className="h-5 text-[9px] text-amber-600 hover:bg-amber-50 px-1.5 ml-auto" onClick={() => {
-                        const mid = Math.round(((pr.start_month + pr.end_month) / 2) * 2) / 2;
-                        const targetMonth = `M${Math.ceil(mid)}`;
-                        const newMs = {
-                          id: crypto.randomUUID(),
-                          wave_name: wave.name,
-                          milestone_name: "",
-                          phase_name: pr.name,
-                          position: "end",
-                          target_month: targetMonth,
-                          completion_percentage: 0,
-                          payment_percentage: 0,
-                          payment_amount: 0,
-                          description: "",
-                        };
-                        onSaveMilestones([...milestones, newMs]);
-                      }} data-testid={`add-milestone-${pr.name}`}>
-                        <Plus className="w-3 h-3 mr-0.5" /> Milestone
-                      </Button>
+                      <div className="flex gap-1 ml-auto">
+                        <Button variant="ghost" size="sm" className="h-5 text-[9px] text-amber-600 hover:bg-amber-50 px-1.5" onClick={() => {
+                          const targetMonth = `M${Math.ceil(pr.end_month)}`;
+                          const newMs = {
+                            id: crypto.randomUUID(),
+                            wave_name: wave.name,
+                            milestone_name: "",
+                            milestone_type: "payment",
+                            phase_name: pr.name,
+                            position: "end",
+                            target_month: targetMonth,
+                            completion_percentage: 0,
+                            payment_percentage: 0,
+                            payment_amount: 0,
+                            description: "",
+                          };
+                          onSaveMilestones([...milestones, newMs]);
+                        }} data-testid={`add-milestone-${pr.name}`}>
+                          <Plus className="w-3 h-3 mr-0.5" /> Payment
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-5 text-[9px] text-blue-600 hover:bg-blue-50 px-1.5" onClick={() => {
+                          const targetMonth = `M${Math.ceil(pr.end_month)}`;
+                          const newMs = {
+                            id: crypto.randomUUID(),
+                            wave_name: wave.name,
+                            milestone_name: "",
+                            milestone_type: "marker",
+                            phase_name: pr.name,
+                            position: "end",
+                            target_month: targetMonth,
+                            completion_percentage: 0,
+                            payment_percentage: 0,
+                            payment_amount: 0,
+                            description: "",
+                          };
+                          onSaveMilestones([...milestones, newMs]);
+                        }} data-testid={`add-marker-${pr.name}`}>
+                          <Plus className="w-3 h-3 mr-0.5" /> Marker
+                        </Button>
+                      </div>
                     )}
                   </div>
                   {phaseMilestones.length > 0 ? (
                     <div className="ml-5 space-y-1">
                       {phaseMilestones.map((ms) => {
                         const msIdx = milestones.findIndex(m => m.id === ms.id);
+                        const isMarker = (ms.milestone_type || "payment") === "marker";
                         return (
-                          <div key={ms.id} className="grid grid-cols-[70px_1fr_60px_60px_28px] gap-1.5 items-center" data-testid={`milestone-row-${ms.id}`}>
+                          <div key={ms.id} className={`grid gap-1.5 items-center ${isMarker ? "grid-cols-[16px_70px_1fr_28px]" : "grid-cols-[16px_70px_1fr_60px_60px_28px]"}`} data-testid={`milestone-row-${ms.id}`}>
+                            {/* Type indicator */}
+                            <div title={isMarker ? "Marker (no payment)" : "Payment milestone"}>
+                              <svg width="10" height="10" viewBox="0 0 14 14">
+                                <polygon points="7,1 13,7 7,13 1,7" fill={isMarker ? "#3B82F6" : "#F59E0B"} stroke={isMarker ? "#1D4ED8" : "#D97706"} strokeWidth="1.5" />
+                              </svg>
+                            </div>
                             <select
                               value={ms.position || "end"}
                               onChange={(e) => {
@@ -406,7 +434,7 @@ export const WaveContent = ({
                                 updated[msIdx] = { ...updated[msIdx], position: pos, target_month: targetMonth };
                                 onSaveMilestones(updated);
                               }}
-                              className="h-6 text-[10px] border border-amber-200 rounded bg-white px-1"
+                              className={`h-6 text-[10px] border rounded bg-white px-1 ${isMarker ? "border-blue-200" : "border-amber-200"}`}
                               disabled={isReadOnly}
                               data-testid={`ms-position-${ms.id}`}
                             >
@@ -421,27 +449,31 @@ export const WaveContent = ({
                                 updated[msIdx] = { ...updated[msIdx], milestone_name: e.target.value };
                                 onSaveMilestones(updated);
                               }}
-                              placeholder="Milestone name..."
+                              placeholder={isMarker ? "Marker name..." : "Milestone name..."}
                               className="h-6 text-[10px] px-1.5"
                               disabled={isReadOnly}
                               data-testid={`ms-name-${ms.id}`}
                             />
-                            <Input
-                              type="number" min={0} max={100} step={1}
-                              value={ms.payment_percentage || ""}
-                              onChange={(e) => {
-                                const pct = parseFloat(e.target.value) || 0;
-                                const amount = Math.round((waveSummary?.finalPrice || 0) * (pct / 100) * 100) / 100;
-                                const updated = [...milestones];
-                                updated[msIdx] = { ...updated[msIdx], payment_percentage: pct, payment_amount: amount };
-                                onSaveMilestones(updated);
-                              }}
-                              placeholder="%"
-                              className="h-6 text-[10px] text-center px-1"
-                              disabled={isReadOnly}
-                              data-testid={`ms-pct-${ms.id}`}
-                            />
-                            <span className="text-[9px] text-gray-400 text-center">{ms.target_month}</span>
+                            {!isMarker && (
+                              <>
+                                <Input
+                                  type="number" min={0} max={100} step={1}
+                                  value={ms.payment_percentage || ""}
+                                  onChange={(e) => {
+                                    const pct = parseFloat(e.target.value) || 0;
+                                    const amount = Math.round((waveSummary?.finalPrice || 0) * (pct / 100) * 100) / 100;
+                                    const updated = [...milestones];
+                                    updated[msIdx] = { ...updated[msIdx], payment_percentage: pct, payment_amount: amount };
+                                    onSaveMilestones(updated);
+                                  }}
+                                  placeholder="%"
+                                  className="h-6 text-[10px] text-center px-1"
+                                  disabled={isReadOnly}
+                                  data-testid={`ms-pct-${ms.id}`}
+                                />
+                                <span className="text-[9px] text-gray-400 text-center">{ms.target_month}</span>
+                              </>
+                            )}
                             {!isReadOnly && (
                               <Button variant="ghost" size="icon" className="h-5 w-5 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => {
                                 onSaveMilestones(milestones.filter(m => m.id !== ms.id));

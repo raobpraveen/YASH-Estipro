@@ -94,6 +94,7 @@ const buildMilestoneMarkers = (milestones, waves) => {
       phaseName: ms.phase_name || "",
       position: ms.position || "",
       name: ms.milestone_name,
+      type: ms.milestone_type || "payment",
       absPos,
       month: ms.target_month,
       percentage: ms.payment_percentage,
@@ -124,7 +125,7 @@ export const GanttCard = ({
     }
   }
 
-  const ROW_H = 32;
+  const ROW_H = 40;
   const LABEL_W = 140;
 
   const exportGanttPNG = async () => {
@@ -184,10 +185,10 @@ export const GanttCard = ({
         ws.addRow([]);
         const msHdr = ws.addRow(["MILESTONES"]);
         msHdr.font = { bold: true, size: 11 };
-        const msColHdr = ws.addRow(["Wave", "Phase", "Position", "Milestone", "Month", "Payment %", "Amount"]);
+        const msColHdr = ws.addRow(["Wave", "Phase", "Position", "Milestone", "Type", "Month", "Payment %", "Amount"]);
         msColHdr.eachCell(c => { c.font = { bold: true }; c.border = thinBorder; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF7ED" } }; });
         for (const ms of milestoneMarkers) {
-          const r = ws.addRow([ms.waveName, ms.phaseName, ms.position, ms.name, ms.month, ms.percentage || "", ms.amount || ""]);
+          const r = ws.addRow([ms.waveName, ms.phaseName, ms.position, ms.name, ms.type, ms.month, ms.percentage || "", ms.amount || ""]);
           r.eachCell(c => { c.border = thinBorder; });
         }
       }
@@ -233,96 +234,118 @@ export const GanttCard = ({
                 </div>
               </div>
 
-              {/* Phase bars */}
+              {/* Wave groups with headers */}
               {waveGroups.map((wg, wIdx) => {
                 const wave = waves.find(w => w.name === wg.waveName);
                 const description = wave?.description;
-                const midIdx = Math.floor(wg.rows.length / 2);
+                const waveMilestones = milestoneMarkers.filter(m => m.waveName === wg.waveName);
 
                 return (
                   <div key={wIdx} data-testid={`gantt-wave-${wg.waveName}`}>
-                    {wIdx > 0 && <div className="h-3" />}
+                    {/* Wave header row */}
+                    <div className={`flex items-center ${wIdx > 0 ? "mt-3 pt-2 border-t border-gray-200" : ""}`}>
+                      <div style={{ width: LABEL_W }} className="pr-2 text-right shrink-0">
+                        <span className="text-[11px] font-bold text-[#0F172A] uppercase tracking-wide">{wg.waveName}</span>
+                        {description && <span className="text-[9px] text-gray-400 italic block leading-tight">{description}</span>}
+                      </div>
+                      <div className="flex-1 h-[1px] bg-gray-200" />
+                    </div>
+
+                    {/* Phase bars with milestones inline */}
                     {wg.rows.map((row, rIdx) => {
-                      // Find milestones for this phase in this wave
                       const phaseMilestones = milestoneMarkers.filter(m => m.waveName === row.waveName && m.phaseName === row.phase);
+                      const hasMilestones = phaseMilestones.length > 0;
+
                       return (
-                        <div key={rIdx} className="flex items-center" style={{ height: ROW_H }} data-testid={`gantt-row-${row.phase}`}>
-                          <div style={{ width: LABEL_W }} className="pr-2 text-right shrink-0">
-                            {rIdx === midIdx && description ? (
-                              <span className="text-[9px] text-gray-400 italic block leading-tight mb-0.5">{description}</span>
-                            ) : null}
-                            <span className="text-[10px] font-medium text-gray-600 truncate">{row.phase}</span>
-                            <span className="text-[9px] text-gray-400 ml-1">{row.startLabel}{row.endLabel > row.startLabel ? `\u2013${row.endLabel}` : ""}</span>
+                        <div key={rIdx} data-testid={`gantt-row-${row.phase}`}>
+                          {/* Phase bar row */}
+                          <div className="flex items-center" style={{ height: ROW_H }}>
+                            <div style={{ width: LABEL_W }} className="pr-2 text-right shrink-0">
+                              <span className="text-[10px] font-medium text-gray-600 truncate">{row.phase}</span>
+                              <span className="text-[9px] text-gray-400 ml-1">{row.startLabel}{row.endLabel > row.startLabel ? `\u2013${row.endLabel}` : ""}</span>
+                            </div>
+                            <div className="flex-1 relative" style={{ height: ROW_H }}>
+                              {/* Grid lines */}
+                              {Array.from({ length: maxMonth }, (_, i) => (
+                                <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100" style={{ left: `${(i / maxMonth) * 100}%` }} />
+                              ))}
+                              {/* Phase bar */}
+                              <div
+                                className="absolute top-1.5 rounded-md flex items-center justify-center transition-all hover:shadow-md"
+                                style={{
+                                  left: `${(row.absStart / maxMonth) * 100}%`,
+                                  width: `${((row.absEnd - row.absStart) / maxMonth) * 100}%`,
+                                  height: hasMilestones ? 18 : 22,
+                                  backgroundColor: row.color.bg,
+                                  border: `2px solid ${row.color.border}`,
+                                }}
+                                data-testid={`gantt-bar-${row.phase}`}
+                              >
+                                <span className="text-[10px] font-semibold truncate px-1" style={{ color: row.color.text }}>{row.phase}</span>
+                              </div>
+                              {/* Milestone diamonds on the phase bar */}
+                              {phaseMilestones.map((ms, mIdx) => {
+                                const leftPct = (ms.absPos / maxMonth) * 100;
+                                const isMarker = ms.type === "marker";
+                                const fillColor = isMarker ? "#3B82F6" : "#F59E0B";
+                                const strokeColor = isMarker ? "#1D4ED8" : "#D97706";
+                                return (
+                                  <div key={mIdx} className="absolute flex flex-col items-center z-10"
+                                    style={{ left: `${leftPct}%`, top: hasMilestones ? 16 : 18, transform: "translateX(-50%)" }}
+                                    title={`${ms.name}${isMarker ? " (Marker)" : ""}${ms.position ? ` @ ${ms.position}` : ""}${ms.percentage ? ` | ${ms.percentage}%` : ""}`}
+                                    data-testid={`gantt-milestone-${ms.name}`}
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 14 14">
+                                      <polygon points="7,1 13,7 7,13 1,7" fill={fillColor} stroke={strokeColor} strokeWidth="1.5" />
+                                    </svg>
+                                    <span className={`text-[7px] font-semibold whitespace-nowrap max-w-[65px] truncate ${isMarker ? "text-blue-600" : "text-amber-700"}`}>
+                                      {ms.name}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                          <div className="flex-1 relative" style={{ height: ROW_H }}>
-                            {/* Grid lines */}
+                        </div>
+                      );
+                    })}
+
+                    {/* Unlinked milestones for this wave (no phase_name) rendered on a separate row */}
+                    {(() => {
+                      const unlinked = waveMilestones.filter(m => !m.phaseName);
+                      if (unlinked.length === 0) return null;
+                      return (
+                        <div className="flex items-center" style={{ height: 28 }}>
+                          <div style={{ width: LABEL_W }} className="pr-2 text-right shrink-0">
+                            <span className="text-[9px] text-gray-400 italic">Unlinked</span>
+                          </div>
+                          <div className="flex-1 relative" style={{ height: 28 }}>
                             {Array.from({ length: maxMonth }, (_, i) => (
                               <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100" style={{ left: `${(i / maxMonth) * 100}%` }} />
                             ))}
-                            {/* Phase bar */}
-                            <div
-                              className="absolute top-1 bottom-1 rounded-md flex items-center justify-center transition-all hover:shadow-md"
-                              style={{
-                                left: `${(row.absStart / maxMonth) * 100}%`,
-                                width: `${((row.absEnd - row.absStart) / maxMonth) * 100}%`,
-                                backgroundColor: row.color.bg,
-                                border: `2px solid ${row.color.border}`,
-                              }}
-                              data-testid={`gantt-bar-${row.phase}`}
-                            >
-                              <span className="text-[10px] font-semibold truncate px-1" style={{ color: row.color.text }}>{row.phase}</span>
-                            </div>
-                            {/* Milestone diamonds on this phase bar */}
-                            {phaseMilestones.map((ms, mIdx) => {
+                            {unlinked.map((ms, mIdx) => {
                               const leftPct = (ms.absPos / maxMonth) * 100;
+                              const isMarker = ms.type === "marker";
                               return (
-                                <div key={mIdx} className="absolute flex flex-col items-center z-10" style={{ left: `${leftPct}%`, top: -2, transform: "translateX(-50%)" }}
-                                  title={`${ms.name} (${ms.position}${ms.percentage ? `, ${ms.percentage}%` : ""})`}
-                                  data-testid={`gantt-milestone-${ms.name}`}
+                                <div key={mIdx} className="absolute flex flex-col items-center"
+                                  style={{ left: `${leftPct}%`, top: 0, transform: "translateX(-50%)" }}
+                                  title={`${ms.name} (${ms.month})${ms.percentage ? ` | ${ms.percentage}%` : ""}`}
+                                  data-testid={`gantt-ms-unlinked-${mIdx}`}
                                 >
                                   <svg width="12" height="12" viewBox="0 0 14 14">
-                                    <polygon points="7,1 13,7 7,13 1,7" fill="#F59E0B" stroke="#D97706" strokeWidth="1.5" />
+                                    <polygon points="7,1 13,7 7,13 1,7" fill={isMarker ? "#3B82F6" : "#F59E0B"} stroke={isMarker ? "#1D4ED8" : "#D97706"} strokeWidth="1.5" />
                                   </svg>
+                                  <span className={`text-[7px] font-medium whitespace-nowrap max-w-[55px] truncate ${isMarker ? "text-blue-600" : "text-amber-700"}`}>{ms.name}</span>
                                 </div>
                               );
                             })}
                           </div>
                         </div>
                       );
-                    })}
+                    })()}
                   </div>
                 );
               })}
-
-              {/* Milestone summary row */}
-              {milestoneMarkers.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-gray-100">
-                  <div className="flex items-center">
-                    <div style={{ width: LABEL_W }} className="shrink-0 text-right pr-2">
-                      <span className="text-[10px] font-semibold text-amber-700">Milestones</span>
-                    </div>
-                    <div className="flex-1 relative" style={{ height: 28 }}>
-                      {Array.from({ length: maxMonth }, (_, i) => (
-                        <div key={i} className="absolute top-0 bottom-0 border-l border-gray-100" style={{ left: `${(i / maxMonth) * 100}%` }} />
-                      ))}
-                      {milestoneMarkers.map((ms, mIdx) => {
-                        const leftPct = (ms.absPos / maxMonth) * 100;
-                        return (
-                          <div key={mIdx} className="absolute flex flex-col items-center" style={{ left: `${leftPct}%`, top: 0, transform: "translateX(-50%)" }}
-                            title={`${ms.name} (${ms.phaseName} ${ms.position}${ms.percentage ? `, ${ms.percentage}%` : ""})`}
-                            data-testid={`gantt-ms-summary-${mIdx}`}
-                          >
-                            <svg width="11" height="11" viewBox="0 0 14 14">
-                              <polygon points="7,1 13,7 7,13 1,7" fill="#F59E0B" stroke="#D97706" strokeWidth="1.5" />
-                            </svg>
-                            <span className="text-[7px] text-amber-700 font-medium whitespace-nowrap max-w-[55px] truncate">{ms.name}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Legend */}
               <div className="flex flex-wrap gap-3 mt-3 pt-2 border-t border-gray-100">
@@ -335,10 +358,16 @@ export const GanttCard = ({
                     </div>
                   );
                 })}
-                {milestoneMarkers.length > 0 && (
+                {milestoneMarkers.some(m => m.type !== "marker") && (
                   <div className="flex items-center gap-1.5">
                     <svg width="12" height="12" viewBox="0 0 14 14"><polygon points="7,1 13,7 7,13 1,7" fill="#F59E0B" stroke="#D97706" strokeWidth="1.5" /></svg>
-                    <span className="text-[10px] text-gray-600">Milestone</span>
+                    <span className="text-[10px] text-gray-600">Payment Milestone</span>
+                  </div>
+                )}
+                {milestoneMarkers.some(m => m.type === "marker") && (
+                  <div className="flex items-center gap-1.5">
+                    <svg width="12" height="12" viewBox="0 0 14 14"><polygon points="7,1 13,7 7,13 1,7" fill="#3B82F6" stroke="#1D4ED8" strokeWidth="1.5" /></svg>
+                    <span className="text-[10px] text-gray-600">Marker Milestone</span>
                   </div>
                 )}
               </div>

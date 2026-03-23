@@ -396,8 +396,9 @@ class PaymentMilestone(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     wave_name: str
     milestone_name: str
+    milestone_type: str = "payment"  # "payment" or "marker" (freehold)
     phase_name: str = ""  # Linked phase (e.g., "Explore")
-    position: str = ""  # "start", "mid", "end" within the phase
+    position: str = "end"  # "start", "mid", "end" within the phase
     target_month: str = ""  # Computed: "M3" based on phase + position
     completion_percentage: float = 0
     payment_percentage: float = 0
