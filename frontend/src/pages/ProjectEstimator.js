@@ -1750,7 +1750,32 @@ const ProjectEstimator = () => {
         }
         try {
           const response = await axios.post(`${API}/projects/${projectId}/new-version`, payload, { headers: apiHeaders });
-          await copyMilestonesToNewVersion(response.data.id);
+
+          // Copy milestones to the new version with updated wave names
+          const oldWaveNames = waves.map(w => w.name);
+          const newWaveNames = newWaves.map(w => w.name);
+          const waveNameMap = {};
+          oldWaveNames.forEach((oldName, i) => {
+            if (i < newWaveNames.length) waveNameMap[oldName] = newWaveNames[i];
+          });
+          const currentMilestones = ganttMilestones.length > 0 ? ganttMilestones : [];
+          const updatedMilestones = currentMilestones.map(m => ({
+            ...m,
+            wave_name: waveNameMap[m.wave_name] || m.wave_name,
+          }));
+          if (updatedMilestones.length > 0 || ganttPaymentTermsDays) {
+            try {
+              await axios.put(`${API}/projects/${response.data.id}/milestones`, {
+                milestones: updatedMilestones,
+                payment_terms_days: ganttPaymentTermsDays,
+              }, { headers: apiHeaders });
+            } catch (msErr) {
+              console.error("Failed to copy milestones to new version:", msErr);
+              toast.error("Warning: Milestones could not be copied to the new version.");
+            }
+          }
+          setGanttMilestones(updatedMilestones);
+
           setProjectId(response.data.id);
           setProjectVersion(response.data.version);
           setProjectStatus(response.data.status || "draft");

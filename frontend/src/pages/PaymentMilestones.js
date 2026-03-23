@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
@@ -205,18 +205,21 @@ const PaymentMilestones = () => {
     }
   };
 
-  // Ctrl+S keyboard shortcut
+  // Ctrl+S keyboard shortcut — use ref to always call the latest handleSave
+  const saveHandlerRef = useRef(null);
+  saveHandlerRef.current = handleSave;
+
   useEffect(() => {
     if (!projectId) return;
     const handler = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        handleSave();
+        if (saveHandlerRef.current) saveHandlerRef.current();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [projectId, milestones]);
+  }, [projectId]);
 
   const toggleWave = (waveName) => setCollapsedWaves((prev) => ({ ...prev, [waveName]: !prev[waveName] }));
 

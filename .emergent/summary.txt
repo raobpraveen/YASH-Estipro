@@ -1,208 +1,179 @@
 <analysis>**original_problem_statement:**
 Build an IT/Software Project estimator tool named YASH EstPro.
 
-**PRODUCT REQUIREMENTS (Initial):**
-- **Core Estimator Grid:** Wave-based estimation with dynamic monthly phases, editable resource definitions (Skill, Level, Location) with automatic salary lookups, and editable cost columns. A Nego Buffer percentage should be captured at the wave level. Add an option to apply a resource/skill to all months in a wave simultaneously.
-- **Project & Version Management:** Full project lifecycle with versioning, cloning, mandatory version comments, and read-only states. Projects must capture audit fields (Created By, Created Date). Add project archiving functionality.
-- **Workflow & Analytics:** Approval workflow (Draft, In Review, Approved, Rejected), a dashboard for analytics, and a version comparison screen. Dashboard and project lists need robust filtering capabilities.
+**PRODUCT REQUIREMENTS:**
+- **Core Estimator Grid:** Wave-based estimation with dynamic monthly phases, editable resource definitions, and automatic salary lookups.
+- **Project & Version Management:** Full project lifecycle with versioning, cloning, and audit fields.
+- **Workflow & Analytics:** Approval workflow, dashboard, and version comparison.
 - **Authentication & Authorization**: JWT-based authentication and role-based access control.
-
-**PRODUCT REQUIREMENTS (Recent additions by user):**
 - **Gantt Chart Enhancements:**
-    - **(Implemented)** Implement a phase range editor (start/end month) to replace the per-month phase dropdown, allowing phases to span multiple months and overlap.
-    - **(Implemented)** Include the defined phase ranges in the per-wave Excel export.
-    - **(Implemented)** Add a new sheet to the Excel export that visually represents the Gantt chart.
-    - **(In Progress)** Refine the phase overlap precision from full-month to **half-month granularity** (e.g., M3 can be split between two phases).
-- **Refactoring:**
-    - **(Completed)** Perform the P1 refactoring of the monolithic  component.
+    - **(Implemented)** Flexible phase range editor with half-month precision.
+    - **(Implemented)** Collapse/expand feature for the phase editor.
+    - **(Implemented)** Replaced Finish-to-Start dependency with a phase-based milestone model.
+    - **(Implemented)** Milestones are visually represented as diamonds on the Gantt chart, editable from both the main estimator page and the dedicated Payment Milestones page (bidirectional sync).
+    - **(Implemented)** Implemented Marker (freehold) milestones for non-payment-related events.
+    - **(Implemented)** Implemented a slider for flexible (0-100%) positioning of marker milestones.
+    - **(Implemented)** Overhauled Gantt UI for readability, stacking overlapping labels.
+- **UI/UX:**
+    - **(Implemented)** Relocated Settings and Sign Out to a user profile dropdown.
+    - **(Implemented)** Added a reactive total payment percentage badge to the phase editor.
+- **Documentation:**
+    - **(Implemented)** Updated User Manual, Support Guide, and Tutorials to reflect recent changes.
+- **New User Requests (Pending):**
+    - **(Requirement)** Manually slide/drag milestone diamonds on the Gantt chart for visual adjustment.
+    - **(Requirement)** Add a Milestones sheet to the Excel export for each wave.
+    - **(New Feature)** A master data system for phase-wise activities and deliverables, configurable per project type.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The YASH EstPro application is a mature full-stack estimation tool.
+The YASH EstPro application is a mature full-stack project estimation tool. The previous agent completed a major UI/UX overhaul of the Gantt chart and milestone system based on user feedback. This included implementing Marker (non-payment) milestones, adding a slider for flexible positioning, creating a reactive total percentage badge, and improving label readability on the Gantt chart by stacking overlapping items.
 
-In this session, the agent successfully completed a major refactoring of the primary  component, reducing its size by 42% by extracting three smaller components. This was verified with extensive regression testing.
+Crucially, the agent also fixed a critical bug () that prevented adding milestones in non-HTTPS (local) environments. Another significant fix ensures that milestones are now correctly copied over when a new project version is created (either from the UI or via Excel import). All related documentation (, , ) was updated to reflect these extensive changes.
 
-Following the refactoring, the agent resolved a series of complex deployment and build issues the user faced in their local Docker environment, including network timeouts, dependency import errors, and Git conflicts.
-
-The agent then implemented a major enhancement to the Gantt Chart feature, replacing the per-month phase assignment with a more flexible **Phase Range Editor** that supports overlapping phases with full-month granularity. This included updating the UI, backend model, and the Excel export/import functionality.
-
-Finally, the user requested a further refinement to allow **half-month precision** for phase overlaps. The agent began implementing this change and was in the process of updating the frontend components and utilities when the session ended.
+However, the user's latest round of testing on their local instance has uncovered two new bugs related to Excel import and keyboard shortcuts, and they have requested several new features.
 
 **Last working item**:
--   Last item agent was working: Implementing **half-month precision** for the Gantt Chart's phase editor. The agent had already updated the  UI to include half-month options (e.g., M3 - Start, M3 - End) and updated the  rendering logic. The last action was modifying  to reflect these half-month values in the Excel output.
+-   Last item agent was working: Investigating two user-reported bugs and planning for three new requirements.
+    - **Bug 1:** When an Excel file is imported to create a new version, the existing milestones for the project are erased.
+    - **Bug 2:** On the Payment Milestones page, using the  shortcut displays a saved successfully message, but the Payment Terms field is not actually persisted. The main Save All button works correctly.
 -   Status: **IN PROGRESS**
 -   Agent Testing Done: N
--   Which testing method agent to use? After completing the feature, use the  to conduct a full regression test covering the new UI, Gantt rendering with half-month precision, data persistence, and the updated Excel export/import functionality. A  test can be used for an initial smoke test of the UI.
+-   Which testing method agent to use? . This will be required to create a comprehensive test suite covering the bug fixes and the new features (Gantt dragging, Excel export, activities master).
 -   User Testing Done: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: User's Local Deployment Environment Instability (P2)**
-    -   **Description**: The user repeatedly encountered issues (network timeouts, Git conflicts, Dockerfile errors) when building the application locally using . The agent provided several successful workarounds, but the underlying environment instability may persist.
-    -   **Attempted fixes**: Provided usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
-           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
-           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--bare]
-           [--git-dir=<path>] [--work-tree=<path>] [--namespace=<name>]
-           [--super-prefix=<path>] [--config-env=<name>=<envvar>]
-           <command> [<args>]
+-   **Issue 1: Excel Import Erases Milestones (P0)**
+    -   **Description**: When using the Smart Import feature to create a new project version from an Excel file, the milestone data associated with the project's phases is completely wiped out, even though it appears correctly in the estimator UI right after import. Navigating to the  page reveals a blank screen.
+    -   **Attempted fixes**: Investigation in progress. The agent correctly identified that the  function in  is the likely culprit.
+    -   **Next debug checklist**:
+        1.  Examine  around line 1725. The code constructs a new  array from the parsed Excel data (, ).
+        2.  This new  object does not contain the  array that exists in the original project state.
+        3.  The fix is to merge the imported wave data with the existing milestone data before setting the state and saving the new version. The  from the old  object must be carried over to the new  object.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical data loss bug that breaks the Excel import workflow.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Both (Frontend logic, Backend persistence via API)
+    -   **Blocked on other issue**: None
 
-These are common Git commands used in various situations:
-
-start a working area (see also: git help tutorial)
-   clone     Clone a repository into a new directory
-   init      Create an empty Git repository or reinitialize an existing one
-
-work on the current change (see also: git help everyday)
-   add       Add file contents to the index
-   mv        Move or rename a file, a directory, or a symlink
-   restore   Restore working tree files
-   rm        Remove files from the working tree and from the index
-
-examine the history and state (see also: git help revisions)
-   bisect    Use binary search to find the commit that introduced a bug
-   diff      Show changes between commits, commit and working tree, etc
-   grep      Print lines matching a pattern
-   log       Show commit logs
-   show      Show various types of objects
-   status    Show the working tree status
-
-grow, mark and tweak your common history
-   branch    List, create, or delete branches
-   commit    Record changes to the repository
-   merge     Join two or more development histories together
-   rebase    Reapply commits on top of another base tip
-   reset     Reset current HEAD to the specified state
-   switch    Switch branches
-   tag       Create, list, delete or verify a tag object signed with GPG
-
-collaborate (see also: git help workflows)
-   fetch     Download objects and refs from another repository
-   pull      Fetch from and integrate with another repository or a local branch
-   push      Update remote refs along with associated objects
-
-'git help -a' and 'git help -g' list available subcommands and some
-concept guides. See 'git help <command>' or 'git help <concept>'
-to read about a specific subcommand or concept.
-See 'git help git' for an overview of the system. commands to resolve conflicts (Saved working directory and index state WIP on main: 9ee8f0b auto-commit for e99dfb84-9845-4c32-b0d8-5ea3adb30e11, HEAD is now at 9ee8f0b auto-commit for e99dfb84-9845-4c32-b0d8-5ea3adb30e11); modified  to handle network issues (DNS, removing ) and syntax errors.
-    -   **Next debug checklist**: If the user reports further build issues, advise them to check for restrictive corporate firewalls or proxy settings that might be interfering with Docker's networking.
-    -   **Why fix this issue and what will be achieved with the fix?**: Ensures the user can successfully deploy and test the application, enabling a smooth feedback loop.
-    -   **Status**: RESOLVED (workarounds provided)
-    -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: Not applicable (environment issue).
+-   **Issue 2:  Fails to Save Payment Terms (P1)**
+    -   **Description**: On the  page, changing the Payment Terms dropdown and pressing  does not save the value, despite a success toast. The  function, which is triggered by the Save All button, works correctly.
+    -   **Attempted fixes**: Investigation in progress. The agent correctly identified a conflict between the global  handler in  and the local one in .
+    -   **Next debug checklist**:
+        1.  Review the  hook in  (around line 210) that sets up the  listener.
+        2.  Review the global shortcut setup in  (around line 1140), which uses a  to point to .
+        3.  The global handler in  is likely overriding the local one. The fix requires a more robust system for managing global shortcuts.
+    -   **Why fix this issue and what will be achieved with the fix?**: Restores expected keyboard shortcut functionality for users, preventing data loss and improving usability.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on other issue**: None
 
 **In progress Task List**:
--   **Task 1: Complete Half-Month Precision for Gantt Chart (P0)**
-    -   **Description**: Finalize the implementation to allow phases to start and end at the middle of a month.
-    -   **Where to resume**: The agent just finished updating  (Message 300). The next step is to update the Excel *import* utility () to correctly parse the new half-month format (e.g., M4 - End). Afterwards, conduct comprehensive testing of the entire feature.
-    -   **What will be achieved with this?**: Fulfills the user's requirement for more precise project phase planning and visualization.
-    -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Frontend
-    -   **Blocked on something**: None
+None.
 
 **Upcoming and Future Tasks**
--   **Future Tasks (P2):**
-    -   PDF Export with Branding
-    -   Client-Facing Shareable View
+-   **Upcoming Tasks:**
+    -   **(P1) Requirement: Milestone Excel Export**: Modify the existing Excel export functionality to add a new sheet for each wave, detailing all associated payment and marker milestones.
+    -   **(P2) Requirement: Gantt Drag-and-Drop**: Implement a feature allowing users to manually slide milestone diamonds along the phase bars on the Gantt chart for better visual positioning, without overwriting the core milestone data.
+    -   **(P2) New Feature: Phase Activities & Deliverables**: Create a master data management system for phase-specific activities and deliverables. This should be a template that can be adopted and customized for different project types, likely presented in a large modal to avoid cluttering the main screen.
+    -   **(P2) PDF Export with Branding**: Implement a feature to export project estimates as a branded PDF.
+    -   **(P2) Client-Facing Shareable View**: Create a read-only, shareable link for clients to view project estimates.
+-   **Future Tasks:**
     -   What-If Scenario Comparison
     -   AI Integration (Estimation Suggestions)
     -   Actuals Tracking & Profitability Module
-    -   Phase dependencies/milestones with visual arrows on the Gantt chart (suggested by agent).
 
 **Completed work in this session**
--   **P1 Refactoring of  (DONE)**
-    -   Reduced file from 3510 to 2020 lines (42% reduction).
-    -   Extracted , , and .
-    -   Verified with comprehensive regression testing via .
--   **User Deployment Support (DONE)**
-    -   Diagnosed and fixed a series of  build failures related to networking,  dependency version, Git conflicts, and Dockerfile syntax.
--   **Gantt Chart Enhancement: Overlapping Phases (DONE)**
-    -   Replaced per-month dropdowns with a **Phase Range Editor** UI ().
-    -   Updated the backend data model to store  ().
-    -   Added backward-compatibility to convert old  data.
-    -   Enhanced Excel export () to include a new Gantt Chart sheet and phase range data.
-    -   Enhanced Excel import () to parse phase range data.
-    -   Updated user documentation ().
+-   **Bug Fix ()**: Fixed a critical bug preventing the + Payment and + Marker buttons from working in non-HTTPS (local) environments by adding a robust ID generation fallback.
+-   **Bug Fix (Milestone Copying)**: Corrected a data loss issue by ensuring milestones are now copied to new project versions created via the UI or Excel import.
+-   **Gantt Chart UI Overhaul**: Significantly improved the Gantt chart's readability by grouping and vertically stacking overlapping milestone labels, and adding padding to prevent labels from being cut off.
+-   **Feature - Flexible Marker Positioning**: Replaced the 'Start/Mid/End' dropdown for marker milestones with a 0-100% slider, allowing for precise placement (e.g., for 'Sprint 1', 'UAT').
+-   **Feature - Reactive Total % Badge**: The total amount in the phase section's percentage badge now updates instantly when the wave's final selling price changes.
+-   **Documentation Update**: Comprehensively updated , , and  to reflect all the new milestone features and UI changes.
 
 **Earlier issues found/mentioned but not fixed**
--   None.
+None.
 
 **Known issue recurrence from previous fork**
--   None.
+None.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **React Refactoring**: Component extraction from a large monolithic file. Involved careful state and prop management.
--   **Docker Debugging**: Diagnosing and fixing  build issues related to networking (), dependency management (, ), and file syntax.
--   **Gantt Chart Logic**: Using floating-point numbers (e.g., 2.5) to represent half-month start/end points for precise timeline rendering.
--   **Data Migration**: Implementing client-side backward compatibility to convert data from an old format ( array) to a new format ( object array) on project load.
--   **Excel Generation ()**: Dynamically creating new sheets, merging cells, and applying styling to visually represent a Gantt chart within an Excel file.
+-   **State Management Conflict**: The  bug is a classic example of conflicting global and local event listeners in a single-page application. The global shortcut handler in the main page component is overriding the more specific handler in the child page component.
+-   **Data Merging on Import**: The Excel import bug highlights the critical need for safe data merging. When updating a complex state object from an external source, one cannot simply overwrite the state but must intelligently merge the new data with existing, related data (like milestones).
 
 **key DB schema**
--   ** collection:** The  array documents were updated. The  model in  now includes:
-    -    (New field, e.g., )
-    -    (Kept for backward compatibility)
+-   No schema changes were made in the last session. The  collection already supports the necessary fields (, , etc.).
 
 **changes in tech stack**
 -   None.
 
 **All files of reference**
 -   /app/frontend/src/pages/ProjectEstimator.js
+-   /app/frontend/src/pages/PaymentMilestones.js
 -   /app/frontend/src/components/estimator/WaveContent.js
--   /app/frontend/src/components/estimator/GanttCard.js
--   /app/frontend/src/utils/excelExport.js
 -   /app/frontend/src/utils/excelImport.js
--   /app/backend/models.py
--   /app/frontend/Dockerfile
+-   /app/frontend/src/utils/excelExport.js
 -   /app/frontend/src/pages/UserManual.js
--   (New) /app/frontend/src/components/estimator/ProjectToolbar.js
--   (New) /app/frontend/src/components/estimator/ProjectInfoCard.js
--   (New) /app/frontend/src/components/estimator/constants.js
+-   /app/frontend/src/pages/SupportGuide.js
+-   /app/frontend/src/pages/Tutorials.js
 
 **Areas that need refactoring**:
--   ****: While significantly improved (2020 lines), it still manages a large amount of state and logic for the entire page. The next refactoring step should focus on extracting state management logic into custom hooks (e.g., , ) or React Context to further slim down the main component file.
+-   **Global Shortcut Handling**: The current method of managing  via a  in  is not scalable and is the source of the shortcut bug. This should be refactored to use a React Context () that allows different pages to register/unregister their primary save action as they become active.
 
 **key api endpoints**
--    (PUT): The  object in the payload was updated to save the new  data structure.
+-    (PUT): The endpoint used by  to save data. The  bug prevents this from being called correctly with the .
+-    (POST): The endpoint used for creating new versions. The Excel import bug is a frontend issue where the correct payload (with merged milestones) isn't being sent before this call.
 
 **Critical Info for New Agent**
--   Your immediate priority is to **complete the half-month precision feature** for the Gantt chart. Resume by updating  to parse the new half-month format.
--   The user is deploying the app to their own  environment and has faced multiple build issues. Be prepared to provide support and debug their local setup if new problems arise. The fixes often involve their  or Git workflow.
--   The large refactoring of  is complete, but the file is still large. Future work on this page should consider moving state and logic into custom hooks or context to improve separation of concerns.
+-   Your first priority is to fix the two user-reported bugs (P0 and P1). Do not start new features until these are resolved and verified.
+-   **Excel Import Bug (P0)**: Focus on the  function in . You must merge the  from the existing project  into the new  data parsed from the Excel file before updating the state.
+-   **Ctrl+S Bug (P1)**: The root cause is a conflict between global and local  event listeners. The most robust solution is to refactor the shortcut handling to use a shared context, allowing the active page to register its own save function.
+-   After the bugs are fixed, proceed with the user's new requirements, starting with adding milestones to the Excel export.
 
 **documents and test reports created in this job**
--   /app/test_reports/iteration_37.json (Refactoring Regression Test)
--   /app/test_reports/iteration_38.json (Gantt Phase Range Feature Test)
+-   /app/test_reports/iteration_41.json
+-   /app/test_reports/iteration_42.json
+-   /app/test_reports/iteration_43.json
+-   /app/test_reports/iteration_44.json
 -   /app/memory/PRD.md (Updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **user**: Requests new Gantt features: overlapping phases and inclusion in Excel export.
-2.  **agent**: Asks for clarification on overlap precision (full-month, half-month, etc.).
-3.  **user**: Chooses Full-month granularity.
-4.  **agent**: Implements and completes the full-month granularity feature, including UI, backend, and Excel changes. Finishes the task.
-5.  **user**: Changes their mind and asks for Half-month precision instead.
-6.  **agent**: Asks for confirmation on the UI implementation for half-month selection.
-7.  **user**: Confirms the agent's plan: yes proceed.
-8.  **agent**: Starts implementing the half-month precision feature.
-9.  **user**: Says proceed again (likely a misclick or duplicate message).
-10. **agent**: Continues implementation by modifying . (Last agent action).
+1.  **user**: Reports + Payment milestone button is not working on their local instance, but works from the main Milestones screen. Asks to fix and update all docs.
+2.  **agent**: Correctly deduces the issue is  failing on HTTP, fixes it with a fallback, and updates all documentation (, , ).
+3.  **agent**: Verifies the fix and documentation changes with screenshots and the testing agent.
+4.  **user**: Confirms fix for +Marker button was also included. Reports a new bug: importing an Excel file erases milestones on the  page.
+5.  **agent**: Confirms the marker button was also fixed. Investigates the Excel import bug.
+6.  **agent**: Correctly identifies the root cause: the  function overwrites wave data, losing milestones. Also finds this bug exists for all new version creation paths.
+7.  **agent**: Implements a fix by creating a helper function  and applies it to all three code paths where a new version is created.
+8.  **agent**: Verifies the fix with the testing agent.
+9.  **user**: Reports two new bugs and requests new features.
+    -   Bug 1: Excel import *still* erases milestones.
+    -   Bug 2:  on the Milestones screen doesn't save Payment Terms.
+    -   Req 1: Drag-and-drop for milestones on the Gantt chart.
+    -   Req 2: Add milestones to Excel export.
+    -   New Feature: Master data for phase activities/deliverables.
+10. **agent**: Begins investigation into the two new bugs before the session ends.
 
 **Project Health Check:**
--   **Good**: The application code is stable and well-tested. However, the user's local deployment environment has shown instability, requiring frequent support.
+-   **Broken**: The Excel import feature is currently broken due to a critical data loss bug (Issue 1). The  shortcut is also broken on a key page (Issue 2).
+-   **Mocked**: None.
 
 **3rd Party Integrations**
--   (No new integrations added in this session)
+-   : Used for Excel export/import functionality.
+-   : Used for PNG export of the Gantt chart.
 
 **Testing status**
--   Testing agent used after significant changes: YES. Used twice for major changes (refactoring and Gantt feature), with 100% success.
--   Troubleshoot agent used after agent stuck in loop: NO.
+-   Testing agent used after significant changes: YES. The last test run was a  verification in iteration 45 after the documentation updates.
 -   Test files created: None.
--   Known regressions: None.
+-   Known regressions: The fix for milestone copying during version creation was insufficient, as the Excel import issue persists, indicating a deeper logic flaw in data merging.
 
 **Credentials to test flow:**
 -   **Email**: 
 -   **Password**: 
 
 **What agent forgot to execute**
--   The agent did not forget any tasks. It was actively working on the user's most recent request when the session concluded.</analysis>
+The agent correctly implemented a fix to copy milestones when a new version is created, but this did not solve the underlying issue with Excel import. The agent's  function still overwrites the  array with data parsed from Excel, which doesn't include milestones. The agent was investigating this deeper issue when the session ended.</analysis>
