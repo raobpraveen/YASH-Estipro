@@ -119,6 +119,18 @@ const ProjectEstimator = () => {
   const [ganttPaymentTermsDays, setGanttPaymentTermsDays] = useState(0);
   const milestoneSaveTimerRef = useRef(null);
   
+  // Copy milestones to a new project version ID
+  const copyMilestonesToNewVersion = async (newId) => {
+    if (!ganttMilestones.length && !ganttPaymentTermsDays) return;
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`${API}/projects/${newId}/milestones`, {
+        milestones: ganttMilestones,
+        payment_terms_days: ganttPaymentTermsDays,
+      }, { headers: { Authorization: `Bearer ${token}` } });
+    } catch (e) { console.error("Failed to copy milestones to new version:", e); }
+  };
+
   // Save milestones to backend (debounced to avoid hammering API on keystrokes)
   const saveGanttMilestones = (updatedMilestones) => {
     setGanttMilestones(updatedMilestones);
@@ -1152,6 +1164,7 @@ const ProjectEstimator = () => {
       setApproverEmail(response.data.approver_email || "");  // Clear approver
       setApprovalComments("");  // Clear approval comments
       setIsLatestVersion(true);  // New version is always latest
+      await copyMilestonesToNewVersion(response.data.id);
       setSaveAsNewVersionDialog(false);
       toast.success(`New version ${response.data.project_number} v${response.data.version} created`);
     } catch (error) {
@@ -1240,6 +1253,7 @@ const ProjectEstimator = () => {
       setProjectId(newProjectId);
       setProjectVersion(response.data.version);
       setIsLatestVersion(true);
+      await copyMilestonesToNewVersion(newProjectId);
 
       if (saveAsApproved) {
         // Approve the new version
@@ -1736,6 +1750,7 @@ const ProjectEstimator = () => {
         }
         try {
           const response = await axios.post(`${API}/projects/${projectId}/new-version`, payload, { headers: apiHeaders });
+          await copyMilestonesToNewVersion(response.data.id);
           setProjectId(response.data.id);
           setProjectVersion(response.data.version);
           setProjectStatus(response.data.status || "draft");
