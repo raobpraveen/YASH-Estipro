@@ -29,24 +29,26 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - **Phase Range Editor**: Define phases with Name, Start, End per wave
 - **Half-month precision**: Start/End accept 0.5-step values
 - **Overlapping phases supported**: Multiple phases can span the same months
-- **Phase-Based Milestones** (NEW - replaces old Finish-to-Start dependencies):
-  - Milestones linked to a specific phase (e.g., "Explore", "Realize")
-  - Position within phase: Start, Mid, or End
-  - Diamond markers on Gantt chart at computed positions
-  - Inline editor in WaveContent (add/edit/delete per phase)
-  - Full table editor on PaymentMilestones page
+- **Phase-Based Milestones** (replaces old Finish-to-Start dependencies):
+  - **Two types**: Payment milestones (amber diamonds) and Marker/freehold milestones (blue diamonds)
+  - Milestones linked to a specific phase with position: Start, Mid, or End
+  - Diamond markers on Gantt chart at computed positions, with name labels
+  - Inline editor in WaveContent: '+ Payment' and '+ Marker' buttons per phase
+  - Full table editor on PaymentMilestones page with separate sections for each type
+  - Marker milestones have no payment linkage (no %, no amount)
   - **Bidirectional sync** through shared `/api/projects/{id}/milestones` endpoint
-  - Debounced save (800ms) from inline editor to prevent API hammering
-  - Payment percentage & amount auto-calculation based on wave final price
-  - Backward compatible: old milestones without phase_name render by target_month fallback
+  - Debounced save (800ms) from inline editor
+  - Backward compatible: old milestones without phase_name render in "Unlinked" row
+- **Gantt Chart UI**:
+  - Wave header rows with bold uppercase names and visual separation
+  - Milestones rendered directly on phase bars (no separate summary row)
+  - Different colors: amber (#F59E0B) for payment, blue (#3B82F6) for marker
+  - Legend distinguishes both milestone types
+  - Unlinked milestones shown in dedicated row per wave
 - **Collapsible sections**: Phase Ranges + Milestones editor collapse/expand
-- **Timeline Preview**: Continuous bar rendering with precise positioning
-- Auto-generated Gantt chart from phase_ranges data with half-month precision
+- Auto-generated Gantt chart from phase_ranges data
 - Multi-wave support with start-month offset
 - PNG and Excel export for Gantt chart (includes milestones section)
-- Excel Export: Phase ranges included per wave sheet + dedicated Gantt Chart sheet
-- Excel Import: Parses phase ranges with parseFloat for half-month support
-- Backward compatibility: Legacy month_phases auto-convert to phase_ranges on load
 
 ### Excel Integration
 - Formula-based Excel export with color coding
@@ -56,21 +58,13 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 ### Documentation
 - User Manual, Support Guide (with Backup/Restore procedures), Tutorials
 
-## P1 Refactoring (Completed Feb 2026)
-**ProjectEstimator.js** refactored from 3510 -> 2029 lines (42% reduction):
-- `ProjectToolbar.js` -- Header bar, action buttons, workflow controls
-- `ProjectInfoCard.js` -- Collapsible project info form
-- `WaveContent.js` -- Wave grid, phase range editor, milestone inline editor, logistics breakdown, wave summary
-- `constants.js` -- Shared constants
-
 ## Key Data Model
 - `ProjectWave.phase_ranges`: `List[dict]` -- `[{name, start_month, end_month}]` (supports 0.5 increments)
-- `ProjectWave.month_phases`: `List[str]` -- Legacy field, auto-converted to phase_ranges
-- `ProjectWave.wave_start_month`: `int` -- Offset for multi-wave timeline
-- `PaymentMilestone`: `{id, wave_name, milestone_name, phase_name, position, target_month, payment_percentage, payment_amount, description}`
+- `PaymentMilestone`: `{id, wave_name, milestone_name, milestone_type, phase_name, position, target_month, payment_percentage, payment_amount, description}`
+  - `milestone_type`: "payment" (default) | "marker" (freehold, no payment)
   - `phase_name`: Linked phase name (e.g., "Explore")
   - `position`: "start" | "mid" | "end" within the phase
-  - `target_month`: Auto-computed from phase range + position (e.g., "M3")
+  - `target_month`: Auto-computed from phase range + position
 
 ## File Structure
 ```
