@@ -241,20 +241,7 @@ export async function buildExportWorkbook({
       });
     }
 
-    // ---- Phase Dependencies Section ----
-    const phaseDeps = wave.phase_dependencies || [];
-    if (phaseDeps.length > 0) {
-      dws.addRow([]);
-      const depHdr = dws.addRow(["PHASE DEPENDENCIES"]);
-      depHdr.font = { bold: true, size: 11 };
-      depHdr.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } };
-      const depColHdr = dws.addRow(["From Phase", "To Phase", "Type"]);
-      depColHdr.eachCell(c => { c.fill = subHeaderFill; c.font = { bold: true }; c.border = thinBorder; });
-      phaseDeps.forEach(dep => {
-        const depRow = dws.addRow([dep.from_phase, dep.to_phase, dep.type || "FS"]);
-        depRow.eachCell(c => { c.border = thinBorder; });
-      });
-    }
+    // Phase dependencies section removed — milestones are now linked to phases directly
 
     waveRefs.push({
       name: wave.name, sheet: sRef,

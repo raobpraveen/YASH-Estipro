@@ -431,8 +431,9 @@ export const WaveContent = ({
                               value={ms.payment_percentage || ""}
                               onChange={(e) => {
                                 const pct = parseFloat(e.target.value) || 0;
+                                const amount = Math.round((waveSummary?.finalPrice || 0) * (pct / 100) * 100) / 100;
                                 const updated = [...milestones];
-                                updated[msIdx] = { ...updated[msIdx], payment_percentage: pct };
+                                updated[msIdx] = { ...updated[msIdx], payment_percentage: pct, payment_amount: amount };
                                 onSaveMilestones(updated);
                               }}
                               placeholder="%"

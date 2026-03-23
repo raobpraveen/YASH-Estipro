@@ -116,18 +116,23 @@ const ProjectEstimator = () => {
   
   // Milestones for Gantt (fetched from payment milestones)
   const [ganttMilestones, setGanttMilestones] = useState([]);
+  const [ganttPaymentTermsDays, setGanttPaymentTermsDays] = useState(0);
+  const milestoneSaveTimerRef = useRef(null);
   
-  // Save milestones to backend (used by phase editor for bidirectional sync)
-  const saveGanttMilestones = async (updatedMilestones) => {
+  // Save milestones to backend (debounced to avoid hammering API on keystrokes)
+  const saveGanttMilestones = (updatedMilestones) => {
     setGanttMilestones(updatedMilestones);
     if (!projectId) return;
-    try {
-      const token = localStorage.getItem("token");
-      await axios.put(`${API}/projects/${projectId}/milestones`, {
-        milestones: updatedMilestones,
-        payment_terms_days: 0,
-      }, { headers: { Authorization: `Bearer ${token}` } });
-    } catch (e) { console.error("Failed to save milestones:", e); }
+    if (milestoneSaveTimerRef.current) clearTimeout(milestoneSaveTimerRef.current);
+    milestoneSaveTimerRef.current = setTimeout(async () => {
+      try {
+        const token = localStorage.getItem("token");
+        await axios.put(`${API}/projects/${projectId}/milestones`, {
+          milestones: updatedMilestones,
+          payment_terms_days: ganttPaymentTermsDays,
+        }, { headers: { Authorization: `Bearer ${token}` } });
+      } catch (e) { console.error("Failed to save milestones:", e); }
+    }, 800);
   };
 
   // Section collapse/expand
@@ -278,7 +283,8 @@ const ProjectEstimator = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         setGanttMilestones(msRes.data.milestones || []);
-      } catch { setGanttMilestones([]); }
+        setGanttPaymentTermsDays(msRes.data.payment_terms_days || 0);
+      } catch { setGanttMilestones([]); setGanttPaymentTermsDays(0); }
       
       if (project.waves && project.waves.length > 0) {
         // Backward compatibility: convert legacy month_phases to phase_ranges
