@@ -18,6 +18,7 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - Dashboard with analytics and filtering
 - Version comparison screen
 - Project archiving, access control (public/restricted), audit logging
+- **Cascade delete**: Project deletion cleans up milestones and activities
 
 ### Financial Features
 - Payment Terms in Cashflow (shift Cash-In by N days, auto-extend timeline)
@@ -28,28 +29,27 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 ### Gantt Chart & Phase-Based Milestones
 - Phase Range Editor with half-month precision
 - Payment milestones (amber diamonds, Start/Mid/End) and Marker milestones (blue diamonds, 0-100% slider)
+- Gantt Drag-and-Drop: Milestone diamonds draggable along phase bars
 - Smart label positioning (stacking overlapping labels)
-- Inline editor in WaveContent + full table editor on PaymentMilestones page
-- **Gantt Drag-and-Drop**: Milestone diamonds draggable along phase bars (payment snaps to start/mid/end, marker gets 0-100%)
 - Gantt chart PNG export
 
 ### Excel Integration
 - Formula-based Excel export with color coding
 - Smart Import from Excel files with milestone preservation
-- **Milestones Excel Sheets**: Per-wave sheets with payment/marker milestones, totals, coverage %
+- **Milestones Excel Sheets**: Per-wave sheets with formula-based Amount (=FinalPrice*Pct), type tags, metadata for import
+- **Milestone Import**: parseMilestoneSheet parses milestone sheets from Excel, overwrites on reimport
 - **Activities Excel Sheets**: Per-wave sheets with template + wave-specific activities/deliverables
+- **Separate Activities Export**: Dedicated Excel export from Activities modal
 
 ### Phase Activities & Deliverables
 - **Activity Templates Master Data** (sidebar page at /activity-templates):
   - Key: Technology + Sub-Technology + Project Type + Phase
-  - CRUD for templates with activities and deliverables
-  - Pre-seeded SAP S/4HANA Private Cloud Implementation template (6 phases: Discover, Prepare, Explore, Realize, Deploy, Run) with SAP Activate methodology
+  - Pre-seeded SAP S/4HANA Private Cloud Implementation template (6 SAP Activate phases)
+  - Template phases shown from master data, not wave-level phases
 - **Project Activities Modal** (from estimator toolbar):
   - Multi-phase selection with bulk adopt from templates
   - Wave-dependent activities (additive to template items)
   - Per-phase editing with template + wave-specific sections
-  - Dedicated Activities Excel export
-- **Backend API**: `/api/activity-templates` (combo key CRUD), `/api/projects/{id}/activities/adopt-templates` (bulk), `/api/projects/{id}/activities/{wave}/{phase}` (with wave_activities)
 
 ### Documentation
 - User Manual, Support Guide (with Backup/Restore), Tutorials
@@ -59,12 +59,13 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - Fixed: Milestone copying on new version creation (UI and Excel import paths)
 - Fixed: Excel Import erasing milestones — inline milestone copy with wave name mapping
 - Fixed: Ctrl+S on PaymentMilestones not saving Payment Terms — useRef pattern
+- Fixed: Activities modal showing wave phases instead of template phases
+- Fixed: Cascade delete — project deletion now cleans up milestones and activities
 
 ## Key Data Model
 - `PaymentMilestone`: `{id, wave_name, milestone_name, milestone_type, phase_name, position, target_month, payment_percentage, payment_amount, description}`
-- `ActivityTemplate`: `{id, technology_id, sub_technology_id, project_type_id, phase_name, activities[], technology_name, sub_technology_name, project_type_name}`
+- `ActivityTemplate`: `{id, technology_id, sub_technology_id, project_type_id, phase_name, activities[]}`
 - `ProjectPhaseActivities`: `{project_id, wave_name, phase_name, activities[], wave_activities[], adopted_from_template_id}`
-- `ActivityItem`: `{id, name, description, is_deliverable, owner, sort_order}`
 
 ## Upcoming Tasks
 - PDF Export with Branding
