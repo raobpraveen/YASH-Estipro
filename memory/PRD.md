@@ -31,11 +31,12 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - **Overlapping phases supported**: Multiple phases can span the same months
 - **Phase-Based Milestones** (replaces old Finish-to-Start dependencies):
   - **Two types**: Payment milestones (amber diamonds) and Marker/freehold milestones (blue diamonds)
-  - Milestones linked to a specific phase with position: Start, Mid, or End
-  - Diamond markers on Gantt chart at computed positions, with name labels
+  - Payment milestones: linked to phase with Start/Mid/End position
+  - **Marker milestones: flexible 0-100% slider positioning** on the phase bar (e.g., Sprint1 at 15%, Sprint2 at 35%, UAT at 70%, Phase Closure at 95%). Step=5.
+  - Diamond markers on Gantt chart at computed positions with name labels
   - Inline editor in WaveContent: '+ Payment' and '+ Marker' buttons per phase
   - Full table editor on PaymentMilestones page with separate sections for each type
-  - Marker milestones have no payment linkage (no %, no amount)
+  - **Total payment % badge** in Phase Milestones header (color-coded: amber <100%, green =100%, red >100%)
   - **Bidirectional sync** through shared `/api/projects/{id}/milestones` endpoint
   - Debounced save (800ms) from inline editor
   - Backward compatible: old milestones without phase_name render in "Unlinked" row
@@ -63,7 +64,7 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - `PaymentMilestone`: `{id, wave_name, milestone_name, milestone_type, phase_name, position, target_month, payment_percentage, payment_amount, description}`
   - `milestone_type`: "payment" (default) | "marker" (freehold, no payment)
   - `phase_name`: Linked phase name (e.g., "Explore")
-  - `position`: "start" | "mid" | "end" within the phase
+  - `position`: "start" | "mid" | "end" (payment) OR numeric string "0"-"100" (marker slider)
   - `target_month`: Auto-computed from phase range + position
 
 ## File Structure
