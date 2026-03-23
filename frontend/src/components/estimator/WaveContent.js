@@ -350,6 +350,61 @@ export const WaveContent = ({
         ) : (
           <p className="text-sm text-emerald-600 italic">No phases defined. Add phases to generate the Gantt chart.</p>
         )}
+
+        {/* Dependencies Editor */}
+        {(wave.phase_ranges || []).length >= 2 && (
+          <div className="mt-3 pt-2 border-t border-emerald-200">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[10px] text-indigo-600 font-semibold uppercase tracking-wide">Dependencies (Finish-to-Start)</p>
+              {!isReadOnly && (
+                <Button size="sm" variant="ghost" className="h-6 text-[10px] text-indigo-600 hover:bg-indigo-50 px-2" onClick={() => {
+                  const phases = (wave.phase_ranges || []).map(p => p.name);
+                  if (phases.length < 2) return;
+                  const deps = [...(wave.phase_dependencies || []), { from_phase: phases[0], to_phase: phases[1], type: "FS" }];
+                  setWaves(waves.map(w => w.id === wave.id ? { ...w, phase_dependencies: deps } : w));
+                }} data-testid={`add-dependency-${wave.id}`}>
+                  <Plus className="w-3 h-3 mr-0.5" /> Add
+                </Button>
+              )}
+            </div>
+            {(wave.phase_dependencies || []).length > 0 ? (
+              <div className="space-y-1">
+                {(wave.phase_dependencies || []).map((dep, dIdx) => {
+                  const phases = (wave.phase_ranges || []).map(p => p.name);
+                  return (
+                    <div key={dIdx} className="flex items-center gap-2 text-xs" data-testid={`dependency-row-${dIdx}`}>
+                      <select value={dep.from_phase} onChange={(e) => {
+                        const deps = [...(wave.phase_dependencies || [])];
+                        deps[dIdx] = { ...deps[dIdx], from_phase: e.target.value };
+                        setWaves(waves.map(w => w.id === wave.id ? { ...w, phase_dependencies: deps } : w));
+                      }} className="h-7 text-xs border border-indigo-200 rounded bg-white px-1.5 flex-1" disabled={isReadOnly} data-testid={`dep-from-${dIdx}`}>
+                        {phases.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                      <span className="text-indigo-400 font-medium shrink-0">&#8594;</span>
+                      <select value={dep.to_phase} onChange={(e) => {
+                        const deps = [...(wave.phase_dependencies || [])];
+                        deps[dIdx] = { ...deps[dIdx], to_phase: e.target.value };
+                        setWaves(waves.map(w => w.id === wave.id ? { ...w, phase_dependencies: deps } : w));
+                      }} className="h-7 text-xs border border-indigo-200 rounded bg-white px-1.5 flex-1" disabled={isReadOnly} data-testid={`dep-to-${dIdx}`}>
+                        {phases.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                      {!isReadOnly && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => {
+                          const deps = (wave.phase_dependencies || []).filter((_, i) => i !== dIdx);
+                          setWaves(waves.map(w => w.id === wave.id ? { ...w, phase_dependencies: deps } : w));
+                        }} data-testid={`remove-dep-${dIdx}`}>
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-[10px] text-gray-400 italic">No dependencies. Click "+ Add" to link phases.</p>
+            )}
+          </div>
+        )}
         </div>
         )}
       </div>

@@ -194,11 +194,11 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
 
       // Parse phase ranges section
       let phaseRanges = [];
+      let phaseDependencies = [];
       for (let r = headerRowNum + allocations.length + 2; r <= ws.rowCount; r++) {
         const row = ws.getRow(r);
         const cellA = (getCellVal(row.getCell(1)) || "").toString().trim();
         if (cellA.toUpperCase().includes("PHASE RANGES")) {
-          // Next row is header (Phase Name, Start, End), skip it
           for (let pr = r + 2; pr <= ws.rowCount; pr++) {
             const prRow = ws.getRow(pr);
             const phaseName = (getCellVal(prRow.getCell(1)) || "").toString().trim();
@@ -207,7 +207,16 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
             if (!phaseName || !startMonth) break;
             phaseRanges.push({ name: phaseName, start_month: startMonth, end_month: endMonth || startMonth });
           }
-          break;
+        }
+        if (cellA.toUpperCase().includes("PHASE DEPENDENCIES")) {
+          for (let dr = r + 2; dr <= ws.rowCount; dr++) {
+            const depRow = ws.getRow(dr);
+            const fromPhase = (getCellVal(depRow.getCell(1)) || "").toString().trim();
+            const toPhase = (getCellVal(depRow.getCell(2)) || "").toString().trim();
+            const depType = (getCellVal(depRow.getCell(3)) || "FS").toString().trim();
+            if (!fromPhase || !toPhase) break;
+            phaseDependencies.push({ from_phase: fromPhase, to_phase: toPhase, type: depType });
+          }
         }
       }
 
@@ -216,6 +225,7 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
         phaseNames,
         allocations,
         phaseRanges,
+        phaseDependencies,
         logistics: Object.keys(parsedLogistics).length > 0 ? parsedLogistics : null,
       });
     }

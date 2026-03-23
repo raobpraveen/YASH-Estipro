@@ -113,6 +113,9 @@ const ProjectEstimator = () => {
   const [ganttChart, setGanttChart] = useState(null); // { filename, uploaded_at }
   const [ganttLoading, setGanttLoading] = useState(false);
   const ganttInputRef = useRef(null);
+  
+  // Milestones for Gantt (fetched from payment milestones)
+  const [ganttMilestones, setGanttMilestones] = useState([]);
 
   // Section collapse/expand
   const [collapsedSections, setCollapsedSections] = useState({});
@@ -255,6 +258,12 @@ const ProjectEstimator = () => {
       // Gantt chart
       setGanttChart(project.gantt_chart || null);
       
+      // Fetch milestones for Gantt chart display
+      try {
+        const msRes = await axios.get(`${API}/projects/${id}/milestones`);
+        setGanttMilestones(msRes.data.milestones || []);
+      } catch { setGanttMilestones([]); }
+      
       if (project.waves && project.waves.length > 0) {
         // Backward compatibility: convert legacy month_phases to phase_ranges
         const migratedWaves = project.waves.map(w => {
@@ -396,6 +405,7 @@ const ProjectEstimator = () => {
       phase_names: phaseNames,
       month_phases: Array(numMonths).fill(""),
       phase_ranges: [],
+      phase_dependencies: [],
       wave_start_month: 1,
       logistics_config: { ...waveLogistics },
       nego_buffer_percentage: 0,
@@ -968,6 +978,7 @@ const ProjectEstimator = () => {
         phase_names: w.phase_names,
         month_phases: w.month_phases || w.phase_names.map(() => ""),
         phase_ranges: w.phase_ranges || [],
+        phase_dependencies: w.phase_dependencies || [],
         wave_start_month: w.wave_start_month || 1,
         logistics_config: w.logistics_config,
         nego_buffer_percentage: w.nego_buffer_percentage || 0,
@@ -1681,6 +1692,7 @@ const ProjectEstimator = () => {
         duration_months: pw.phaseNames.length,
         phase_names: pw.phaseNames,
         phase_ranges: pw.phaseRanges || [],
+        phase_dependencies: pw.phaseDependencies || [],
         logistics_config: pw.logistics || waves[0]?.logistics_config || {},
         grid_allocations: pw.allocations.map(a => ({
           ...a,
@@ -1815,7 +1827,7 @@ const ProjectEstimator = () => {
       />
 
       {/* Gantt Chart */}
-      <GanttCard projectId={projectId} waves={waves} ganttChart={ganttChart} ganttLoading={ganttLoading} ganttInputRef={ganttInputRef} handleGanttUpload={handleGanttUpload} handleGanttDelete={handleGanttDelete} isReadOnly={isReadOnly} collapsedSections={collapsedSections} toggleSection={toggleSection} />
+      <GanttCard projectId={projectId} waves={waves} setWaves={setWaves} milestones={ganttMilestones} ganttChart={ganttChart} ganttLoading={ganttLoading} ganttInputRef={ganttInputRef} handleGanttUpload={handleGanttUpload} handleGanttDelete={handleGanttDelete} isReadOnly={isReadOnly} collapsedSections={collapsedSections} toggleSection={toggleSection} />
 
       {/* Overall Summary Cards */}
       <OverallSummary overall={overall} profitMarginPercentage={profitMarginPercentage} collapsedSections={collapsedSections} toggleSection={toggleSection} />
