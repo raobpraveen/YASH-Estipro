@@ -211,6 +211,124 @@ async def seed_sap_template(user: dict = Depends(require_auth)):
     return {"message": f"SAP S/4HANA Private Cloud Implementation template seeded ({created_count} phases)", "phases": list(phases.keys())}
 
 
+@router.post("/activity-templates/seed-sap-public")
+async def seed_sap_public_cloud_template(user: dict = Depends(require_auth)):
+    tech_id = "7517ff3c-5bb3-47d7-895e-15da5d9da5e1"
+    sub_tech_id = "bd26c13f-2090-4ba5-a6ab-20fd051438aa"
+    proj_type_id = "e2c5a7ae-d6b3-4fb1-b312-22d41a1af717"
+    now = datetime.now(timezone.utc).isoformat()
+
+    phases = {
+        "Discover": {
+            "activities": [
+                {"id": str(uuid.uuid4()), "name": "Digital Discovery Assessment", "description": "Scope assessment and benchmark for S/4HANA Public Cloud transformation", "is_deliverable": False, "owner": "", "sort_order": 0},
+                {"id": str(uuid.uuid4()), "name": "Evaluate Fit-to-Standard Readiness", "description": "Assess business processes against SAP Best Practices for Public Cloud", "is_deliverable": False, "owner": "", "sort_order": 1},
+                {"id": str(uuid.uuid4()), "name": "Understand Clean Core & Extensibility", "description": "Review SAP BTP side-by-side extensibility model for Public Cloud", "is_deliverable": False, "owner": "", "sort_order": 2},
+                {"id": str(uuid.uuid4()), "name": "Review Quarterly Release Strategy", "description": "Understand SAP quarterly release cycle and impact on go-live planning", "is_deliverable": False, "owner": "", "sort_order": 3},
+                {"id": str(uuid.uuid4()), "name": "Business Case", "description": "Document ROI and business case for Public Cloud adoption", "is_deliverable": True, "owner": "", "sort_order": 4},
+                {"id": str(uuid.uuid4()), "name": "High-Level Roadmap", "description": "Strategic roadmap for S/4HANA Public Cloud journey", "is_deliverable": True, "owner": "", "sort_order": 5},
+                {"id": str(uuid.uuid4()), "name": "Discovery Assessment Report", "description": "Fit-to-Standard readiness findings and recommendations", "is_deliverable": True, "owner": "", "sort_order": 6},
+            ]
+        },
+        "Prepare": {
+            "activities": [
+                {"id": str(uuid.uuid4()), "name": "Project Kickoff", "description": "Kickoff meeting with project governance structure defined", "is_deliverable": False, "owner": "", "sort_order": 0},
+                {"id": str(uuid.uuid4()), "name": "Establish Project Governance", "description": "Define RACI, steering committee, PMO and communication plan", "is_deliverable": False, "owner": "", "sort_order": 1},
+                {"id": str(uuid.uuid4()), "name": "Provision SAP S/4HANA Cloud Tenant", "description": "Request and provision starter and quality tenants via SAP for Me", "is_deliverable": False, "owner": "", "sort_order": 2},
+                {"id": str(uuid.uuid4()), "name": "Setup SAP Cloud ALM", "description": "Configure Cloud ALM for project management, test automation, and monitoring", "is_deliverable": False, "owner": "", "sort_order": 3},
+                {"id": str(uuid.uuid4()), "name": "Team Enablement", "description": "Complete SAP Learning Hub training and conduct enablement workshops", "is_deliverable": False, "owner": "", "sort_order": 4},
+                {"id": str(uuid.uuid4()), "name": "OCM Strategy", "description": "Define organizational change management approach", "is_deliverable": False, "owner": "", "sort_order": 5},
+                {"id": str(uuid.uuid4()), "name": "Project Charter", "description": "Signed project charter with scope, timeline, and governance", "is_deliverable": True, "owner": "", "sort_order": 6},
+                {"id": str(uuid.uuid4()), "name": "Project Plan", "description": "Detailed plan with phases, milestones, and resource allocation", "is_deliverable": True, "owner": "", "sort_order": 7},
+                {"id": str(uuid.uuid4()), "name": "Team Roles & RACI", "description": "Complete RACI matrix and team structure document", "is_deliverable": True, "owner": "", "sort_order": 8},
+            ]
+        },
+        "Explore": {
+            "activities": [
+                {"id": str(uuid.uuid4()), "name": "Fit-to-Standard Workshops", "description": "Conduct SAP Best Practice workshops with pre-configured business scenarios", "is_deliverable": False, "owner": "", "sort_order": 0},
+                {"id": str(uuid.uuid4()), "name": "Scope Item Configuration", "description": "Activate and configure scope items in the SAP S/4HANA Cloud system", "is_deliverable": False, "owner": "", "sort_order": 1},
+                {"id": str(uuid.uuid4()), "name": "Fit-Gap Analysis", "description": "Identify gaps and categorize as configuration, BTP extension, or business process change", "is_deliverable": False, "owner": "", "sort_order": 2},
+                {"id": str(uuid.uuid4()), "name": "Define BTP Extensions", "description": "Identify and design side-by-side extensions on SAP BTP (no core modifications)", "is_deliverable": False, "owner": "", "sort_order": 3},
+                {"id": str(uuid.uuid4()), "name": "Integration Architecture", "description": "Design integration architecture using SAP Integration Suite", "is_deliverable": False, "owner": "", "sort_order": 4},
+                {"id": str(uuid.uuid4()), "name": "Data Migration Strategy", "description": "Define data migration approach using SAP Migration Cockpit templates", "is_deliverable": False, "owner": "", "sort_order": 5},
+                {"id": str(uuid.uuid4()), "name": "Prepare Test Scenarios", "description": "Develop test scripts based on activated business scenarios", "is_deliverable": False, "owner": "", "sort_order": 6},
+                {"id": str(uuid.uuid4()), "name": "Fit-Gap Analysis Document", "description": "Comprehensive gap analysis with resolution approach per gap", "is_deliverable": True, "owner": "", "sort_order": 7},
+                {"id": str(uuid.uuid4()), "name": "Scope Item List", "description": "Final list of activated scope items and configurations", "is_deliverable": True, "owner": "", "sort_order": 8},
+                {"id": str(uuid.uuid4()), "name": "BTP Extension Specifications", "description": "Technical specifications for all BTP side-by-side extensions", "is_deliverable": True, "owner": "", "sort_order": 9},
+                {"id": str(uuid.uuid4()), "name": "Test Scripts", "description": "Unit and integration test scripts", "is_deliverable": True, "owner": "", "sort_order": 10},
+            ]
+        },
+        "Realize": {
+            "activities": [
+                {"id": str(uuid.uuid4()), "name": "Self-Service Configuration", "description": "Complete business configuration using SAP self-service configuration tools", "is_deliverable": False, "owner": "", "sort_order": 0},
+                {"id": str(uuid.uuid4()), "name": "Key User Extensibility", "description": "Implement key user extensions (custom fields, custom logic, custom CDS views)", "is_deliverable": False, "owner": "", "sort_order": 1},
+                {"id": str(uuid.uuid4()), "name": "BTP Extension Development", "description": "Develop side-by-side extensions on SAP BTP using SAP CAP / RAP", "is_deliverable": False, "owner": "", "sort_order": 2},
+                {"id": str(uuid.uuid4()), "name": "Integration Development", "description": "Build integrations using SAP Integration Suite and API Hub", "is_deliverable": False, "owner": "", "sort_order": 3},
+                {"id": str(uuid.uuid4()), "name": "Data Migration Execution", "description": "Execute trial data migrations using Migration Cockpit with validation", "is_deliverable": False, "owner": "", "sort_order": 4},
+                {"id": str(uuid.uuid4()), "name": "Sprint Cycles (Agile)", "description": "Iterative sprints with demos, reviews, and retrospectives", "is_deliverable": False, "owner": "", "sort_order": 5},
+                {"id": str(uuid.uuid4()), "name": "Unit & Integration Testing", "description": "Test configured processes, extensions, and integrations per sprint", "is_deliverable": False, "owner": "", "sort_order": 6},
+                {"id": str(uuid.uuid4()), "name": "End-User Training Development", "description": "Create training materials using SAP Enable Now", "is_deliverable": False, "owner": "", "sort_order": 7},
+                {"id": str(uuid.uuid4()), "name": "Configured System", "description": "Fully configured S/4HANA Cloud system with all scope items active", "is_deliverable": True, "owner": "", "sort_order": 8},
+                {"id": str(uuid.uuid4()), "name": "Test Results", "description": "Unit and integration test execution results", "is_deliverable": True, "owner": "", "sort_order": 9},
+                {"id": str(uuid.uuid4()), "name": "Migration Results", "description": "Trial migration results with data quality report", "is_deliverable": True, "owner": "", "sort_order": 10},
+                {"id": str(uuid.uuid4()), "name": "Training Materials", "description": "End-user training guides and SAP Enable Now content", "is_deliverable": True, "owner": "", "sort_order": 11},
+            ]
+        },
+        "Deploy": {
+            "activities": [
+                {"id": str(uuid.uuid4()), "name": "User Acceptance Testing (UAT)", "description": "Execute UAT with business users on quality tenant", "is_deliverable": False, "owner": "", "sort_order": 0},
+                {"id": str(uuid.uuid4()), "name": "Final Data Migration", "description": "Execute production data migration using Migration Cockpit", "is_deliverable": False, "owner": "", "sort_order": 1},
+                {"id": str(uuid.uuid4()), "name": "End-User Training", "description": "Conduct training sessions using train-the-trainer approach", "is_deliverable": False, "owner": "", "sort_order": 2},
+                {"id": str(uuid.uuid4()), "name": "Cutover Planning & Execution", "description": "Plan and execute production cutover activities", "is_deliverable": False, "owner": "", "sort_order": 3},
+                {"id": str(uuid.uuid4()), "name": "Production Tenant Activation", "description": "Activate production tenant and complete final configuration", "is_deliverable": False, "owner": "", "sort_order": 4},
+                {"id": str(uuid.uuid4()), "name": "Go-Live", "description": "Production go-live with monitoring and early watch alerts", "is_deliverable": False, "owner": "", "sort_order": 5},
+                {"id": str(uuid.uuid4()), "name": "Hypercare Support", "description": "Intensive post-go-live support and incident management", "is_deliverable": False, "owner": "", "sort_order": 6},
+                {"id": str(uuid.uuid4()), "name": "UAT Sign-off", "description": "Signed UAT completion and acceptance document", "is_deliverable": True, "owner": "", "sort_order": 7},
+                {"id": str(uuid.uuid4()), "name": "Cutover Plan", "description": "Detailed cutover plan with checklist and rollback procedures", "is_deliverable": True, "owner": "", "sort_order": 8},
+                {"id": str(uuid.uuid4()), "name": "Go-Live Checklist", "description": "Completed go-live readiness checklist with sign-off", "is_deliverable": True, "owner": "", "sort_order": 9},
+                {"id": str(uuid.uuid4()), "name": "Training Completion Report", "description": "Training attendance and knowledge transfer records", "is_deliverable": True, "owner": "", "sort_order": 10},
+            ]
+        },
+        "Run": {
+            "activities": [
+                {"id": str(uuid.uuid4()), "name": "Post-Go-Live Support", "description": "Ongoing support, incident resolution, and knowledge transfer to BAU team", "is_deliverable": False, "owner": "", "sort_order": 0},
+                {"id": str(uuid.uuid4()), "name": "System Monitoring via Cloud ALM", "description": "Monitor system health, performance, and business process analytics", "is_deliverable": False, "owner": "", "sort_order": 1},
+                {"id": str(uuid.uuid4()), "name": "Quarterly Update Preparation", "description": "Plan and validate SAP quarterly releases in quality tenant before production update", "is_deliverable": False, "owner": "", "sort_order": 2},
+                {"id": str(uuid.uuid4()), "name": "Continuous Improvement", "description": "Leverage new SAP features from quarterly releases for process optimization", "is_deliverable": False, "owner": "", "sort_order": 3},
+                {"id": str(uuid.uuid4()), "name": "Operational Handover", "description": "Complete operational handover document and support model", "is_deliverable": True, "owner": "", "sort_order": 4},
+                {"id": str(uuid.uuid4()), "name": "Improvement Roadmap", "description": "Continuous improvement and innovation roadmap leveraging quarterly releases", "is_deliverable": True, "owner": "", "sort_order": 5},
+            ]
+        },
+    }
+
+    created_count = 0
+    for phase_name, data in phases.items():
+        match_key = {
+            "technology_id": tech_id,
+            "sub_technology_id": sub_tech_id,
+            "project_type_id": proj_type_id,
+            "phase_name": phase_name,
+        }
+        existing = await db.activity_templates.find_one(match_key)
+        if existing:
+            await db.activity_templates.update_one(match_key, {"$set": {"activities": data["activities"], "updated_at": now}})
+        else:
+            doc = {
+                "id": str(uuid.uuid4()),
+                **match_key,
+                "technology_name": "SAP S/4HANA",
+                "sub_technology_name": "Public Cloud",
+                "project_type_name": "Implementation",
+                "activities": data["activities"],
+                "created_at": now,
+                "updated_at": now,
+            }
+            await db.activity_templates.insert_one(doc)
+        created_count += 1
+
+    return {"message": f"SAP S/4HANA Public Cloud Implementation template seeded ({created_count} phases)", "phases": list(phases.keys())}
+
+
 # ========== Project Phase Activities (Per-Project Overrides) ==========
 
 @router.get("/projects/{project_id}/activities")

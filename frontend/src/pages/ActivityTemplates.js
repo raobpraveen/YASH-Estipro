@@ -6,8 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Save, FileText, ChevronDown, ChevronRight, CheckSquare, ListChecks, Search } from "lucide-react";
+import { Plus, Trash2, Save, FileText, ChevronDown, ChevronRight, CheckSquare, ListChecks, Search, FileSpreadsheet, Upload } from "lucide-react";
 import { toast } from "sonner";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const generateId = () => typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `id_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -130,6 +132,113 @@ export default function ActivityTemplates() {
   const activities = editActivities.filter(a => !a.is_deliverable);
   const deliverables = editActivities.filter(a => a.is_deliverable);
 
+  // Excel Export — download all templates for the selected combination
+  const handleExportTemplates = async () => {
+    if (!selTech || !selProjType) { toast.error("Select Technology and Project Type first"); return; }
+    const techName = technologies.find(t => t.id === selTech)?.name || "Tech";
+    const subTechName = filteredSubTechs.find(s => s.id === selSubTech)?.name || "";
+    const ptName = projectTypes.find(p => p.id === selProjType)?.name || "Type";
+
+    const wb = new ExcelJS.Workbook();
+    const headerFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F172A" } };
+    const headerFont = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+    const actFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } };
+    const delFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0FDF4" } };
+    const border = { top: { style: "thin" }, left: { style: "thin" }, bottom: { style: "thin" }, right: { style: "thin" } };
+
+    for (const phase of phaseNames) {
+      const tpl = filteredTemplates.find(t => t.phase_name === phase);
+      if (!tpl) continue;
+      const sheetName = phase.substring(0, 31);
+      const ws = wb.addWorksheet(sheetName);
+      ws.columns = [{ width: 5 }, { width: 30 }, { width: 40 }, { width: 16 }, { width: 14 }];
+
+      // Metadata for import
+      ws.addRow([`Phase: ${phase}`]).font = { bold: true, size: 14 };
+      ws.addRow([`Technology: ${techName}`, `Sub-Technology: ${subTechName}`, `Project Type: ${ptName}`]).font = { italic: true, color: { argb: "FF64748B" } };
+      ws.addRow([]);
+
+      const hdr = ws.addRow(["#", "Name", "Description", "Owner", "Type"]);
+      hdr.eachCell(c => { c.fill = headerFill; c.font = headerFont; c.border = border; });
+
+      tpl.activities.forEach((a, i) => {
+        const r = ws.addRow([i + 1, a.name, a.description || "", a.owner || "", a.is_deliverable ? "Deliverable" : "Activity"]);
+        r.eachCell(c => { c.fill = a.is_deliverable ? delFill : actFill; c.border = border; });
+      });
+    }
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    saveAs(blob, `ActivityTemplate_${techName}_${subTechName || "All"}_${ptName}.xlsx`);
+    toast.success("Templates exported");
+  };
+
+  // Excel Import — upload templates from Excel
+  const handleImportTemplates = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !selTech || !selProjType) { toast.error("Select Technology and Project Type first, then upload"); return; }
+
+    try {
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(await file.arrayBuffer());
+      const techName = technologies.find(t => t.id === selTech)?.name || "";
+      const subTechName = filteredSubTechs.find(s => s.id === selSubTech)?.name || "";
+      const ptName = projectTypes.find(p => p.id === selProjType)?.name || "";
+
+      let imported = 0;
+      for (const ws of wb.worksheets) {
+        // Parse phase name from row 1
+        const r1Val = (ws.getRow(1).getCell(1).value || "").toString().trim();
+        const match = r1Val.match(/^Phase:\s*(.+)$/i);
+        const phaseName = match ? match[1].trim() : ws.name.trim();
+        if (!phaseName) continue;
+
+        // Parse activities from row 5+ (after header at row 4)
+        const items = [];
+        for (let r = 5; r <= ws.rowCount; r++) {
+          const row = ws.getRow(r);
+          const num = row.getCell(1).value;
+          if (!num || isNaN(parseInt(num))) continue;
+          const name = (row.getCell(2).value || "").toString().trim();
+          if (!name) continue;
+          const desc = (row.getCell(3).value || "").toString().trim();
+          const owner = (row.getCell(4).value || "").toString().trim();
+          const typeVal = (row.getCell(5).value || "").toString().trim().toLowerCase();
+          items.push({
+            id: generateId(),
+            name,
+            description: desc,
+            owner,
+            is_deliverable: typeVal.includes("deliverable"),
+            sort_order: items.length,
+          });
+        }
+
+        if (items.length > 0) {
+          await axios.put(`${API}/activity-templates`, {
+            technology_id: selTech,
+            sub_technology_id: selSubTech || "",
+            project_type_id: selProjType,
+            phase_name: phaseName,
+            activities: items,
+            technology_name: techName,
+            sub_technology_name: subTechName,
+            project_type_name: ptName,
+          }, { headers });
+          imported++;
+        }
+      }
+
+      // Refresh
+      const tplRes = await axios.get(`${API}/activity-templates`, { headers });
+      setTemplates(tplRes.data || []);
+      toast.success(`Imported ${imported} phase template(s) from Excel`);
+    } catch (err) {
+      toast.error("Import failed: " + err.message);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-6" data-testid="activity-templates-page">
       <div className="flex items-center gap-3">
@@ -181,6 +290,15 @@ export default function ActivityTemplates() {
               <span className="text-sm font-normal text-gray-400 ml-2">({phaseNames.length} defined)</span>
             </h2>
             <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={handleExportTemplates} className="text-indigo-600 border-indigo-200 text-xs" data-testid="export-templates-btn">
+                <FileSpreadsheet className="w-3.5 h-3.5 mr-1" /> Export Excel
+              </Button>
+              <label className="cursor-pointer">
+                <input type="file" accept=".xlsx,.xls" onChange={handleImportTemplates} className="hidden" />
+                <span className="inline-flex items-center gap-1 px-3 py-1.5 text-xs border border-indigo-200 text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors">
+                  <Upload className="w-3.5 h-3.5" /> Import Excel
+                </span>
+              </label>
               <Input value={newPhaseName} onChange={e => setNewPhaseName(e.target.value)} placeholder="New phase name..." className="h-8 w-48 text-sm" data-testid="new-phase-input"
                 onKeyDown={e => e.key === "Enter" && addNewPhase()} />
               <Button size="sm" variant="outline" onClick={addNewPhase} disabled={!newPhaseName.trim()} data-testid="add-phase-btn">

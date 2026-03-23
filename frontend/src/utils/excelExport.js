@@ -18,6 +18,7 @@ export async function buildExportWorkbook({
   salesManagerId, salesManagers, crmId, COUNTRIES,
   milestones = [], paymentTermsDays = 0,
   projectActivities = [],
+  cashflowData = null,
 }) {
   const selectedCustomer = customers.find(c => c.id === customerId);
   const wb = new ExcelJS.Workbook();
@@ -567,19 +568,6 @@ export async function buildExportWorkbook({
         });
         msWs.addRow([]);
       }
-
-      // Summary
-      const totalPct = payMs.reduce((s, m) => s + (m.payment_percentage || 0), 0);
-      msWs.addRow([]);
-      const sumHdr = msWs.addRow(["", "SUMMARY"]);
-      sumHdr.getCell(2).font = { bold: true, size: 11 };
-      sumHdr.getCell(2).fill = summaryFill;
-      msWs.addRow(["", "Payment Milestones", payMs.length]).getCell(2).font = { bold: true };
-      msWs.addRow(["", "Marker Milestones", markMs.length]).getCell(2).font = { bold: true };
-      const covR = msWs.addRow(["", "Total Coverage", totalPct / 100]);
-      covR.getCell(2).font = { bold: true };
-      covR.getCell(3).numFmt = "0.0%";
-      covR.getCell(3).font = { bold: true, color: { argb: Math.abs(totalPct - 100) < 1 ? "FF059669" : "FFDC2626" } };
     }
   }
 
@@ -657,6 +645,66 @@ export async function buildExportWorkbook({
         }
         actWs.addRow([]);
       }
+    }
+  }
+
+  // ========= CASHFLOW SHEET =========
+  if (cashflowData && cashflowData.combined_data && cashflowData.combined_data.length > 0) {
+    const cfWs = wb.addWorksheet("Cashflow", { properties: { tabColor: { argb: "FF0EA5E9" } } });
+    cfWs.columns = [{ width: 8 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 18 }];
+    const cfHeaderFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F172A" } };
+    const cfHeaderFont = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+    const costFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF1F2" } };
+    const revFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0FDF4" } };
+
+    cfWs.addRow(["Cashflow Statement"]).font = { bold: true, size: 14 };
+    const projRow = cfWs.addRow(["", `${projectNumber || ""} ${projectName || ""}`]);
+    projRow.getCell(2).font = { italic: true, color: { argb: "FF64748B" } };
+    if (cashflowData.payment_terms_days > 0) {
+      cfWs.addRow(["", `Payment Terms: ${cashflowData.payment_terms_days} days (+${cashflowData.payment_offset_months} month${cashflowData.payment_offset_months > 1 ? "s" : ""} offset)`]).getCell(2).font = { color: { argb: "FF6366F1" } };
+    }
+    cfWs.addRow([]);
+
+    // Combined Monthly Data
+    const hdr = cfWs.addRow(["Month", "Phase", "Cash-Out", "Cash-In", "Net", "Cumulative"]);
+    hdr.eachCell(c => { c.fill = cfHeaderFill; c.font = cfHeaderFont; c.border = thinBorder; });
+
+    cashflowData.combined_data.forEach(m => {
+      const r = cfWs.addRow([`M${m.month}`, m.phase || "", m.cost, m.revenue, m.net, m.cumulative]);
+      r.getCell(3).numFmt = moneyFmt;
+      r.getCell(3).fill = costFill;
+      r.getCell(4).numFmt = moneyFmt;
+      r.getCell(4).fill = revFill;
+      r.getCell(5).numFmt = moneyFmt;
+      r.getCell(5).font = { color: { argb: m.net >= 0 ? "FF059669" : "FFDC2626" } };
+      r.getCell(6).numFmt = moneyFmt;
+      r.getCell(6).font = { bold: true, color: { argb: m.cumulative >= 0 ? "FF059669" : "FFDC2626" } };
+      r.eachCell(c => { c.border = thinBorder; });
+    });
+
+    cfWs.addRow([]);
+    // Summary
+    const summary = cashflowData.summary;
+    const sumRow = cfWs.addRow(["", "TOTAL", summary.total_cost, summary.total_revenue, summary.net_cashflow, ""]);
+    sumRow.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } }; c.font = { bold: true }; c.border = thinBorder; });
+    sumRow.getCell(3).numFmt = moneyFmt;
+    sumRow.getCell(4).numFmt = moneyFmt;
+    sumRow.getCell(5).numFmt = moneyFmt;
+
+    // Wave breakdown
+    if (cashflowData.wave_data && cashflowData.wave_data.length > 1) {
+      cfWs.addRow([]);
+      cfWs.addRow(["", "WAVE BREAKDOWN"]).getCell(2).font = { bold: true, size: 11 };
+      const wHdr = cfWs.addRow(["", "Wave", "Total Cost", "Total Revenue", "Net"]);
+      wHdr.eachCell(c => { c.fill = cfHeaderFill; c.font = cfHeaderFont; c.border = thinBorder; });
+      cashflowData.wave_data.forEach(wd => {
+        const wr = cfWs.addRow(["", wd.wave_name, wd.total_cost, wd.total_revenue, wd.net]);
+        wr.getCell(3).numFmt = moneyFmt;
+        wr.getCell(4).numFmt = moneyFmt;
+        wr.getCell(5).numFmt = moneyFmt;
+        wr.getCell(5).font = { color: { argb: wd.net >= 0 ? "FF059669" : "FFDC2626" } };
+        wr.eachCell(c => { c.border = thinBorder; });
+      });
     }
   }
 

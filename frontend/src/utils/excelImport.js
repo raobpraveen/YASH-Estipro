@@ -67,6 +67,7 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
     const name = ws.name;
     if (name.toLowerCase() === "summary") return;
     if (name.toLowerCase() === "gantt chart") return;
+    if (name.toLowerCase() === "cashflow") return;
     if (milestoneSheetNames.has(name)) return;
     if (activitySheetNames.has(name)) return;
 

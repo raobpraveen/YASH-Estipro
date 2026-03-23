@@ -1644,10 +1644,17 @@ const ProjectEstimator = () => {
     try {
       // Fetch project activities for export
       let projectActivities = [];
+      let cashflowData = null;
       if (projectId) {
+        const token = localStorage.getItem("token");
+        const authHeaders = { Authorization: `Bearer ${token}` };
         try {
-          const actRes = await axios.get(`${API}/projects/${projectId}/activities`, { headers: apiHeaders });
+          const actRes = await axios.get(`${API}/projects/${projectId}/activities`, { headers: authHeaders });
           projectActivities = actRes.data || [];
+        } catch { /* ignore */ }
+        try {
+          const cfRes = await axios.get(`${API}/projects/${projectId}/cashflow`, { headers: authHeaders });
+          cashflowData = cfRes.data || null;
         } catch { /* ignore */ }
       }
 
@@ -1659,6 +1666,7 @@ const ProjectEstimator = () => {
         salesManagerId, salesManagers, crmId, COUNTRIES,
         milestones: ganttMilestones, paymentTermsDays: ganttPaymentTermsDays,
         projectActivities,
+        cashflowData,
       });
       // Upload to backend and trigger download via hidden iframe
       const uploadRes = await fetch(`${API}/download-file`, {
