@@ -387,8 +387,9 @@ export const WaveContent = ({
                       <div className="flex gap-1 ml-auto">
                         <Button variant="ghost" size="sm" className="h-5 text-[9px] text-amber-600 hover:bg-amber-50 px-1.5" onClick={() => {
                           const targetMonth = `M${Math.ceil(pr.end_month)}`;
+                          const newId = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `ms-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
                           const newMs = {
-                            id: crypto.randomUUID(),
+                            id: newId,
                             wave_name: wave.name,
                             milestone_name: "",
                             milestone_type: "payment",
@@ -407,8 +408,9 @@ export const WaveContent = ({
                         <Button variant="ghost" size="sm" className="h-5 text-[9px] text-blue-600 hover:bg-blue-50 px-1.5" onClick={() => {
                           const midMonth = pr.start_month + (pr.end_month - pr.start_month) * 0.5;
                           const targetMonth = `M${Math.ceil(midMonth)}`;
+                          const newId = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `ms-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
                           const newMs = {
-                            id: crypto.randomUUID(),
+                            id: newId,
                             wave_name: wave.name,
                             milestone_name: "",
                             milestone_type: "marker",

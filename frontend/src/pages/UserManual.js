@@ -22,8 +22,8 @@ const TOC = [
   { id: "access-control", title: "11. Access Level (Project Visibility)", icon: Settings },
   { id: "version-mgmt", title: "12. Versioning & Comparison", icon: FolderKanban },
   { id: "smart-import", title: "13. Smart Import", icon: FileSpreadsheet },
-  { id: "gantt-chart", title: "14. Gantt Chart / Timeline Image", icon: FileSpreadsheet },
-  { id: "milestones", title: "15. Payment Milestones", icon: Calculator },
+  { id: "gantt-chart", title: "14. Gantt Chart / Timeline", icon: FileSpreadsheet },
+  { id: "milestones", title: "15. Payment Milestones & Markers", icon: Calculator },
   { id: "cashflow", title: "16. Cashflow Statement", icon: Calculator },
   { id: "proficiency-copy", title: "17. Copy Skill in Proficiency Rates", icon: Layers },
   { id: "tutorials", title: "18. Tutorials & Help", icon: BookOpen },
@@ -360,6 +360,15 @@ export default function UserManual() {
               <li>Click the trash icon to remove a phase range.</li>
             </ul>
 
+            <p className="font-medium mt-3 text-sm">Phase Milestones (Inline Editor):</p>
+            <p className="text-sm">Below the phase list, a <strong>Phase Milestones</strong> section shows milestones grouped by phase. A <strong>total payment % badge</strong> (color-coded: amber &lt;100%, green =100%, red &gt;100%) and dollar amount are displayed in the header.</p>
+            <ul className="list-disc pl-6 space-y-0.5 text-sm">
+              <li><strong>"+ Payment"</strong>: Add a payment milestone linked to that phase with a position (Start / Mid / End) and payment percentage. The dollar amount auto-calculates from the wave's final selling price.</li>
+              <li><strong>"+ Marker"</strong>: Add a freehold marker milestone (no payment linkage). Markers use a <strong>0-100% slider</strong> to position them anywhere on the phase bar — ideal for tracking Sprint milestones, UAT, or phase closure checkpoints.</li>
+              <li>Payment milestones appear as <strong>amber diamonds</strong> on the Gantt chart; markers appear as <strong>blue diamonds</strong>.</li>
+              <li>Milestones added here are <strong>synced bidirectionally</strong> with the dedicated Payment Milestones page.</li>
+            </ul>
+
             <p className="font-medium mt-3 text-sm">Half-Month Precision:</p>
             <ul className="list-disc pl-6 space-y-0.5 text-sm">
               <li>Integer values (1, 2, 3...) represent full month boundaries.</li>
@@ -378,12 +387,15 @@ export default function UserManual() {
               <li>Custom phases via <strong>"+ Custom..."</strong> option</li>
             </ul>
 
-            <p className="font-medium mt-3 text-sm">Gantt Chart (Overlapping Phases):</p>
+            <p className="font-medium mt-3 text-sm">Gantt Chart (with Milestones):</p>
             <ul className="list-disc pl-6 space-y-0.5 text-sm">
-              <li>Each phase range becomes its own row in the Gantt chart.</li>
+              <li>Each phase range becomes its own row in the Gantt chart, grouped by wave with clear <strong>wave header</strong> labels.</li>
               <li><strong>Overlapping phases</strong> are shown as separate stacked bars on the timeline.</li>
-              <li>Half-month boundaries are rendered with precise positioning (e.g., a bar starting at 1.5 begins halfway through month 1).</li>
-              <li>Color-coded by phase type with a legend at the bottom.</li>
+              <li><strong>Milestone diamonds</strong> appear directly on the phase bars — amber for payment, blue for marker.</li>
+              <li>When milestones are close together, their labels are <strong>stacked vertically</strong> to avoid overlap.</li>
+              <li>Labels at the right edge of the chart are positioned to the <strong>left of the diamond</strong> to prevent clipping.</li>
+              <li>Half-month boundaries are rendered with precise positioning.</li>
+              <li>Color-coded by phase type with a legend distinguishing phase colors and milestone types.</li>
               <li>All waves are shown on a <strong>shared project timeline</strong>.</li>
             </ul>
             
@@ -392,7 +404,7 @@ export default function UserManual() {
 
             <p className="font-medium mt-3 text-sm">Excel Export &amp; Import:</p>
             <ul className="list-disc pl-6 space-y-0.5 text-sm">
-              <li><strong>Export:</strong> Phase ranges (with half-month values) are included in each wave sheet, and a dedicated <strong>"Gantt Chart"</strong> sheet with color-coded bars is added.</li>
+              <li><strong>Export:</strong> Phase ranges (with half-month values) are included in each wave sheet, and a dedicated <strong>"Gantt Chart"</strong> sheet with color-coded bars and a milestones section is added.</li>
               <li><strong>Import:</strong> Phase ranges from wave sheets are parsed (supports both integer and decimal values). The Gantt Chart sheet is skipped during import.</li>
             </ul>
             <Tip>The auto-generated Gantt chart appears alongside the option to upload a custom Gantt image. Both can coexist. Collapse the Phase Ranges section after setup to maximize your workspace.</Tip>
@@ -606,38 +618,75 @@ export default function UserManual() {
 
           {/* Section 14: Tutorials */}
           {/* Section 14: Gantt Chart */}
-          <Section id="gantt-chart" title="14. Gantt Chart / Timeline Image">
-            <p>Upload a project timeline or Gantt chart image for quick visual reference directly within the Estimator.</p>
+          <Section id="gantt-chart" title="14. Gantt Chart / Timeline">
+            <p>The Gantt chart auto-generates from your phase ranges and displays milestone diamonds directly on the phase bars.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">14.1 Uploading an Image</h3>
-            <p>In the Project Estimator (after saving a project), look for the <strong>"Timeline / Gantt Chart"</strong> card. Click <strong>"Upload Image"</strong> to select an image file (PNG, JPG, WEBP — max 10MB).</p>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">14.1 Auto-Generated Chart</h3>
+            <p>When phases are defined in the Phase Ranges editor, a Gantt chart automatically renders in the <strong>"Timeline / Gantt Chart"</strong> card. Each wave has a bold header row, and each phase appears as a color-coded bar. Milestones appear as diamonds on the bars: <strong>amber</strong> for payment milestones, <strong>blue</strong> for markers.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">14.2 Milestone Rendering</h3>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li>Payment milestones are positioned at Start, Mid, or End of their linked phase.</li>
+              <li>Marker milestones are positioned by their <strong>slider percentage</strong> (0-100%) along the phase bar.</li>
+              <li>When multiple milestones are close together, labels are <strong>stacked vertically</strong> to avoid overlap.</li>
+              <li>Labels near the right edge of the chart are placed to the <strong>left of the diamond</strong> for readability.</li>
+              <li>Milestones not linked to a phase appear in an <strong>"Unlinked"</strong> row below the wave's phases.</li>
+            </ul>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">14.3 Custom Gantt Image</h3>
+            <p>You can also upload a custom Gantt chart image (PNG, JPG, WEBP — max 10MB). Click <strong>"Upload Custom Image"</strong> in the timeline card. Click <strong>"Remove"</strong> to delete it. The image is version-specific.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">14.2 Viewing &amp; Removing</h3>
-            <p>The uploaded image displays inline within the project. Click <strong>"Remove"</strong> to delete it. The image is version-specific — each project version has its own Gantt chart.</p>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">14.4 Exporting</h3>
+            <p>Click <strong>PNG</strong> to export as an image, or <strong>Excel</strong> for a spreadsheet with color-coded phase bars and a milestones summary table.</p>
             
-            <Tip>Use this to attach a Gantt chart exported from MS Project, Smartsheet, or any planning tool for quick reference during estimation reviews.</Tip>
+            <Tip>Use the auto-generated chart for estimation reviews and export it alongside the custom image for client deliverables. Both coexist in the same section.</Tip>
           </Section>
 
           {/* Section 15: Payment Milestones */}
-          <Section id="milestones" title="15. Payment Milestones">
-            <p>Define payment schedules per wave to track expected revenue and payment triggers.</p>
+          <Section id="milestones" title="15. Payment Milestones &amp; Markers">
+            <p>Define payment schedules and freehold markers per wave to track expected revenue and project checkpoints.</p>
             
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">15.1 Accessing Milestones</h3>
             <p>Navigate to <strong>Milestones</strong> from the sidebar or click the <strong>"Milestones"</strong> button in the Estimator toolbar. The project list shows all versions sorted by project number, with <strong>Customer Name</strong> and milestone counts. Milestones are <strong>version-specific</strong>. You can search by project name, number, or customer name.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.2 Wave-Based Sections</h3>
-            <p>Each wave has its own collapsible section. Click the wave header to expand/collapse. The header shows selling price (SP), total payment %, and total payment amount for that wave.</p>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.2 Two Milestone Types</h3>
+            <p>There are two types of milestones:</p>
+            <KeyValue label="Payment Milestone (amber)">Linked to a financial payment. Has a payment percentage and auto-calculated amount based on the wave's selling price. Positioned at Start, Mid, or End of a linked phase.</KeyValue>
+            <KeyValue label="Marker Milestone (blue)">A freehold checkpoint with no payment linkage. Ideal for tracking Sprints, UAT, phase closures, or any non-financial milestone. Uses a <strong>0-100% slider</strong> for flexible placement anywhere on the phase bar.</KeyValue>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.3 Adding &amp; Editing Milestones</h3>
-            <p>Click <strong>"+ Add Milestone"</strong> within a wave section. For each milestone, set:</p>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.3 Wave-Based Sections</h3>
+            <p>Each wave has its own collapsible section. Click the wave header to expand/collapse. The header shows: selling price (SP), count of payment milestones, count of markers, total payment %, and total payment amount for that wave.</p>
+            
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.4 Adding &amp; Editing Payment Milestones</h3>
+            <p>Click <strong>"+ Payment Milestone"</strong> within a wave section. For each payment milestone, set:</p>
             <ul className="list-disc pl-6 space-y-1 text-sm">
               <li><strong>Milestone Name</strong>: Descriptive label (e.g., "Phase 1 UAT Complete").</li>
-              <li><strong>Target Month</strong>: Select M1, M2, M3, etc. — this determines when the milestone is achieved and invoiced.</li>
+              <li><strong>Linked Phase</strong>: Optionally link to a phase (e.g., Explore, Realize). When linked, the Target Month auto-computes from the phase range and position.</li>
+              <li><strong>Position</strong>: Start, Mid, or End of the linked phase.</li>
+              <li><strong>Target Month</strong>: Overridable — select M1, M2, M3, etc. Auto-set when a phase is linked.</li>
               <li><strong>Payment %</strong>: Percentage of the wave's Final Price. The dollar amount auto-calculates.</li>
               <li><strong>Description</strong>: Optional notes.</li>
             </ul>
 
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.4 Payment Terms (Days)</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.5 Adding &amp; Editing Marker Milestones</h3>
+            <p>Click <strong>"+ Marker Milestone"</strong> within a wave section. Markers have:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>Marker Name</strong>: Label (e.g., "Sprint 1", "UAT", "Phase Closure").</li>
+              <li><strong>Linked Phase</strong>: Link to a phase to position it on the Gantt chart.</li>
+              <li><strong>Position on Bar (0-100% slider)</strong>: Drag to place the marker anywhere along the phase. E.g., 15% for early in the phase, 70% for near the end.</li>
+              <li><strong>Description</strong>: Optional notes.</li>
+            </ul>
+            <Tip>Markers are perfect for Agile sprint tracking within a Realization phase: Sprint 1 at 20%, Sprint 2 at 40%, UAT at 75%, Phase Closure at 95%.</Tip>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.6 Bidirectional Sync</h3>
+            <p>Milestones can be edited from <strong>two locations</strong>:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>Inline Phase Editor</strong> (in the Estimator's Phase Ranges section): Quick add/edit per phase with "+" buttons.</li>
+              <li><strong>Payment Milestones Page</strong>: Full table view with all fields, search, and bulk management.</li>
+            </ul>
+            <p className="text-sm mt-1">Changes saved in either location are <strong>synced through the backend</strong> and reflected everywhere — including the Gantt chart.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.7 Payment Terms (Days)</h3>
             <p>Set a <strong>project-level Payment Terms</strong> value (in days) that applies to all waves. This controls when Cash-In is actually received in the Cashflow:</p>
             <KeyValue label="0 days (Immediate)">Cash-In occurs in the same month as the milestone.</KeyValue>
             <KeyValue label="30 days (+1 month)">Cash-In shifts by 1 month from the milestone month.</KeyValue>
@@ -645,17 +694,17 @@ export default function UserManual() {
             <KeyValue label="90 / 120 days">Larger offsets for longer payment cycles.</KeyValue>
             <Tip>Payment Terms affect only the Cashflow screen — the milestone amounts and percentages remain unchanged. The Cashflow automatically adds extra months beyond the project duration if needed.</Tip>
 
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.5 Copy Milestones to Wave</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.8 Copy Milestones to Wave</h3>
             <p>For multi-wave projects, use the <strong>"Copy to Wave"</strong> button to duplicate all milestones from one wave to another. The copied milestones keep the same percentages but amounts are recalculated based on the target wave's Final Price. Target months are clamped to the destination wave's duration.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.6 Auto-Recalculation</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.9 Auto-Recalculation</h3>
             <p>When you navigate to the Milestones page from the Estimator after making changes, milestone amounts are <strong>automatically recalculated</strong> using the latest project data. Percentages stay the same — only the dollar amounts update to match the current wave Final Prices.</p>
 
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.7 Saving &amp; Keyboard Shortcut</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.10 Saving &amp; Keyboard Shortcut</h3>
             <p>Click <strong>"Save All"</strong> or press <strong>Ctrl+S</strong> to save milestones. Use <strong>"Open Estimator"</strong> to jump to the project in edit mode.</p>
             
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.8 Excel Export</h3>
-            <p>Click <strong>"Export Excel"</strong> to generate a formula-based Excel file. Each wave gets its own sheet with formulas: <code>Payment Amount = Wave SP × Payment %</code>. Changing the SP value updates all amounts automatically.</p>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">15.11 Excel Export</h3>
+            <p>Click <strong>"Export Excel"</strong> to generate a formula-based Excel file. Each wave gets its own sheet with formulas: <code>Payment Amount = Wave SP x Payment %</code>. Changing the SP value updates all amounts automatically.</p>
             
             <Warning>If the total Payment % for a wave exceeds 100%, a red warning is displayed. This doesn't prevent saving but indicates a potential data entry error.</Warning>
           </Section>

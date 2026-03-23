@@ -341,7 +341,7 @@ SMTP_FROM=noreply@yash.com`}
                   <tr className="border-b"><td className="p-2 font-mono text-xs">customers</td><td className="p-2">Client organizations.</td><td className="p-2 text-xs">name, industry</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-xs">audit_logs</td><td className="p-2">System audit trail.</td><td className="p-2 text-xs">user_id, action, entity, timestamp</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-xs">notifications</td><td className="p-2">In-app notification queue.</td><td className="p-2 text-xs">user_id, title, message, is_read</td></tr>
-                  <tr><td className="p-2 font-mono text-xs">payment_milestones</td><td className="p-2">Payment milestones per project version with payment terms.</td><td className="p-2 text-xs">project_id, milestones[], payment_terms_days</td></tr>
+                  <tr><td className="p-2 font-mono text-xs">payment_milestones</td><td className="p-2">Payment milestones and markers per project version.</td><td className="p-2 text-xs">project_id, milestones[{'{'}id, wave_name, milestone_name, milestone_type, phase_name, position, target_month, payment_percentage, payment_amount, description{'}'}], payment_terms_days</td></tr>
                 </tbody>
               </table>
             </div>
@@ -550,8 +550,8 @@ Response: { "token": "eyJ...", "user": { "id", "name", "email", "role" } }`}
                   <tr className="border-b"><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/projects/{'{id}'}/gantt</td><td className="p-2">Upload Gantt chart image (binary body)</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/gantt</td><td className="p-2">Get Gantt chart image</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-red-600">DELETE</td><td className="p-2 font-mono">/api/projects/{'{id}'}/gantt</td><td className="p-2">Delete Gantt chart image</td></tr>
-                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/milestones</td><td className="p-2">Get payment milestones + payment_terms_days</td></tr>
-                  <tr className="border-b"><td className="p-2 font-mono text-amber-600">PUT</td><td className="p-2 font-mono">/api/projects/{'{id}'}/milestones</td><td className="p-2">Save milestones + payment_terms_days</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/milestones</td><td className="p-2">Get milestones (payment + marker) and payment_terms_days. Each milestone includes: milestone_type (payment/marker), phase_name, position (start/mid/end or 0-100 slider), target_month.</td></tr>
+                  <tr className="border-b"><td className="p-2 font-mono text-amber-600">PUT</td><td className="p-2 font-mono">/api/projects/{'{id}'}/milestones</td><td className="p-2">Save milestones array + payment_terms_days. Body: {'{'}milestones: [...], payment_terms_days: number{'}'}</td></tr>
                   <tr className="border-b"><td className="p-2 font-mono text-green-600">GET</td><td className="p-2 font-mono">/api/projects/{'{id}'}/cashflow</td><td className="p-2">Cashflow with payment term shifting, extended months, break-even data</td></tr>
                   <tr><td className="p-2 font-mono text-blue-600">POST</td><td className="p-2 font-mono">/api/download-file</td><td className="p-2">Upload file for download proxy</td></tr>
                 </tbody>
@@ -774,7 +774,15 @@ mongosh --eval "db.adminCommand('ping')"`}
               </div>
               <div>
                 <p className="font-bold text-sm">Q: How do I generate a Gantt chart?</p>
-                <p className="text-sm text-gray-600 mt-1">A: In the Estimator, expand the <strong>Phase Ranges</strong> section within any wave. Click "+ Add Phase" to define phase ranges with Start and End values (supports half-month precision, e.g., 1.5 = mid-month 1). The Gantt chart auto-generates in the Timeline section with each phase as a separate bar. For multi-wave projects, set the "Starts at project M" value in the wave header. Collapse the Phase Ranges section after setup to save screen space.</p>
+                <p className="text-sm text-gray-600 mt-1">A: In the Estimator, expand the <strong>Phase Ranges</strong> section within any wave. Click "+ Add Phase" to define phase ranges with Start and End values (supports half-month precision, e.g., 1.5 = mid-month 1). The Gantt chart auto-generates in the Timeline section with each phase as a separate bar, grouped by wave with clear headers. Milestones appear as diamonds on the bars — amber for payment, blue for markers. Collapse the Phase Ranges section after setup to save screen space.</p>
+              </div>
+              <div>
+                <p className="font-bold text-sm">Q: What is the difference between Payment and Marker milestones?</p>
+                <p className="text-sm text-gray-600 mt-1">A: <strong>Payment milestones</strong> (amber) are linked to financial payments with a percentage of the wave's selling price. They use Start/Mid/End positioning. <strong>Marker milestones</strong> (blue) are freehold checkpoints with no payment linkage — ideal for tracking Sprints, UAT, phase closures. They use a 0-100% slider for flexible placement anywhere on the phase bar.</p>
+              </div>
+              <div>
+                <p className="font-bold text-sm">Q: Where can I edit milestones?</p>
+                <p className="text-sm text-gray-600 mt-1">A: Milestones can be edited in two places: (1) The <strong>inline Phase Milestones editor</strong> within the Estimator's Phase Ranges section — quick add/edit per phase, and (2) The <strong>Payment Milestones page</strong> — full table view with all fields. Changes are synced bidirectionally through the backend.</p>
               </div>
               <div>
                 <p className="font-bold text-sm">Q: How do I export multiple waves to Excel?</p>
