@@ -12,7 +12,7 @@ export const LogisticsBreakdown = ({ logistics, travelingResourceCount, travelin
           <Plane className="w-4 h-4 text-purple-600" />
           Logistics Cost Breakdown
           <Badge className="bg-purple-100 text-purple-700">
-            {travelingResourceCount} traveling resource(s), {travelingMM.toFixed(1)} MM
+            {travelingResourceCount} traveling resource(s), {travelingMM.toFixed(2)} MM
           </Badge>
         </CardTitle>
       </CardHeader>

@@ -532,10 +532,12 @@ export default function UserManual() {
               <span className="text-gray-400 mx-1">or</span>
               <span className="px-3 py-1.5 bg-red-200 rounded-full">Rejected</span>
             </div>
-            <KeyValue label="Draft">Project is being worked on. Fully editable.</KeyValue>
-            <KeyValue label="In Review">Submitted for approval. Read-only for the creator.</KeyValue>
-            <KeyValue label="Approved">Estimation is finalized. Read-only. Can be cloned for new versions.</KeyValue>
-            <KeyValue label="Rejected">Returned with feedback. Can be edited and resubmitted.</KeyValue>
+            <KeyValue label="Draft">A new version work in progress. Fully editable by the creator.</KeyValue>
+            <KeyValue label="In Review">Submitted for approval. Read-only for the creator, awaiting reviewer decision.</KeyValue>
+            <KeyValue label="Approved">Project estimation is approved. Read-only. Can be cloned or used to create new versions.</KeyValue>
+            <KeyValue label="Rejected">Project estimation is rejected. Can be edited and resubmitted for approval.</KeyValue>
+            <KeyValue label="Suspended">Project estimation was approved, but a new version has been created post-approval. The original approval is retained for reference.</KeyValue>
+            <KeyValue label="Obsolete">This estimation was not sent for approval, or was a draft superseded by an approved version. Made obsolete from further usage.</KeyValue>
             <Warning>Once a project is approved, it becomes read-only. To make changes, clone the project or create a new version.</Warning>
           </Section>
 
@@ -578,8 +580,8 @@ export default function UserManual() {
           <Section id="version-mgmt" title="12. Versioning & Comparison">
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">12.1 Version Management</h3>
             <p>Every save creates a new version with a mandatory comment explaining the changes. Previous versions are preserved and accessible from the Project Summary.</p>
-            <KeyValue label="Suspended Status">When a new version is created via Smart Import, the previous version is automatically set to &quot;Suspended&quot;.</KeyValue>
-            <KeyValue label="Obsolete Status">Users can manually mark Draft or Suspended projects as Obsolete. When a version is approved, all other Draft versions are auto-obsoleted.</KeyValue>
+            <KeyValue label="Suspended Status">When a new version is created from an approved project, the previous version is set to &quot;Suspended&quot;. This indicates the estimation was previously approved but has been superseded by a newer version.</KeyValue>
+            <KeyValue label="Obsolete Status">Users can manually mark Draft or Suspended projects as Obsolete. When a version is approved, all other Draft versions for the same project number are auto-obsoleted.</KeyValue>
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">12.2 Key Metrics Summary</h3>
             <p>The version comparison page displays a <strong>Key Metrics Summary</strong> card showing project-level changes at a glance:</p>

@@ -179,7 +179,7 @@ Logistics calculated for resources with "Travel Required = YES":
                   </td>
                 ))}
                 <td className="p-3 text-right font-mono tabular-nums font-semibold text-sm">
-                  {totalManMonths.toFixed(1)}
+                  {totalManMonths.toFixed(2)}
                 </td>
                 <td className="p-3 text-right font-mono tabular-nums text-sm text-gray-600">
                   ${baseSalaryCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}

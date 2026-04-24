@@ -106,6 +106,19 @@ async def delete_sub_technology(sub_tech_id: str):
         raise HTTPException(status_code=404, detail="Sub-technology not found")
     return {"message": "Sub-technology deleted successfully"}
 
+@router.put("/sub-technologies/{sub_tech_id}")
+async def update_sub_technology(sub_tech_id: str, input: dict):
+    name = input.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    result = await db.sub_technologies.update_one(
+        {"id": sub_tech_id},
+        {"$set": {"name": name}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Sub-technology not found")
+    return {"message": "Sub-technology updated successfully"}
+
 
 # ========== Project Types ==========
 
@@ -157,6 +170,19 @@ async def delete_base_location(location_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Base location not found")
     return {"message": "Base location deleted successfully"}
+
+@router.put("/base-locations/{location_id}")
+async def update_base_location(location_id: str, input: dict):
+    overhead = input.get("overhead_percentage")
+    if overhead is None:
+        raise HTTPException(status_code=400, detail="Overhead percentage is required")
+    result = await db.base_locations.update_one(
+        {"id": location_id},
+        {"$set": {"overhead_percentage": float(overhead)}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Base location not found")
+    return {"message": "Base location updated successfully"}
 
 
 # ========== Skills ==========

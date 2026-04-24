@@ -1936,6 +1936,7 @@ const ProjectEstimator = () => {
         allUsers={allUsers} currentUser={currentUser}
         projectDescription={projectDescription} setProjectDescription={setProjectDescription}
         versionNotes={versionNotes} setVersionNotes={setVersionNotes}
+        projectId={projectId}
       />
 
       {/* Gantt Chart */}

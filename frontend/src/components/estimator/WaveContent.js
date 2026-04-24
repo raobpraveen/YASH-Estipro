@@ -800,7 +800,7 @@ export const WaveContent = ({
                       </td>
                     ))}
                     {/* Calculated columns */}
-                    <td className="p-3 text-right font-mono tabular-nums font-semibold text-sm">{totalManMonths.toFixed(1)}</td>
+                    <td className="p-3 text-right font-mono tabular-nums font-semibold text-sm">{totalManMonths.toFixed(2)}</td>
                     <td className="p-3 text-right font-mono tabular-nums text-sm text-gray-600">${baseSalaryCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                     <td className="p-3 text-right font-mono tabular-nums text-sm text-gray-500">
                       ${overheadCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -902,7 +902,7 @@ export const WaveContent = ({
               <Plane className="w-4 h-4 text-purple-600" />
               Logistics Cost Breakdown
               <Badge variant="outline" className="ml-2 text-purple-600 border-purple-300">
-                {waveSummary.travelingResourceCount} traveling resource(s), {waveSummary.travelingMM.toFixed(1)} MM
+                {waveSummary.travelingResourceCount} traveling resource(s), {waveSummary.travelingMM.toFixed(2)} MM
               </Badge>
             </CardTitle>
           </CardHeader>
@@ -993,11 +993,11 @@ export const WaveContent = ({
             <div className="grid grid-cols-5 gap-3">
               <div className="bg-white p-3 rounded-lg border border-gray-200">
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Total MM</p>
-                <p className="font-mono font-bold text-xl mt-1">{waveSummary.totalMM.toFixed(1)}</p>
+                <p className="font-mono font-bold text-xl mt-1">{waveSummary.totalMM.toFixed(2)}</p>
               </div>
               <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
                 <p className="text-xs text-amber-700 uppercase tracking-wide">Onsite MM</p>
-                <p className="font-mono font-bold text-xl text-[#F59E0B] mt-1">{waveSummary.onsiteMM.toFixed(1)}</p>
+                <p className="font-mono font-bold text-xl text-[#F59E0B] mt-1">{waveSummary.onsiteMM.toFixed(2)}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{waveSummary.onsiteResourceCount} resources</p>
               </div>
               <div className="bg-amber-100 p-3 rounded-lg border border-amber-300">
@@ -1008,7 +1008,7 @@ export const WaveContent = ({
               </div>
               <div className="bg-sky-50 p-3 rounded-lg border border-sky-200">
                 <p className="text-xs text-sky-700 uppercase tracking-wide">Offshore MM</p>
-                <p className="font-mono font-bold text-xl text-[#0EA5E9] mt-1">{waveSummary.offshoreMM.toFixed(1)}</p>
+                <p className="font-mono font-bold text-xl text-[#0EA5E9] mt-1">{waveSummary.offshoreMM.toFixed(2)}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{waveSummary.offshoreResourceCount} resources</p>
               </div>
               <div className="bg-sky-100 p-3 rounded-lg border border-sky-300">

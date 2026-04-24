@@ -436,7 +436,7 @@ export const GanttCard = ({
                                         {group.items.map((ms, mIdx) => (
                                           <span key={mIdx}
                                             className={`text-[8px] font-semibold leading-tight whitespace-nowrap ${ms.type === "marker" ? "text-blue-600" : "text-amber-700"}`}
-                                            title={`${ms.name}${ms.type === "marker" ? " (Marker)" : ""}${ms.position ? ` @ ${ms.position}` : ""}${ms.percentage ? ` | ${ms.percentage}%` : ""}`}
+                                            title={`${ms.name}${ms.type === "marker" ? " (Key)" : ""}${ms.position ? ` @ ${ms.position}` : ""}${ms.percentage ? ` | ${ms.percentage}%` : ""}`}
                                           >
                                             {ms.name}
                                           </span>
@@ -509,7 +509,7 @@ export const GanttCard = ({
                 {milestoneMarkers.some(m => m.type === "marker") && (
                   <div className="flex items-center gap-1.5">
                     <svg width="12" height="12" viewBox="0 0 14 14"><polygon points="7,1 13,7 7,13 1,7" fill="#3B82F6" stroke="#1D4ED8" strokeWidth="1.5" /></svg>
-                    <span className="text-[10px] text-gray-600">Marker Milestone</span>
+                    <span className="text-[10px] text-gray-600">Key Milestone</span>
                   </div>
                 )}
               </div>

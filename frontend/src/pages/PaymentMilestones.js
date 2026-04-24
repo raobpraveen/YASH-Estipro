@@ -131,7 +131,7 @@ const PaymentMilestones = () => {
         id: newId,
         wave_name: waveName,
         milestone_type: type,
-        milestone_name: type === "marker" ? `Marker ${waveMilestones.filter(m => (m.milestone_type || "payment") === "marker").length + 1}` : `Milestone ${waveMilestones.filter(m => (m.milestone_type || "payment") === "payment").length + 1}`,
+        milestone_name: type === "marker" ? `Key Milestone ${waveMilestones.filter(m => (m.milestone_type || "payment") === "marker").length + 1}` : `Milestone ${waveMilestones.filter(m => (m.milestone_type || "payment") === "payment").length + 1}`,
         phase_name: "",
         position: type === "marker" ? "50" : "end",
         target_month: "M1",
@@ -524,7 +524,7 @@ const PaymentMilestones = () => {
                   {isCollapsed ? <ChevronRight className="w-5 h-5 text-gray-500" /> : <ChevronDown className="w-5 h-5 text-gray-500" />}
                   <CardTitle className="text-lg font-bold text-[#0F172A]">{waveName}</CardTitle>
                   <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">{paymentMilestones.length} payment</span>
-                  {markerMilestones.length > 0 && <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{markerMilestones.length} marker</span>}
+                  {markerMilestones.length > 0 && <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{markerMilestones.length} key</span>}
                   <span className="text-xs text-gray-400">{monthCount} months</span>
                 </div>
                 <div className="flex items-center gap-4 text-sm" onClick={(e) => e.stopPropagation()}>
@@ -622,13 +622,13 @@ const PaymentMilestones = () => {
                     <div className="overflow-x-auto mb-4">
                       <p className="text-xs font-semibold text-blue-700 mb-2 flex items-center gap-1.5">
                         <svg width="10" height="10" viewBox="0 0 14 14"><polygon points="7,1 13,7 7,13 1,7" fill="#3B82F6" stroke="#1D4ED8" strokeWidth="1.5" /></svg>
-                        Marker Milestones (no payment linkage)
+                        Key Milestones (no payment linkage)
                       </p>
                       <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead className="w-10">#</TableHead>
-                            <TableHead>Marker Name</TableHead>
+                            <TableHead>Milestone Name</TableHead>
                             <TableHead className="w-32">Linked Phase</TableHead>
                             <TableHead className="w-40">Position on Bar</TableHead>
                             <TableHead className="w-20">Target</TableHead>
@@ -699,7 +699,7 @@ const PaymentMilestones = () => {
                       <Plus className="w-4 h-4 mr-1" /> Payment Milestone
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => addMilestoneToWave(waveName, "marker")} className="text-blue-600 border-blue-300 hover:bg-blue-50" data-testid={`add-marker-${waveName}`}>
-                      <Plus className="w-4 h-4 mr-1" /> Marker Milestone
+                      <Plus className="w-4 h-4 mr-1" /> Key Milestone
                     </Button>
                     {waves.length > 1 && waveMilestones.length > 0 && (
                       <Select onValueChange={(targetWave) => copyMilestonesToWave(waveName, targetWave)}>

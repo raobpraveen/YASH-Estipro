@@ -14,13 +14,13 @@ export const OverallSummary = ({ overall, profitMarginPercentage, collapsedSecti
         <Card className="border border-[#E2E8F0] shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-600">Total Man-Months</CardTitle></CardHeader>
           <CardContent>
-            <p className="text-2xl font-extrabold font-mono text-[#0F172A]" data-testid="total-mm">{overall.totalMM.toFixed(1)}</p>
+            <p className="text-2xl font-extrabold font-mono text-[#0F172A]" data-testid="total-mm">{overall.totalMM.toFixed(2)}</p>
           </CardContent>
         </Card>
         <Card className="border border-[#E2E8F0] shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-600">Onsite MM</CardTitle></CardHeader>
           <CardContent>
-            <p className="text-2xl font-extrabold font-mono text-[#F59E0B]" data-testid="onsite-mm">{overall.onsiteMM.toFixed(1)}</p>
+            <p className="text-2xl font-extrabold font-mono text-[#F59E0B]" data-testid="onsite-mm">{overall.onsiteMM.toFixed(2)}</p>
             {overall.onsiteMM > 0 && (
               <p className="text-xs text-gray-500 mt-1">Avg: ${(overall.onsiteSellingPrice / overall.onsiteMM).toFixed(0).toLocaleString()}/MM</p>
             )}
@@ -29,7 +29,7 @@ export const OverallSummary = ({ overall, profitMarginPercentage, collapsedSecti
         <Card className="border border-[#E2E8F0] shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-600">Offshore MM</CardTitle></CardHeader>
           <CardContent>
-            <p className="text-2xl font-extrabold font-mono text-[#0EA5E9]" data-testid="offshore-mm">{overall.offshoreMM.toFixed(1)}</p>
+            <p className="text-2xl font-extrabold font-mono text-[#0EA5E9]" data-testid="offshore-mm">{overall.offshoreMM.toFixed(2)}</p>
             {overall.offshoreMM > 0 && (
               <p className="text-xs text-gray-500 mt-1">Avg: ${(overall.offshoreSellingPrice / overall.offshoreMM).toFixed(0).toLocaleString()}/MM</p>
             )}

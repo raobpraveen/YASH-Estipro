@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,10 @@ export default function ActivityTemplates() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredSubTechs = subTechnologies.filter(s => s.technology_id === selTech);
+
+  // Ctrl+S keyboard shortcut ref
+  const saveRef = useRef(null);
+
   const filteredTemplates = templates.filter(t =>
     (!selTech || t.technology_id === selTech) &&
     (!selSubTech || t.sub_technology_id === selSubTech) &&
@@ -91,6 +95,19 @@ export default function ActivityTemplates() {
       toast.error("Failed to save template");
     } finally { setSaving(false); }
   };
+
+  // Ctrl+S keyboard shortcut
+  saveRef.current = handleSavePhase;
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        if (saveRef.current && editPhase) saveRef.current();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [editPhase]);
 
   const handleDeletePhase = async (phaseName) => {
     const tpl = filteredTemplates.find(t => t.phase_name === phaseName);

@@ -214,7 +214,11 @@ const Projects = () => {
       );
     }
     
-    setFilteredProjects(result);
+    setFilteredProjects(result.sort((a, b) => {
+      const numA = parseInt((a.project_number || "").replace(/\D/g, "")) || 0;
+      const numB = parseInt((b.project_number || "").replace(/\D/g, "")) || 0;
+      return numB - numA;
+    }));
   };
 
   const clearFilters = () => {
@@ -332,7 +336,10 @@ const Projects = () => {
 
   const handleArchiveProject = async (id) => {
     try {
-      await axios.post(`${API}/projects/${id}/archive`);
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/projects/${id}/archive`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       toast.success("Project archived successfully");
       fetchProjects();
       fetchArchivedProjects();
@@ -343,7 +350,10 @@ const Projects = () => {
 
   const handleUnarchiveProject = async (id) => {
     try {
-      await axios.post(`${API}/projects/${id}/unarchive`);
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/projects/${id}/unarchive`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       toast.success("Project restored successfully");
       fetchProjects();
       fetchArchivedProjects();
@@ -468,7 +478,7 @@ const Projects = () => {
           {getStatusBadge(project.status)}
         </TableCell>
         <TableCell className="text-center">{resourceCount}</TableCell>
-        <TableCell className="text-right font-mono tabular-nums">{totalMM.toFixed(1)}</TableCell>
+        <TableCell className="text-right font-mono tabular-nums">{totalMM.toFixed(2)}</TableCell>
         <TableCell className="text-right font-mono tabular-nums font-semibold text-[#10B981]">
           ${sellingPrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         </TableCell>
@@ -609,7 +619,7 @@ const Projects = () => {
         <TableCell>{project.customer_name || "—"}</TableCell>
         <TableCell className="text-center">{getStatusBadge(project.status)}</TableCell>
         <TableCell className="text-center">{resourceCount}</TableCell>
-        <TableCell className="text-right font-mono tabular-nums">{totalMM.toFixed(1)}</TableCell>
+        <TableCell className="text-right font-mono tabular-nums">{totalMM.toFixed(2)}</TableCell>
         <TableCell className="text-right font-mono tabular-nums font-semibold text-gray-500">
           ${sellingPrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         </TableCell>

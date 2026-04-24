@@ -65,16 +65,16 @@ export const SummaryDialog = ({
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center p-3 bg-gray-50 rounded">
                       <p className="text-sm text-gray-600">Total MM</p>
-                      <p className="text-2xl font-bold font-mono">{summary.totalMM.toFixed(1)}</p>
+                      <p className="text-2xl font-bold font-mono">{summary.totalMM.toFixed(2)}</p>
                     </div>
                     <div className="text-center p-3 bg-amber-50 rounded">
                       <p className="text-sm text-gray-600">Onsite MM</p>
-                      <p className="text-2xl font-bold font-mono text-[#F59E0B]">{summary.onsiteMM.toFixed(1)}</p>
+                      <p className="text-2xl font-bold font-mono text-[#F59E0B]">{summary.onsiteMM.toFixed(2)}</p>
                       <p className="text-xs text-gray-500 mt-1">Avg: ${onsiteAvgPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}/MM</p>
                     </div>
                     <div className="text-center p-3 bg-blue-50 rounded">
                       <p className="text-sm text-gray-600">Offshore MM</p>
-                      <p className="text-2xl font-bold font-mono text-[#0EA5E9]">{summary.offshoreMM.toFixed(1)}</p>
+                      <p className="text-2xl font-bold font-mono text-[#0EA5E9]">{summary.offshoreMM.toFixed(2)}</p>
                       <p className="text-xs text-gray-500 mt-1">Avg: ${offshoreAvgPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}/MM</p>
                     </div>
                     <div className="text-center p-3 bg-purple-50 rounded">
@@ -104,11 +104,11 @@ export const SummaryDialog = ({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center p-4 bg-gray-50 rounded">
                   <p className="text-sm text-gray-600 mb-2">Total Man-Months</p>
-                  <p className="text-3xl font-bold font-mono">{overall.totalMM.toFixed(1)}</p>
+                  <p className="text-3xl font-bold font-mono">{overall.totalMM.toFixed(2)}</p>
                 </div>
                 <div className="text-center p-4 bg-amber-50 rounded">
                   <p className="text-sm text-gray-600 mb-2">Total Onsite MM</p>
-                  <p className="text-3xl font-bold font-mono text-[#F59E0B]">{overall.onsiteMM.toFixed(1)}</p>
+                  <p className="text-3xl font-bold font-mono text-[#F59E0B]">{overall.onsiteMM.toFixed(2)}</p>
                   <p className="text-xs text-gray-500 mt-1">
                     Avg: ${overall.onsiteMM > 0 
                       ? (overall.onsiteSellingPrice / overall.onsiteMM).toLocaleString(undefined, { maximumFractionDigits: 0 }) 
@@ -117,7 +117,7 @@ export const SummaryDialog = ({
                 </div>
                 <div className="text-center p-4 bg-blue-50 rounded">
                   <p className="text-sm text-gray-600 mb-2">Total Offshore MM</p>
-                  <p className="text-3xl font-bold font-mono text-[#0EA5E9]">{overall.offshoreMM.toFixed(1)}</p>
+                  <p className="text-3xl font-bold font-mono text-[#0EA5E9]">{overall.offshoreMM.toFixed(2)}</p>
                   <p className="text-xs text-gray-500 mt-1">
                     Avg: ${overall.offshoreMM > 0 
                       ? (overall.offshoreSellingPrice / overall.offshoreMM).toLocaleString(undefined, { maximumFractionDigits: 0 }) 

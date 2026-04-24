@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Search, Filter } from "lucide-react";
+import { Plus, Trash2, Search, Filter, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -18,7 +18,9 @@ const SubTechnologies = () => {
   const [subTechnologies, setSubTechnologies] = useState([]);
   const [technologies, setTechnologies] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [form, setForm] = useState({ name: "", technology_id: "", technology_name: "" });
+  const [editForm, setEditForm] = useState(null);
   const [filterTechId, setFilterTechId] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -52,6 +54,27 @@ const SubTechnologies = () => {
       fetchData();
     } catch {
       toast.error("Failed to add sub-technology");
+    }
+  };
+
+  const handleEdit = (st) => {
+    setEditForm({ id: st.id, name: st.name, technology_id: st.technology_id, technology_name: st.technology_name });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editForm?.name) {
+      toast.error("Sub-technology name is required");
+      return;
+    }
+    try {
+      await axios.put(`${API}/sub-technologies/${editForm.id}`, { name: editForm.name });
+      toast.success("Sub-technology updated");
+      setEditDialogOpen(false);
+      setEditForm(null);
+      fetchData();
+    } catch {
+      toast.error("Failed to update sub-technology");
     }
   };
 
@@ -156,27 +179,37 @@ const SubTechnologies = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Sub Technology</TableHead>
                   <TableHead>Parent Technology</TableHead>
+                  <TableHead>Sub Technology</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((st) => (
                   <TableRow key={st.id} data-testid={`sub-tech-row-${st.id}`}>
-                    <TableCell className="font-medium">{st.name}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="bg-blue-50 text-blue-700">{st.technology_name}</Badge>
                     </TableCell>
+                    <TableCell className="font-medium">{st.name}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost" size="sm"
-                        onClick={() => handleDelete(st.id)}
-                        className="text-[#EF4444] hover:text-[#EF4444] hover:bg-[#EF4444]/10"
-                        data-testid={`delete-sub-tech-${st.id}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost" size="sm"
+                          onClick={() => handleEdit(st)}
+                          className="text-[#0EA5E9] hover:text-[#0EA5E9] hover:bg-[#0EA5E9]/10"
+                          data-testid={`edit-sub-tech-${st.id}`}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost" size="sm"
+                          onClick={() => handleDelete(st.id)}
+                          className="text-[#EF4444] hover:text-[#EF4444] hover:bg-[#EF4444]/10"
+                          data-testid={`delete-sub-tech-${st.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -185,6 +218,34 @@ const SubTechnologies = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Sub Technology Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-[#0F172A]">Edit Sub Technology</DialogTitle>
+          </DialogHeader>
+          {editForm && (
+            <div className="space-y-4 mt-4">
+              <div>
+                <Label>Parent Technology</Label>
+                <Input value={editForm.technology_name} disabled className="bg-gray-50" />
+              </div>
+              <div>
+                <Label>Sub Technology Name *</Label>
+                <Input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  data-testid="edit-sub-tech-name-input"
+                />
+              </div>
+              <Button onClick={handleUpdate} className="w-full bg-[#0F172A] hover:bg-[#0F172A]/90" data-testid="update-sub-tech-button">
+                Update Sub Technology
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

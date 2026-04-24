@@ -27,6 +27,7 @@ export const ProjectInfoCard = ({
   allUsers, currentUser,
   projectDescription, setProjectDescription,
   versionNotes, setVersionNotes,
+  projectId,
 }) => {
   return (
     <Card className={`border ${isReadOnly ? 'border-amber-300 bg-amber-50/30' : 'border-[#E2E8F0]'} shadow-sm`}>
@@ -265,7 +266,7 @@ export const ProjectInfoCard = ({
           </div>
           <div className="md:col-span-2 lg:col-span-3">
             <Label htmlFor="version-notes">Version Notes</Label>
-            <Textarea id="version-notes" placeholder="Notes for this version (e.g., changes made, reason for update)" value={versionNotes} onChange={(e) => setVersionNotes(e.target.value)} data-testid="version-notes-input" rows={2} disabled={isReadOnly} />
+            <Textarea id="version-notes" placeholder="Notes for this version (e.g., changes made, reason for update)" value={versionNotes} onChange={(e) => setVersionNotes(e.target.value)} data-testid="version-notes-input" rows={2} disabled={isReadOnly || !!projectId} />
           </div>
         </div>
       </CardContent>

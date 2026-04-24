@@ -220,6 +220,8 @@ export const INDUSTRY_VERTICALS = [
   "Manufacturing",
   "Telecommunications",
   "Energy & Utilities",
+  "Oil and Gas",
+  "Wholesale and Trading",
   "Government & Public Sector",
   "Education",
   "Technology & Software",

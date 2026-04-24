@@ -10,21 +10,21 @@ export const WaveSummary = ({ summary, travelingMM, travelingResourceCount }) =>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
           <div>
             <p className="text-gray-600">Total Man-Months</p>
-            <p className="text-xl font-bold font-mono">{summary.totalMM.toFixed(1)}</p>
+            <p className="text-xl font-bold font-mono">{summary.totalMM.toFixed(2)}</p>
           </div>
           <div>
             <p className="text-gray-600">Onsite MM ({summary.onsiteResourceCount} resources)</p>
-            <p className="text-xl font-bold font-mono text-[#F59E0B]">{summary.onsiteMM.toFixed(1)}</p>
+            <p className="text-xl font-bold font-mono text-[#F59E0B]">{summary.onsiteMM.toFixed(2)}</p>
             <p className="text-xs text-gray-500">${summary.onsiteSalaryCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
           </div>
           <div>
             <p className="text-gray-600">Offshore MM</p>
-            <p className="text-xl font-bold font-mono text-[#0EA5E9]">{summary.offshoreMM.toFixed(1)}</p>
+            <p className="text-xl font-bold font-mono text-[#0EA5E9]">{summary.offshoreMM.toFixed(2)}</p>
             <p className="text-xs text-gray-500">${summary.offshoreSalaryCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
           </div>
           <div>
             <p className="text-gray-600">Traveling ({travelingResourceCount} resources)</p>
-            <p className="text-xl font-bold font-mono text-[#8B5CF6]">{travelingMM.toFixed(1)} MM</p>
+            <p className="text-xl font-bold font-mono text-[#8B5CF6]">{travelingMM.toFixed(2)} MM</p>
           </div>
           <div>
             <p className="text-gray-600">Total Logistics</p>

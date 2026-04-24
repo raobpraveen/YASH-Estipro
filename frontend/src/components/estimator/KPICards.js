@@ -11,7 +11,7 @@ export const KPICards = ({ overall, profitMarginPercentage }) => {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-extrabold font-mono text-[#0F172A]" data-testid="total-mm">
-              {overall.totalMM.toFixed(1)}
+              {overall.totalMM.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -21,7 +21,7 @@ export const KPICards = ({ overall, profitMarginPercentage }) => {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-extrabold font-mono text-[#F59E0B]" data-testid="onsite-mm">
-              {overall.onsiteMM.toFixed(1)}
+              {overall.onsiteMM.toFixed(2)}
             </p>
             {overall.onsiteMM > 0 && (
               <p className="text-xs text-gray-500 mt-1">
@@ -38,7 +38,7 @@ export const KPICards = ({ overall, profitMarginPercentage }) => {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-extrabold font-mono text-[#0EA5E9]" data-testid="offshore-mm">
-              {overall.offshoreMM.toFixed(1)}
+              {overall.offshoreMM.toFixed(2)}
             </p>
             {overall.offshoreMM > 0 && (
               <p className="text-xs text-gray-500 mt-1">
