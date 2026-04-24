@@ -14,73 +14,91 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - Wave-based estimation grid with dynamic monthly phases
 - Editable resource definitions (Skill, Level, Location) with auto salary lookups
 - Project & version management (CRUD, versioning, cloning, comments, read-only states)
-- Approval workflow (Draft, In Review, Approved, Rejected, Superseded, Obsolete)
+- Approval workflow (Draft, In Review, Approved, Rejected, Suspended, Obsolete)
 - Dashboard with analytics and filtering
 - Version comparison screen
 - Project archiving, access control (public/restricted), audit logging
-- **Cascade delete**: Project deletion cleans up milestones and activities
+- Cascade delete: Project deletion cleans up milestones and activities
 
 ### Financial Features
 - Payment Terms in Cashflow (shift Cash-In by N days, auto-extend timeline)
 - Cumulative Cashflow line chart with break-even analysis
-- Payment Milestones with copy-to-wave utility
+- Payment Milestones with copy-to-wave utility (renamed to "Key Milestones")
 - Nego Buffer at wave level
 
 ### Gantt Chart & Phase-Based Milestones
 - Phase Range Editor with half-month precision
-- Payment milestones (amber) and Marker milestones (blue, 0-100% slider)
+- Payment milestones (amber) and Key milestones (blue, 0-100% slider)
 - Gantt Drag-and-Drop: Milestone diamonds draggable along phase bars
 - Smart label positioning, Gantt chart PNG export
 
 ### Excel Integration
 - Formula-based Excel export with color coding
 - Smart Import with milestone import/overwrite support
-- **Milestones Sheets**: Per-wave with formula Amount (=FinalPrice*Pct), type tags
-- **Activities Sheets**: Per-wave with template + wave-specific items
-- **Cashflow Sheet**: Monthly data with Cash-Out, Cash-In, Net, Cumulative, wave breakdown
-- Cashflow and Activities sheets skipped during import
+- Milestones, Activities, Cashflow, Gantt Chart sheets in export
 
 ### Phase Activities & Deliverables
-- **Activity Templates Master Data** (sidebar page at /activity-templates):
-  - Key: Technology + Sub-Technology + Project Type + Phase
-  - Excel download and upload for easy data entry
-  - Pre-seeded templates:
-    - SAP S/4HANA + Private Cloud + Implementation (6 SAP Activate phases)
-    - SAP S/4HANA + Public Cloud + Implementation (6 SAP Activate phases)
-- **Project Activities Modal** (from estimator toolbar):
-  - Template phases from master data (not wave phases)
-  - Multi-phase selection with bulk adopt from templates
-  - Wave-dependent activities (additive to template items)
-  - Dedicated Activities Excel export
+- Activity Templates Master Data at /activity-templates with Ctrl+S support
+- Pre-seeded SAP S/4HANA Private Cloud and Public Cloud templates
+- Project Activities Modal with template adoption and wave-specific items
 
-### Documentation (Updated Feb 2026)
-- **User Manual**: Comprehensive 21-section manual covering all features including Activity Templates (Section 21), Gantt drag-and-drop (14.4), Milestone re-import (13.2), cascade delete (3.5), and updated Excel export sheets (8.2)
-- **Support Guide**: Updated with activities.py router in architecture, activity_templates/project_activities collections, activity template API endpoints, troubleshooting entries, and FAQ additions
-- **Tutorials**: Added Activity Templates tutorial (10 steps, Administration category), updated Excel Export tutorial to cover new sheets
+### Documentation
+- User Manual (21 sections), Support Guide, Tutorials — all updated
+- Back-to-top floating button on all doc pages
 
-## Bug Fixes (Feb 2026)
-- Fixed: `crypto.randomUUID()` fallback for non-HTTPS environments
-- Fixed: Milestone copying on version creation
-- Fixed: Excel Import erasing milestones
-- Fixed: Ctrl+S on PaymentMilestones not saving Payment Terms
-- Fixed: Activities modal showing wave phases instead of template phases
-- Fixed: Cascade delete for orphan data cleanup
-- Fixed: Activities not appearing in Excel export (apiHeaders scope bug)
+### Phase 1 Quick Wins (Completed Apr 2026)
+1. Sub Technologies: Parent Technology column moved to first position
+2. Sub Technologies: Edit option added (pencil icon, dialog for name change)
+3. Base Locations: Edit option added for Overhead % value
+4. Activity Templates: Ctrl+S keyboard shortcut for saving
+5. Customer Master: Added "Wholesale and Trading" and "Oil and Gas" industry verticals
+6. Waves: Total MM adjusted to 2 decimal places
+7. Waves: "Marker Milestone" renamed to "Key Milestone" globally
+8. Project Info: Version-wise comments are now non-editable for saved projects
+9. Documentation: Updated status definitions (Draft, Suspended, Obsolete, Approved, Rejected)
+10. Saved Projects: Fixed Unarchive bug (auth token now sent)
+11. Saved Projects: Sort by project number (descending)
+- Backend: PUT /api/sub-technologies/{id} and PUT /api/base-locations/{id} endpoints added
 
-## Key Data Model
-- `PaymentMilestone`: `{id, wave_name, milestone_name, milestone_type, phase_name, position, target_month, payment_percentage, payment_amount, description}`
-- `ActivityTemplate`: `{id, technology_id, sub_technology_id, project_type_id, phase_name, activities[]}`
-- `ProjectPhaseActivities`: `{project_id, wave_name, phase_name, activities[], wave_activities[], adopted_from_template_id}`
+## Pending Implementation
 
-## Upcoming Tasks
+### Phase 2: Project Information & Filters
+12. Customer dropdown with text search
+13. Bid Category field (Budgetary, Most Likely, Committed, Won, Loss, None)
+14. Forecasted Closure Date field (date picker)
+15. Competency field with dropdown + new master data
+16. Dashboard: Filter by project locations and sales manager
+17. Saved Projects: Status filter
+18. Saved Projects: Totals for Selling Price, Nego Buffer, Final Price
+
+### Phase 3: Wave Grid Enhancements
+19. Toggle wave include/exclude from summary
+20. Floating "Add Row" button
+21. Split grid into 2 windows (freeze panes)
+22. Filter resources by Technology
+23. Split month allocation (ramp up/down: M1-M3:1, M4-M5:2)
+24. Payment milestones linked to target month
+
+### Phase 4: Status & Workflow
+25. Retain Approved status on new version creation
+26. Commercial status tracking (separate field, post-approval)
+27. Milestone totals exclude previous versions
+28. Excel Export: Add Technology column
+
+### Phase 5: Security & Cashflow
+29. Session timeout (15 min idle)
+30. Advance payment milestone indicator in cashflow
+
+### Future Tasks (Roadmap)
 - PDF Export with Branding
 - Client-Facing Shareable View
-
-## Future Tasks (P2+)
-- What-If Scenario Comparison
-- AI Integration (Estimation Suggestions)
+- Proposal Auto-Generation (Word/PPT)
+- WRICEF Tracker
+- Scope Definition Module
+- Integration Matrix
+- Risk Register
+- AI Integration (Estimation Suggestions, RFP Parser)
 - Actuals Tracking & Profitability Module
-- Refactor global shortcut handling to React Context
 
 ## Credentials
 - Admin: admin@yash.com / password
