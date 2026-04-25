@@ -1,0 +1,56 @@
+{
+  "summary": "Phase 5 (session timeout + advance payment milestone indicator) tested end-to-end. All backend (4/4) and frontend acceptance criteria PASS.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Dashboard / Payment Milestones",
+        "issues": [
+          "Pre-existing console hydration warnings: <span> cannot be child of <tbody>/<tr> (carry-over from previous iterations, not new in Phase 5).",
+          "Pre-existing 'Each child in a list should have unique key prop' warning in PaymentMilestones TableBody. Not blocking, but should be cleaned up."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration55_phase5.py",
+    "/app/test_reports/pytest/pytest_iteration55.xml"
+  ],
+  "action_items": [
+    "(Optional, pre-existing) Clean up React hydration warnings (<span> wrapper inside <tbody>/<tr>) and add unique key props in PaymentMilestones TableBody."
+  ],
+  "critical_code_review_comments": [
+    "useIdleTimeout hook: implementation is sound — uses refs for timers, listens to ACTIVITY_EVENTS, shows warning warningMs before idleMs, suppresses activity reset while warning is open (so countdown is not bypassed). onTimeoutRef latest-callback pattern correctly used.",
+    "App.js integrates the hook only when user is logged in and renders AlertDialog with the required testids: session-timeout-warning-dialog, session-timeout-countdown, session-timeout-extend-btn, session-timeout-logout-btn.",
+    "Cashflow endpoint (financials.py): correctly extends wave_monthly when cash_in_idx falls beyond duration and only adds payment_amount to advance_revenue when ms.is_advance is True. total_advance is computed at wave, combined-month, and summary levels.",
+    "PaymentMilestones.js: Advance checkbox uses data-testid={`ms-advance-${ms.id}`} and renders 'Adv' badge when ms.is_advance is true — both verified at runtime.",
+    "CashflowStatement.js: advance-summary-card renders only when summary.total_advance > 0 (verified: card hidden for $0 advance project, visible for project with $25K advance). Per-wave row gets purple bg + 'Advance' badge; Combined row shows 'Adv' badge — verified."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration55_phase5.py"
+  ],
+  "success_rate": {
+    "backend": "100% (4/4 tests passed)",
+    "frontend": "100% (all Phase 5 acceptance criteria verified)"
+  },
+  "test_credentials": "admin@yash.com / password (no /app/memory/test_credentials.md file present — using credentials from review_request)",
+  "seed_data_creation": "Toggled is_advance=True on first milestone of PRJ-0022 (pid bcb545cf-efb8-4b5f-b5d4-8db988080a68) and on TEST_Adv_M1 of PRJ-0001 to exercise UI. No new projects/users created.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Phase 5 fully verified. Backend tests at /app/backend/tests/test_iteration55_phase5.py (pytest, 4 tests). Frontend manually verified via Playwright on PRJ-0001 (milestone toggle+save+reload+badge) and PRJ-0022 (cashflow advance card $25K, advance badges in wave + combined tables). Session timeout dialog confirmed NOT visible at idle=0; full 13-minute wait was NOT performed (15-min idle threshold is production setting per testing instructions).",
+  "phase5_features_verified": {
+    "backend_is_advance_persistence": "PASS — PUT then GET roundtrips is_advance=true correctly.",
+    "backend_cashflow_advance_fields": "PASS — summary.total_advance, wave_data[].total_advance, monthly_data[].advance_revenue, combined_data[].advance_revenue all present.",
+    "backend_advance_isolation": "PASS — only milestones with is_advance=true contribute to advance_revenue; advance amount equals milestone payment_amount at cash_in_idx (target_month + payment_offset).",
+    "frontend_advance_checkbox_column": "PASS — column header 'Advance' present, checkbox toggles, persists after Save+reload.",
+    "frontend_adv_badge": "PASS — 'ADV' badge appears next to milestone name when is_advance=true.",
+    "frontend_advance_summary_card": "PASS — purple card with Zap icon visible only when total_advance > 0; shows $25,000 and 29.4% of total revenue for test case.",
+    "frontend_advance_row_highlights": "PASS — per-wave row gets purple bg + 'ADVANCE' badge; combined-monthly row shows 'ADV' badge.",
+    "frontend_session_timeout_hook": "PASS — useIdleTimeout integrated in App.js when logged-in; dialog NOT rendered by default; testids present in code (session-timeout-warning-dialog, -extend-btn, -logout-btn, -countdown). Real 15-minute idle wait not performed per instructions."
+  }
+}

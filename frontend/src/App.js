@@ -27,6 +27,10 @@ import CashflowStatement from "@/pages/CashflowStatement";
 import ActivityTemplates from "@/pages/ActivityTemplates";
 import Competencies from "@/pages/Competencies";
 import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
+import useIdleTimeout from "@/hooks/useIdleTimeout";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Clock } from "lucide-react";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -51,6 +55,19 @@ function App() {
     localStorage.removeItem("user");
     setUser(null);
   };
+
+  // Session timeout: 15 min idle, 2 min warning
+  const handleIdleTimeout = () => {
+    handleLogout();
+    toast.error("Session expired due to 15 minutes of inactivity. Please sign in again.", { duration: 6000 });
+  };
+
+  const { showWarning, secondsLeft, extend } = useIdleTimeout({
+    enabled: !!user,
+    idleMs: 15 * 60 * 1000,
+    warningMs: 2 * 60 * 1000,
+    onTimeout: handleIdleTimeout,
+  });
 
   if (loading) {
     return (
@@ -101,6 +118,31 @@ function App() {
         </Routes>
       </BrowserRouter>
       <Toaster position="top-right" />
+      <AlertDialog open={showWarning} onOpenChange={() => {}}>
+        <AlertDialogContent data-testid="session-timeout-warning-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-[#0F172A]">
+              <Clock className="w-5 h-5 text-[#F59E0B]" />
+              Session about to expire
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You've been inactive for a while. For your security, you will be signed out automatically in{" "}
+              <span className="font-semibold text-[#0F172A]" data-testid="session-timeout-countdown">
+                {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
+              </span>
+              .
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleIdleTimeout} data-testid="session-timeout-logout-btn">
+              Sign out now
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={extend} className="bg-[#0F172A] hover:bg-[#0F172A]/90" data-testid="session-timeout-extend-btn">
+              Stay signed in
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

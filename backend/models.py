@@ -435,6 +435,7 @@ class PaymentMilestone(BaseModel):
     completion_percentage: float = 0
     payment_percentage: float = 0
     payment_amount: float = 0
+    is_advance: bool = False  # If True, this is an advance/upfront payment (paid before project starts)
     description: str = ""
 
 

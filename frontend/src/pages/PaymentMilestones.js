@@ -139,6 +139,7 @@ const PaymentMilestones = () => {
         target_month: "M1",
         payment_percentage: 0,
         payment_amount: 0,
+        is_advance: false,
         description: "",
       },
     ]);
@@ -549,6 +550,7 @@ const PaymentMilestones = () => {
                           <TableRow>
                             <TableHead className="w-10">#</TableHead>
                             <TableHead>Milestone Name</TableHead>
+                            <TableHead className="w-20 text-center">Advance</TableHead>
                             <TableHead className="w-32">Linked Phase</TableHead>
                             <TableHead className="w-28">Target Month</TableHead>
                             <TableHead className="w-28">Payment %</TableHead>
@@ -561,7 +563,21 @@ const PaymentMilestones = () => {
                           {paymentMilestones.map((ms, idx) => (
                             <TableRow key={ms.id} data-testid={`milestone-row-${ms.id}`}>
                               <TableCell className="font-mono text-gray-400">{idx + 1}</TableCell>
-                              <TableCell><Input value={ms.milestone_name} onChange={(e) => updateMilestone(ms.id, "milestone_name", e.target.value)} className="w-48" data-testid={`ms-name-${ms.id}`} /></TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Input value={ms.milestone_name} onChange={(e) => updateMilestone(ms.id, "milestone_name", e.target.value)} className="w-48" data-testid={`ms-name-${ms.id}`} />
+                                  {ms.is_advance && <span className="text-[10px] font-bold bg-[#8B5CF6]/10 text-[#8B5CF6] px-1.5 py-0.5 rounded uppercase tracking-wide">Adv</span>}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={!!ms.is_advance}
+                                  onChange={(e) => updateMilestone(ms.id, "is_advance", e.target.checked)}
+                                  className="h-4 w-4 accent-[#8B5CF6] cursor-pointer"
+                                  data-testid={`ms-advance-${ms.id}`}
+                                />
+                              </TableCell>
                               <TableCell>
                                 <Select value={ms.phase_name || "__none__"} onValueChange={(v) => {
                                   const actualValue = v === "__none__" ? "" : v;

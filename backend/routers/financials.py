@@ -98,6 +98,7 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
                 "phase": phase_label,
                 "cost": round(month_cost, 2),
                 "revenue": 0,
+                "advance_revenue": 0,
             })
 
         # Step 2: Assign revenue with payment term offset
@@ -122,17 +123,23 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
                     "phase": "",
                     "cost": 0,
                     "revenue": 0,
+                    "advance_revenue": 0,
                 })
 
             wave_monthly[cash_in_idx]["revenue"] = round(
                 wave_monthly[cash_in_idx]["revenue"] + payment_amount, 2
             )
+            if ms.get("is_advance"):
+                wave_monthly[cash_in_idx]["advance_revenue"] = round(
+                    wave_monthly[cash_in_idx].get("advance_revenue", 0) + payment_amount, 2
+                )
 
         if len(wave_monthly) > max_months:
             max_months = len(wave_monthly)
 
         wave_total_cost = sum(m["cost"] for m in wave_monthly)
         wave_total_rev = sum(m["revenue"] for m in wave_monthly)
+        wave_total_advance = sum(m.get("advance_revenue", 0) for m in wave_monthly)
         wave_data.append({
             "wave_name": wave.get("name", f"Wave {len(wave_data)+1}"),
             "months": n_months,
@@ -140,6 +147,7 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
             "monthly_data": wave_monthly,
             "total_cost": round(wave_total_cost, 2),
             "total_revenue": round(wave_total_rev, 2),
+            "total_advance": round(wave_total_advance, 2),
             "net": round(wave_total_rev - wave_total_cost, 2),
         })
 
@@ -149,11 +157,13 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
     for m_idx in range(max_months):
         cost_sum = 0
         rev_sum = 0
+        adv_sum = 0
         phase_label = ""
         for wd in wave_data:
             if m_idx < len(wd["monthly_data"]):
                 cost_sum += wd["monthly_data"][m_idx]["cost"]
                 rev_sum += wd["monthly_data"][m_idx]["revenue"]
+                adv_sum += wd["monthly_data"][m_idx].get("advance_revenue", 0)
                 if not phase_label and wd["monthly_data"][m_idx].get("phase"):
                     phase_label = wd["monthly_data"][m_idx]["phase"]
         net = rev_sum - cost_sum
@@ -161,11 +171,13 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
         combined.append({
             "month": m_idx + 1, "phase": phase_label,
             "cost": round(cost_sum, 2), "revenue": round(rev_sum, 2),
+            "advance_revenue": round(adv_sum, 2),
             "net": round(net, 2), "cumulative": round(running, 2),
         })
 
     total_cost = sum(m["cost"] for m in combined)
     total_revenue = sum(m["revenue"] for m in combined)
+    total_advance = sum(m.get("advance_revenue", 0) for m in combined)
 
     return {
         "project_id": project_id,
@@ -178,6 +190,7 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
         "summary": {
             "total_cost": round(total_cost, 2),
             "total_revenue": round(total_revenue, 2),
+            "total_advance": round(total_advance, 2),
             "net_cashflow": round(total_revenue - total_cost, 2),
         }
     }

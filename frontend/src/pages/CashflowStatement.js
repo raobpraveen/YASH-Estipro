@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, FileDown, TrendingUp, TrendingDown, DollarSign, ChevronDown, ChevronRight, Search, ExternalLink, Clock } from "lucide-react";
+import { ArrowLeft, FileDown, TrendingUp, TrendingDown, DollarSign, ChevronDown, ChevronRight, Search, ExternalLink, Clock, Zap } from "lucide-react";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
@@ -299,7 +299,7 @@ const CashflowStatement = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className={`grid grid-cols-1 ${summary.total_advance > 0 ? "md:grid-cols-4" : "md:grid-cols-3"} gap-4 mb-6`}>
         <Card className="border-l-4 border-l-red-500">
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-2 mb-1">
@@ -318,6 +318,18 @@ const CashflowStatement = () => {
             <p className="text-2xl font-bold text-[#10B981]" data-testid="total-revenue">{fmt(summary.total_revenue)}</p>
           </CardContent>
         </Card>
+        {summary.total_advance > 0 && (
+          <Card className="border-l-4 border-l-[#8B5CF6]" data-testid="advance-summary-card">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Zap className="w-4 h-4 text-[#8B5CF6]" />
+                <p className="text-sm text-gray-500">Advance Payment</p>
+              </div>
+              <p className="text-2xl font-bold text-[#8B5CF6]" data-testid="total-advance">{fmt(summary.total_advance)}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{summary.total_revenue > 0 ? ((summary.total_advance / summary.total_revenue) * 100).toFixed(1) : 0}% of total revenue</p>
+            </CardContent>
+          </Card>
+        )}
         <Card className={`border-l-4 ${summary.net_cashflow >= 0 ? "border-l-[#0EA5E9]" : "border-l-[#F59E0B]"}`}>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-2 mb-1">
@@ -377,12 +389,27 @@ const CashflowStatement = () => {
                         {wd.monthly_data.map((m, idx) => {
                           const net = m.revenue - m.cost;
                           const isExtended = idx >= wd.months;
+                          const hasAdvance = (m.advance_revenue || 0) > 0;
                           return (
-                            <TableRow key={idx} className={isExtended ? "bg-[#6366F1]/5" : ""}>
+                            <TableRow key={idx} className={isExtended ? "bg-[#6366F1]/5" : (hasAdvance ? "bg-[#8B5CF6]/5" : "")}>
                               <TableCell className="font-mono">{isExtended ? <span className="text-[#6366F1]">M{m.month}*</span> : `M${m.month}`}</TableCell>
-                              <TableCell className="text-gray-600">{m.phase || (isExtended ? "Payment terms" : "—")}</TableCell>
+                              <TableCell className="text-gray-600">
+                                <div className="flex items-center gap-2">
+                                  <span>{m.phase || (isExtended ? "Payment terms" : "—")}</span>
+                                  {hasAdvance && (
+                                    <span className="text-[10px] font-bold bg-[#8B5CF6]/10 text-[#8B5CF6] px-1.5 py-0.5 rounded uppercase tracking-wide flex items-center gap-0.5" data-testid={`advance-badge-wave-${idx}`}>
+                                      <Zap className="w-2.5 h-2.5" /> Advance
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
                               <TableCell className="text-right font-mono text-red-600">{fmt(m.cost)}</TableCell>
-                              <TableCell className="text-right font-mono text-[#10B981]">{fmt(m.revenue)}</TableCell>
+                              <TableCell className="text-right font-mono text-[#10B981]">
+                                {fmt(m.revenue)}
+                                {hasAdvance && m.revenue !== m.advance_revenue && (
+                                  <span className="block text-[10px] text-[#8B5CF6] font-normal">incl. {fmt(m.advance_revenue)} adv.</span>
+                                )}
+                              </TableCell>
                               <TableCell className={`text-right font-mono font-semibold ${net >= 0 ? "text-[#10B981]" : "text-red-600"}`}>{fmt(net)}</TableCell>
                             </TableRow>
                           );
@@ -423,14 +450,26 @@ const CashflowStatement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {combined_data.map((m, idx) => (
-                    <TableRow key={idx} data-testid={`combined-row-${idx}`}>
-                      <TableCell className="font-mono">M{m.month}</TableCell>
-                      <TableCell className="text-right font-mono text-red-600">{fmt(m.cost)}</TableCell>
-                      <TableCell className="text-right font-mono text-[#10B981]">{fmt(m.revenue)}</TableCell>
-                      <TableCell className={`text-right font-mono font-semibold ${m.net >= 0 ? "text-[#10B981]" : "text-red-600"}`}>{fmt(m.net)}</TableCell>
-                    </TableRow>
-                  ))}
+                  {combined_data.map((m, idx) => {
+                    const hasAdvance = (m.advance_revenue || 0) > 0;
+                    return (
+                      <TableRow key={idx} className={hasAdvance ? "bg-[#8B5CF6]/5" : ""} data-testid={`combined-row-${idx}`}>
+                        <TableCell className="font-mono">
+                          <div className="flex items-center gap-2">
+                            <span>M{m.month}</span>
+                            {hasAdvance && (
+                              <span className="text-[10px] font-bold bg-[#8B5CF6]/10 text-[#8B5CF6] px-1.5 py-0.5 rounded uppercase tracking-wide flex items-center gap-0.5" data-testid={`advance-badge-combined-${idx}`}>
+                                <Zap className="w-2.5 h-2.5" /> Adv
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-red-600">{fmt(m.cost)}</TableCell>
+                        <TableCell className="text-right font-mono text-[#10B981]">{fmt(m.revenue)}</TableCell>
+                        <TableCell className={`text-right font-mono font-semibold ${m.net >= 0 ? "text-[#10B981]" : "text-red-600"}`}>{fmt(m.net)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
                   <TableRow className="border-t-2 bg-[#F8FAFC] font-bold">
                     <TableCell className="font-bold text-[#0F172A]">TOTALS</TableCell>
                     <TableCell className="text-right font-mono text-red-600">{fmt(summary.total_cost)}</TableCell>
