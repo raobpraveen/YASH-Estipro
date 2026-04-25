@@ -482,6 +482,14 @@ const Projects = () => {
         </TableCell>
         <TableCell className="text-center">
           {getStatusBadge(project.status)}
+          {project.commercial_status && (
+            <Badge variant="outline" className="ml-1 text-[10px] bg-sky-50 text-sky-700 border-sky-200" data-testid={`commercial-status-${project.id}`}>
+              {project.commercial_status}
+            </Badge>
+          )}
+          {project.previous_status && project.status === "suspended" && (
+            <span className="block text-[10px] text-gray-400 mt-0.5">was {project.previous_status}</span>
+          )}
         </TableCell>
         <TableCell className="text-center">{resourceCount}</TableCell>
         <TableCell className="text-right font-mono tabular-nums">{totalMM.toFixed(2)}</TableCell>

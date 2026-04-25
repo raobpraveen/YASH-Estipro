@@ -18,6 +18,7 @@ export async function buildExportWorkbook({
   salesManagerId, salesManagers, crmId, COUNTRIES,
   milestones = [], paymentTermsDays = 0,
   projectActivities = [],
+  skills = [],
   cashflowData = null,
 }) {
   const selectedCustomer = customers.find(c => c.id === customerId);
@@ -59,7 +60,7 @@ export async function buildExportWorkbook({
     const N = wave.phase_names.length;
     const A = wave.grid_allocations.length;
 
-    const C_SAL = 5, C_ON = 6, C_TR = 7, C_PH1 = 8;
+    const C_TECH = 2, C_SAL = 6, C_ON = 7, C_TR = 8, C_PH1 = 9;
     const C_TMM = C_PH1 + N;
     const C_SC = C_TMM + 1, C_OH = C_SC + 1, C_OHP = C_OH + 1;
     const C_TC = C_OHP + 1, C_SP = C_TC + 1, C_SPMM = C_SP + 1;
@@ -76,13 +77,13 @@ export async function buildExportWorkbook({
 
     dws.addRow([]);
 
-    const headers = ["#", "Skill", "Level", "Location", "$/Month", "Onsite", "Travel",
+    const headers = ["#", "Technology", "Skill", "Level", "Location", "$/Month", "Onsite", "Travel",
       ...wave.phase_names, "Total MM", "Salary Cost", "Overhead", "OH%", "Total Cost",
       "Selling Price", "SP/MM", "Hourly", "Ovr $/Hr", "Comments", "Group"];
     const hRow = dws.addRow(headers);
     hRow.eachCell(c => { c.fill = headerFill; c.font = headerFont; c.border = thinBorder; });
     dws.columns = headers.map((h, i) => ({
-      width: i === 0 ? 5 : ["Skill", "Location", "Comments"].includes(h) ? 20 : h === "Group" ? 8 : h === "Ovr $/Hr" ? 10 : h.length > 8 ? 15 : 11
+      width: i === 0 ? 5 : ["Skill", "Location", "Comments", "Technology"].includes(h) ? 20 : h === "Group" ? 8 : h === "Ovr $/Hr" ? 10 : h.length > 8 ? 15 : 11
     }));
 
     const DR1 = 5;
@@ -98,9 +99,15 @@ export async function buildExportWorkbook({
 
       const r = dws.addRow([]);
       r.getCell(1).value = idx + 1;
-      r.getCell(2).value = alloc.skill_name;
-      r.getCell(3).value = alloc.proficiency_level;
-      r.getCell(4).value = alloc.base_location_name;
+      // Resolve technology name from the allocation or from the skill's tech
+      const techName = alloc.technology_name || (() => {
+        const skill = skills.find(s => s.id === alloc.skill_id);
+        return skill?.technology_name || "";
+      })();
+      r.getCell(C_TECH).value = techName;
+      r.getCell(3).value = alloc.skill_name;
+      r.getCell(4).value = alloc.proficiency_level;
+      r.getCell(5).value = alloc.base_location_name;
       r.getCell(C_SAL).value = alloc.avg_monthly_salary;
       r.getCell(C_ON).value = alloc.is_onsite ? "ON" : "OFF";
       r.getCell(C_TR).value = alloc.travel_required ? "YES" : "NO";

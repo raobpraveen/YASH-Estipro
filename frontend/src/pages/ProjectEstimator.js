@@ -70,6 +70,8 @@ const ProjectEstimator = () => {
   const [forecastedClosureDate, setForecastedClosureDate] = useState("");
   const [competencyIds, setCompetencyIds] = useState([]);
   const [competencies, setCompetencies] = useState([]);
+  const [commercialStatus, setCommercialStatus] = useState("");
+  const [previousStatus, setPreviousStatus] = useState("");
   
   // Approval workflow
   const [projectStatus, setProjectStatus] = useState("draft");
@@ -290,6 +292,8 @@ const ProjectEstimator = () => {
       setBidCategory(project.bid_category || "");
       setForecastedClosureDate(project.forecasted_closure_date || "");
       setCompetencyIds(project.competency_ids || []);
+      setCommercialStatus(project.commercial_status || "");
+      setPreviousStatus(project.previous_status || "");
       
       // Access control
       setVisibility(project.visibility || "public");
@@ -677,6 +681,7 @@ const ProjectEstimator = () => {
       overhead_percentage: location.overhead_percentage,
       is_onsite: newAllocation.is_onsite,
       travel_required: newAllocation.travel_required,
+      technology_name: selectedRate.technology_name || skills.find(s => s.id === selectedRate.skill_id)?.technology_name || "",
       resource_group_id: "",
       override_hourly_rate: null,
       phase_allocations: {},
@@ -1043,6 +1048,7 @@ const ProjectEstimator = () => {
       forecasted_closure_date: forecastedClosureDate,
       competency_ids: competencyIds,
       competency_names: competencyIds.map(id => competencies.find(c => c.id === id)?.name || "").filter(Boolean),
+      commercial_status: commercialStatus,
       // Access control
       visibility: visibility,
       restricted_user_ids: restrictedUserIds,
@@ -1687,6 +1693,7 @@ const ProjectEstimator = () => {
         milestones: ganttMilestones, paymentTermsDays: ganttPaymentTermsDays,
         projectActivities,
         cashflowData,
+        skills,
       });
       // Upload to backend and trigger download via hidden iframe
       const uploadRes = await fetch(`${API}/download-file`, {
@@ -1960,6 +1967,8 @@ const ProjectEstimator = () => {
         bidCategory={bidCategory} setBidCategory={setBidCategory}
         forecastedClosureDate={forecastedClosureDate} setForecastedClosureDate={setForecastedClosureDate}
         competencyIds={competencyIds} setCompetencyIds={setCompetencyIds} competencies={competencies}
+        commercialStatus={commercialStatus} setCommercialStatus={setCommercialStatus}
+        previousStatus={previousStatus}
       />
 
       {/* Gantt Chart */}

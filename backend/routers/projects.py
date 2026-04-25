@@ -299,9 +299,16 @@ async def create_new_version(project_id: str, input: ProjectUpdate, user: dict =
     update_data = input.model_dump(exclude_unset=True)
     is_import = update_data.pop("is_import", False) if "is_import" in update_data else False
     old_status = "suspended" if is_import else "superseded"
+    # Preserve the previous status for display purposes (e.g., "Suspended (was Approved)")
+    previous_status = existing.get("status", "draft")
     await db.projects.update_one(
         {"id": project_id},
-        {"$set": {"is_latest_version": False, "status": old_status, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {
+            "is_latest_version": False,
+            "status": old_status,
+            "previous_status": previous_status,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
     )
     project_number = existing.get("project_number", "")
     max_version = await db.projects.find_one(

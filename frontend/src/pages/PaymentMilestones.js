@@ -46,7 +46,9 @@ const PaymentMilestones = () => {
       const res = await axios.get(`${API}/projects`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const allProjects = (res.data || []).sort((a, b) => {
+      const allProjects = (res.data || [])
+        .filter(p => p.is_latest_version !== false)
+        .sort((a, b) => {
         const pnCmp = (a.project_number || "").localeCompare(b.project_number || "");
         if (pnCmp !== 0) return pnCmp;
         return (b.version || 1) - (a.version || 1);

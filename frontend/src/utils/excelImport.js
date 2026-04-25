@@ -107,6 +107,7 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
     const colGrp = findCol("grp");
     const colOvr = findCol("ovr$/hr", "ovr$hr", "ovr");
     const colComments = findCol("comment");
+    const colTech = findCol("technology");
 
     if (!colSkill || !colLevel) return;
 
@@ -135,6 +136,7 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
       const grp = safeCell(row, colGrp)?.toString() || "";
       const ovr = parseFloat(safeCell(row, colOvr)) || null;
       const comments = safeCell(row, colComments)?.toString() || "";
+      const techName = colTech ? safeCell(row, colTech)?.toString().trim() || "" : "";
 
       const phases = {};
       for (let c = phaseStart; c < phaseStart + phaseNames.length; c++) {
@@ -170,6 +172,7 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
         override_hourly_rate: ovr,
         phase_allocations: phases,
         comments,
+        technology_name: techName,
       });
     }
 

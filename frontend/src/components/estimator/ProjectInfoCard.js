@@ -43,6 +43,8 @@ export const ProjectInfoCard = ({
   bidCategory, setBidCategory,
   forecastedClosureDate, setForecastedClosureDate,
   competencyIds, setCompetencyIds, competencies,
+  commercialStatus, setCommercialStatus,
+  previousStatus,
 }) => {
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
@@ -63,13 +65,15 @@ export const ProjectInfoCard = ({
           <CardTitle className="text-xl font-bold text-[#0F172A]">Project Information</CardTitle>
         </div>
         {isReadOnly && (
-          <Badge className="bg-amber-100 text-amber-800">
-            {!isLatestVersion ? "Read-only: Older Version" :
-             projectStatus === "in_review" ? "Read-only: In Review" :
-             projectStatus === "superseded" ? "Read-only: Superseded" :
-             projectStatus === "suspended" ? "Read-only: Suspended" :
-             projectStatus === "obsolete" ? "Read-only: Obsolete" : "Read-only: Approved"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge className="bg-amber-100 text-amber-800">
+              {!isLatestVersion ? "Read-only: Older Version" :
+               projectStatus === "in_review" ? "Read-only: In Review" :
+               projectStatus === "superseded" ? "Read-only: Superseded" :
+               projectStatus === "suspended" ? `Read-only: Suspended${previousStatus ? ` (was ${previousStatus.charAt(0).toUpperCase() + previousStatus.slice(1)})` : ""}` :
+               projectStatus === "obsolete" ? "Read-only: Obsolete" : "Read-only: Approved"}
+            </Badge>
+          </div>
         )}
       </CardHeader>
       {!collapsedSections.projectInfo && (
@@ -287,6 +291,23 @@ export const ProjectInfoCard = ({
             <Label>Forecasted Closure Date</Label>
             <Input type="date" value={forecastedClosureDate} onChange={(e) => setForecastedClosureDate(e.target.value)} data-testid="forecasted-closure-date" disabled={isReadOnly} />
           </div>
+          {/* Commercial Status - always editable, visible after approval */}
+          {(projectStatus === "approved" || projectStatus === "suspended" || projectStatus === "in_review" || commercialStatus) && (
+            <div>
+              <Label>Commercial Status</Label>
+              <Select value={commercialStatus || "none"} onValueChange={(v) => setCommercialStatus(v === "none" ? "" : v)}>
+                <SelectTrigger data-testid="commercial-status-select"><SelectValue placeholder="Select status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">-- Not Set --</SelectItem>
+                  <SelectItem value="Pending for Submission">Pending for Submission</SelectItem>
+                  <SelectItem value="Submitted to Customer">Submitted to Customer</SelectItem>
+                  <SelectItem value="Won">Won</SelectItem>
+                  <SelectItem value="Lost">Lost</SelectItem>
+                  <SelectItem value="Cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {/* Competency */}
           <div>
             <Label>Competency</Label>

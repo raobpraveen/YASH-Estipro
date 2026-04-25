@@ -306,6 +306,8 @@ class Project(BaseModel):
     forecasted_closure_date: str = ""
     competency_ids: List[str] = []
     competency_names: List[str] = []
+    commercial_status: str = ""
+    previous_status: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -344,6 +346,8 @@ class ProjectCreate(BaseModel):
     forecasted_closure_date: str = ""
     competency_ids: List[str] = []
     competency_names: List[str] = []
+    commercial_status: str = ""
+    previous_status: str = ""
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
@@ -382,6 +386,8 @@ class ProjectUpdate(BaseModel):
     forecasted_closure_date: Optional[str] = None
     competency_ids: Optional[List[str]] = None
     competency_names: Optional[List[str]] = None
+    commercial_status: Optional[str] = None
+    previous_status: Optional[str] = None
 
 
 # ========== Notification & Audit Models ==========
