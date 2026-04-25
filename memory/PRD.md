@@ -17,59 +17,48 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - Approval workflow (Draft, In Review, Approved, Rejected, Suspended, Obsolete)
 - Dashboard with analytics and filtering
 - Version comparison screen
-- Project archiving, access control (public/restricted), audit logging
-- Cascade delete: Project deletion cleans up milestones and activities
+- Project archiving, access control, audit logging, cascade delete
 
 ### Financial Features
-- Payment Terms in Cashflow (shift Cash-In by N days, auto-extend timeline)
-- Cumulative Cashflow line chart with break-even analysis
-- Payment Milestones with copy-to-wave utility (renamed to "Key Milestones")
-- Nego Buffer at wave level
+- Payment Terms in Cashflow, Cumulative line chart with break-even
+- Payment Milestones (renamed to "Key Milestones"), Nego Buffer
 
-### Gantt Chart & Phase-Based Milestones
-- Phase Range Editor with half-month precision
-- Payment milestones (amber) and Key milestones (blue, 0-100% slider)
-- Gantt Drag-and-Drop: Milestone diamonds draggable along phase bars
-- Smart label positioning, Gantt chart PNG export
+### Gantt Chart & Milestones
+- Phase Range Editor, Payment + Key milestones, Drag-and-Drop, PNG export
 
 ### Excel Integration
-- Formula-based Excel export with color coding
-- Smart Import with milestone import/overwrite support
-- Milestones, Activities, Cashflow, Gantt Chart sheets in export
+- Formula-based export with Milestones, Activities, Cashflow, Gantt sheets
+- Smart Import with milestone re-import
 
 ### Phase Activities & Deliverables
-- Activity Templates Master Data at /activity-templates with Ctrl+S support
-- Pre-seeded SAP S/4HANA Private Cloud and Public Cloud templates
-- Project Activities Modal with template adoption and wave-specific items
-
-### Documentation
-- User Manual (21 sections), Support Guide, Tutorials — all updated
-- Back-to-top floating button on all doc pages
+- Activity Templates Master Data (Ctrl+S shortcut), SAP seed templates
+- Project Activities Modal with template adoption
 
 ### Phase 1 Quick Wins (Completed Apr 2026)
-1. Sub Technologies: Parent Technology column moved to first position
-2. Sub Technologies: Edit option added (pencil icon, dialog for name change)
-3. Base Locations: Edit option added for Overhead % value
-4. Activity Templates: Ctrl+S keyboard shortcut for saving
-5. Customer Master: Added "Wholesale and Trading" and "Oil and Gas" industry verticals
-6. Waves: Total MM adjusted to 2 decimal places
-7. Waves: "Marker Milestone" renamed to "Key Milestone" globally
-8. Project Info: Version-wise comments are now non-editable for saved projects
-9. Documentation: Updated status definitions (Draft, Suspended, Obsolete, Approved, Rejected)
-10. Saved Projects: Fixed Unarchive bug (auth token now sent)
-11. Saved Projects: Sort by project number (descending)
-- Backend: PUT /api/sub-technologies/{id} and PUT /api/base-locations/{id} endpoints added
+1. Sub Technologies: Parent Technology first + Edit option
+2. Base Locations: Edit Overhead %
+3. Activity Templates: Ctrl+S shortcut
+4. Customer Master: Added "Wholesale and Trading" & "Oil and Gas"
+5. Waves: Total MM → 2 decimal places
+6. "Marker Milestone" → "Key Milestone" globally
+7. Version notes non-editable for saved projects
+8. Status definitions updated in docs
+9. Unarchive bug fixed (auth token)
+10. Projects sorted by project number (descending)
+11. Backend PUT endpoints for sub-technologies and base-locations
+
+### Phase 2 Project Information & Filters (Completed Apr 2026)
+12. Customer dropdown with text search (Popover combobox)
+13. Bid Category field (Budgetary, Most Likely, Committed, Won, Loss, None) — always editable, Budgetary excluded from dashboard
+14. Forecasted Closure Date (date picker)
+15. Competency field (multi-select) + new Competencies master data page with CRUD
+16. Dashboard: Location filter from actual project data (not hardcoded COUNTRIES)
+17. Saved Projects: Status filter (Draft, In Review, Approved, Rejected, Suspended, Obsolete)
+18. Saved Projects: Totals row for Man-Months, Selling Price, Nego Buffer, Final Price
+- Backend: CRUD /api/competencies, GET /api/dashboard/project-locations
+- Dashboard analytics now excludes Budgetary projects
 
 ## Pending Implementation
-
-### Phase 2: Project Information & Filters
-12. Customer dropdown with text search
-13. Bid Category field (Budgetary, Most Likely, Committed, Won, Loss, None)
-14. Forecasted Closure Date field (date picker)
-15. Competency field with dropdown + new master data
-16. Dashboard: Filter by project locations and sales manager
-17. Saved Projects: Status filter
-18. Saved Projects: Totals for Selling Price, Nego Buffer, Final Price
 
 ### Phase 3: Wave Grid Enhancements
 19. Toggle wave include/exclude from summary
@@ -93,10 +82,7 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - PDF Export with Branding
 - Client-Facing Shareable View
 - Proposal Auto-Generation (Word/PPT)
-- WRICEF Tracker
-- Scope Definition Module
-- Integration Matrix
-- Risk Register
+- WRICEF Tracker, Scope Definition Module, Integration Matrix, Risk Register
 - AI Integration (Estimation Suggestions, RFP Parser)
 - Actuals Tracking & Profitability Module
 
