@@ -170,6 +170,7 @@ export const calculateOverallSummary = (waves, profitMarginPercentage, negoBuffe
   let totalOnsiteResourceCount = 0, totalOffshoreResourceCount = 0;
 
   waves.forEach(wave => {
+    if (wave.exclude_from_summary) return; // Skip excluded waves
     const summary = calculateWaveSummary(wave, profitMarginPercentage, negoBufferPercentage);
     totalMM += summary.totalMM;
     onsiteMM += summary.onsiteMM;

@@ -548,7 +548,6 @@ const PaymentMilestones = () => {
                             <TableHead className="w-10">#</TableHead>
                             <TableHead>Milestone Name</TableHead>
                             <TableHead className="w-32">Linked Phase</TableHead>
-                            <TableHead className="w-24">Position</TableHead>
                             <TableHead className="w-28">Target Month</TableHead>
                             <TableHead className="w-28">Payment %</TableHead>
                             <TableHead className="text-right w-36">Payment Amount</TableHead>
@@ -564,15 +563,7 @@ const PaymentMilestones = () => {
                               <TableCell>
                                 <Select value={ms.phase_name || "__none__"} onValueChange={(v) => {
                                   const actualValue = v === "__none__" ? "" : v;
-                                  const ph = (wave.phase_ranges || []).find(p => p.name === actualValue);
-                                  const pos = ms.position || "end";
-                                  let targetMonth = ms.target_month;
-                                  if (ph) {
-                                    if (pos === "start") targetMonth = `M${Math.ceil(ph.start_month)}`;
-                                    else if (pos === "mid") targetMonth = `M${Math.ceil((ph.start_month + ph.end_month) / 2)}`;
-                                    else targetMonth = `M${Math.ceil(ph.end_month)}`;
-                                  }
-                                  setMilestones(milestones.map(m => m.id === ms.id ? { ...m, phase_name: actualValue, target_month: targetMonth } : m));
+                                  setMilestones(milestones.map(m => m.id === ms.id ? { ...m, phase_name: actualValue } : m));
                                 }}>
                                   <SelectTrigger className="w-28" data-testid={`ms-phase-${ms.id}`}><SelectValue placeholder="Select..." /></SelectTrigger>
                                   <SelectContent>
@@ -582,26 +573,18 @@ const PaymentMilestones = () => {
                                 </Select>
                               </TableCell>
                               <TableCell>
-                                <Select value={ms.position || "end"} onValueChange={(v) => {
+                                <Select value={ms.target_month || "M1"} onValueChange={(v) => {
+                                  // Auto-derive position from target month + phase
+                                  const monthNum = parseInt(v.replace("M", ""));
                                   const ph = (wave.phase_ranges || []).find(p => p.name === ms.phase_name);
-                                  let targetMonth = ms.target_month;
+                                  let position = ms.position || "end";
                                   if (ph) {
-                                    if (v === "start") targetMonth = `M${Math.ceil(ph.start_month)}`;
-                                    else if (v === "mid") targetMonth = `M${Math.ceil((ph.start_month + ph.end_month) / 2)}`;
-                                    else targetMonth = `M${Math.ceil(ph.end_month)}`;
+                                    if (monthNum <= Math.ceil(ph.start_month)) position = "start";
+                                    else if (monthNum >= Math.ceil(ph.end_month)) position = "end";
+                                    else position = "mid";
                                   }
-                                  setMilestones(milestones.map(m => m.id === ms.id ? { ...m, position: v, target_month: targetMonth } : m));
+                                  setMilestones(milestones.map(m => m.id === ms.id ? { ...m, target_month: v, position } : m));
                                 }}>
-                                  <SelectTrigger className="w-20" data-testid={`ms-pos-${ms.id}`}><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="start">Start</SelectItem>
-                                    <SelectItem value="mid">Mid</SelectItem>
-                                    <SelectItem value="end">End</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Select value={ms.target_month || "M1"} onValueChange={(v) => updateMilestone(ms.id, "target_month", v)}>
                                   <SelectTrigger className="w-24" data-testid={`ms-month-${ms.id}`}><SelectValue /></SelectTrigger>
                                   <SelectContent>{Array.from({ length: monthCount }, (_, i) => (<SelectItem key={i} value={`M${i + 1}`}>M{i + 1}</SelectItem>))}</SelectContent>
                                 </Select>

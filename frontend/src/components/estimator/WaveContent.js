@@ -32,6 +32,7 @@ export const WaveContent = ({
   rates,
   skills,
   locations,
+  technologyIds,
   // Handlers
   onAddPhaseColumn,
   onRemovePhaseColumn,
@@ -57,7 +58,20 @@ export const WaveContent = ({
   onSaveMilestones,
 }) => {
   const [phasesCollapsed, setPhasesCollapsed] = useState(false);
+  const [splitRangeDialogOpen, setSplitRangeDialogOpen] = useState(false);
+  const [splitRangeAllocationId, setSplitRangeAllocationId] = useState(null);
+  const [splitRangeInput, setSplitRangeInput] = useState("");
   const phaseCount = (wave.phase_ranges || []).length;
+
+  // Filter rates by project's selected technologies
+  const filteredRates = (technologyIds && technologyIds.length > 0)
+    ? rates.filter(r => {
+        // Match by skill's technology if available, otherwise show all
+        const skill = skills.find(s => s.id === r.skill_id);
+        if (!skill || !skill.technology_id) return true;
+        return technologyIds.includes(skill.technology_id);
+      })
+    : rates;
 
   return (
     <div className="space-y-4">
@@ -78,6 +92,21 @@ export const WaveContent = ({
           <span className="text-sm text-gray-600">Resources: {wave.grid_allocations.length}</span>
           <span className="text-sm text-[#F59E0B]">Onsite: {waveSummary.onsiteResourceCount}</span>
           <span className="text-sm text-purple-600">Traveling: {waveSummary.travelingResourceCount}</span>
+          {!isReadOnly && (
+            <label className="flex items-center gap-1.5 text-sm cursor-pointer select-none" data-testid={`wave-exclude-toggle-${wave.id}`}>
+              <Switch
+                checked={!!wave.exclude_from_summary}
+                onCheckedChange={(checked) => setWaves(waves.map(w => w.id === wave.id ? { ...w, exclude_from_summary: checked } : w))}
+                className="scale-75"
+              />
+              <span className={wave.exclude_from_summary ? "text-red-500 font-medium" : "text-gray-400"}>
+                {wave.exclude_from_summary ? "Excluded from Summary" : "Exclude"}
+              </span>
+            </label>
+          )}
+          {isReadOnly && wave.exclude_from_summary && (
+            <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 text-xs">Excluded from Summary</Badge>
+          )}
           {!isReadOnly && waves.length > 1 && (
             <span className="text-sm text-gray-500 flex items-center gap-1">
               Starts at project M
@@ -131,12 +160,12 @@ export const WaveContent = ({
                 <div>
                   <Label htmlFor="resource-rate">Skill & Proficiency</Label>
                   <Select value={newAllocation.rate_id} onValueChange={(value) => {
-                    const rate = rates.find(r => r.id === value);
+                    const rate = filteredRates.find(r => r.id === value);
                     setNewAllocation({ ...newAllocation, rate_id: value, custom_salary: rate?.avg_monthly_salary?.toString() || "" });
                   }}>
                     <SelectTrigger id="resource-rate" data-testid="resource-rate-select"><SelectValue placeholder="Select skill" /></SelectTrigger>
                     <SelectContent>
-                      {rates.map((rate) => (
+                      {filteredRates.map((rate) => (
                         <SelectItem key={rate.id} value={rate.id}>
                           {rate.skill_name} ({rate.proficiency_level}) - {rate.base_location_name} - ${rate.avg_monthly_salary}/mo
                         </SelectItem>
@@ -860,14 +889,15 @@ export const WaveContent = ({
                                 variant="ghost" size="icon"
                                 className="h-7 w-7 text-[#8B5CF6] hover:text-[#8B5CF6] hover:bg-[#8B5CF6]/10"
                                 onClick={() => {
-                                  const value = prompt(`Enter MM value to apply to all ${wave.phase_names.length} months:`, "1");
-                                  if (value !== null) onApplyToAllMonths(wave.id, allocation.id, value);
+                                  setSplitRangeAllocationId(allocation.id);
+                                  setSplitRangeInput("");
+                                  setSplitRangeDialogOpen(true);
                                 }}
                                 data-testid={`apply-all-${allocation.id}`}
                               >
                                 <Calculator className="w-3.5 h-3.5" />
                               </Button>
-                            </TooltipTrigger><TooltipContent><p>Apply same value to all months</p></TooltipContent></Tooltip>
+                            </TooltipTrigger><TooltipContent><p>Apply value to months (supports split ranges)</p></TooltipContent></Tooltip>
                             <Button
                               variant="ghost" size="icon"
                               className="h-7 w-7 text-[#EF4444] hover:text-[#EF4444] hover:bg-[#EF4444]/10"
@@ -1093,6 +1123,105 @@ export const WaveContent = ({
           </CardContent>
         </Card>
       )}
+
+      {/* Floating Add Row Button */}
+      {!isReadOnly && wave.grid_allocations.length > 0 && (
+        <div className="sticky bottom-0 z-10 flex justify-center py-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAddResourceDialogOpen(true)}
+            className="bg-white shadow-md border-dashed border-2 border-[#0EA5E9] text-[#0EA5E9] hover:bg-[#0EA5E9]/10"
+            data-testid="floating-add-row-btn"
+          >
+            <Plus className="w-4 h-4 mr-1" /> Add Resource Row
+          </Button>
+        </div>
+      )}
+
+      {/* Split Range Allocation Dialog */}
+      <Dialog open={splitRangeDialogOpen} onOpenChange={setSplitRangeDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-[#0F172A]">Apply Values to Months</DialogTitle>
+            <DialogDescription>
+              Enter a single value for all months, or use split ranges for ramp-up/down patterns.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div>
+              <Label>Value or Range Pattern</Label>
+              <Input
+                placeholder="e.g., 1 or M1-M3:1, M4-M5:0.5, M6:0"
+                value={splitRangeInput}
+                onChange={(e) => setSplitRangeInput(e.target.value)}
+                data-testid="split-range-input"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                <strong>Simple:</strong> Enter a number (e.g., <code className="bg-gray-100 px-1 rounded">1</code>) to apply to all months.<br />
+                <strong>Split range:</strong> Use <code className="bg-gray-100 px-1 rounded">M1-M3:1, M4-M5:0.5, M6:0</code> format.<br />
+                Months use M1, M2, ... matching the wave's column headers.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 bg-[#0F172A] hover:bg-[#0F172A]/90"
+                data-testid="split-range-apply-btn"
+                onClick={() => {
+                  const input = splitRangeInput.trim();
+                  if (!input) return;
+                  const phaseNames = wave.phase_names;
+                  // Check if it's a simple number
+                  const simpleNum = parseFloat(input);
+                  if (!isNaN(simpleNum) && !input.includes("M") && !input.includes(":")) {
+                    onApplyToAllMonths(wave.id, splitRangeAllocationId, input);
+                    setSplitRangeDialogOpen(false);
+                    return;
+                  }
+                  // Parse split ranges: "M1-M3:1, M4-M5:0.5, M6:0"
+                  const segments = input.split(",").map(s => s.trim());
+                  const monthValues = {};
+                  for (const seg of segments) {
+                    const match = seg.match(/^M(\d+)(?:-M(\d+))?:(.+)$/i);
+                    if (!match) continue;
+                    const start = parseInt(match[1]);
+                    const end = match[2] ? parseInt(match[2]) : start;
+                    const val = parseFloat(match[3]);
+                    if (isNaN(val)) continue;
+                    for (let m = start; m <= end; m++) {
+                      const idx = m - 1;
+                      if (idx >= 0 && idx < phaseNames.length) {
+                        monthValues[phaseNames[idx]] = val;
+                      }
+                    }
+                  }
+                  // Apply the values
+                  if (Object.keys(monthValues).length > 0) {
+                    setWaves(waves.map(w => {
+                      if (w.id !== wave.id) return w;
+                      return {
+                        ...w,
+                        grid_allocations: w.grid_allocations.map(a => {
+                          if (a.id !== splitRangeAllocationId) return a;
+                          const newPhaseAllocations = { ...a.phase_allocations };
+                          Object.entries(monthValues).forEach(([phase, val]) => {
+                            newPhaseAllocations[phase] = val;
+                          });
+                          return { ...a, phase_allocations: newPhaseAllocations };
+                        })
+                      };
+                    }));
+                    setSplitRangeDialogOpen(false);
+                  }
+                }}
+              >
+                Apply
+              </Button>
+              <Button variant="outline" onClick={() => setSplitRangeDialogOpen(false)}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

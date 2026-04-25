@@ -1031,6 +1031,7 @@ const ProjectEstimator = () => {
         wave_start_month: w.wave_start_month || 1,
         logistics_config: w.logistics_config,
         nego_buffer_percentage: w.nego_buffer_percentage || 0,
+        exclude_from_summary: w.exclude_from_summary || false,
         grid_allocations: w.grid_allocations,
       })),
       version_notes: versionNotes,
@@ -2124,6 +2125,7 @@ const ProjectEstimator = () => {
                     addResourceDialogOpen={addResourceDialogOpen} setAddResourceDialogOpen={setAddResourceDialogOpen}
                     newAllocation={newAllocation} setNewAllocation={setNewAllocation}
                     rates={rates} skills={skills} locations={locations}
+                    technologyIds={technologyIds}
                     onAddPhaseColumn={handleAddPhaseColumn} onRemovePhaseColumn={handleRemovePhaseColumn}
                     onUpdatePhaseName={handleUpdatePhaseName}
                     onOpenLogisticsEditor={handleOpenLogisticsEditor} onAddAllocation={handleAddAllocation}
