@@ -11,6 +11,7 @@ from models import (
     Skill, SkillCreate,
     ProficiencyRate, ProficiencyRateCreate,
     SalesManager, SalesManagerCreate, SalesManagerUpdate,
+    Competency, CompetencyCreate,
 )
 
 router = APIRouter()
@@ -304,3 +305,37 @@ async def delete_sales_manager(manager_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Sales Manager not found")
     return {"message": "Sales Manager deleted successfully"}
+
+
+# ========== Competencies ==========
+
+@router.post("/competencies", response_model=Competency)
+async def create_competency(input: CompetencyCreate):
+    competency = Competency(**input.model_dump())
+    await db.competencies.insert_one(competency.model_dump())
+    return competency
+
+@router.get("/competencies", response_model=List[Competency])
+async def get_competencies():
+    items = await db.competencies.find({}, {"_id": 0}).to_list(1000)
+    return items
+
+@router.put("/competencies/{comp_id}")
+async def update_competency(comp_id: str, input: dict):
+    name = input.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    update_data = {"name": name}
+    if "description" in input:
+        update_data["description"] = input["description"]
+    result = await db.competencies.update_one({"id": comp_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Competency not found")
+    return {"message": "Competency updated successfully"}
+
+@router.delete("/competencies/{comp_id}")
+async def delete_competency(comp_id: str):
+    result = await db.competencies.delete_one({"id": comp_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Competency not found")
+    return {"message": "Competency deleted successfully"}

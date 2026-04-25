@@ -5,6 +5,21 @@ from database import db
 router = APIRouter()
 
 
+@router.get("/dashboard/project-locations")
+async def get_project_locations():
+    """Return distinct location codes actually used in projects."""
+    pipeline = [
+        {"$match": {"is_archived": {"$ne": True}, "is_latest_version": True}},
+        {"$unwind": "$project_locations"},
+        {"$group": {"_id": "$project_locations"}},
+        {"$sort": {"_id": 1}},
+    ]
+    results = await db.projects.aggregate(pipeline).to_list(500)
+    return [r["_id"] for r in results if r["_id"]]
+
+
+
+
 @router.get("/dashboard/analytics")
 async def get_dashboard_analytics(
     date_from: Optional[str] = None,
@@ -14,7 +29,7 @@ async def get_dashboard_analytics(
     location_codes: Optional[str] = None,
     sales_manager_ids: Optional[str] = None
 ):
-    query = {}
+    query = {"bid_category": {"$ne": "Budgetary"}}
     if date_from or date_to:
         date_filter = {}
         if date_from:

@@ -63,6 +63,7 @@ const Dashboard = () => {
   const [customers, setCustomers] = useState([]);
   const [projectTypes, setProjectTypes] = useState([]);
   const [salesManagers, setSalesManagers] = useState([]);
+  const [projectLocations, setProjectLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
@@ -85,6 +86,7 @@ const Dashboard = () => {
     fetchCustomers();
     fetchProjectTypes();
     fetchSalesManagers();
+    fetchProjectLocations();
   }, []);
 
   const fetchCustomers = async () => {
@@ -95,6 +97,9 @@ const Dashboard = () => {
   };
   const fetchSalesManagers = async () => {
     try { setSalesManagers((await axios.get(`${API}/sales-managers`)).data); } catch {}
+  };
+  const fetchProjectLocations = async () => {
+    try { setProjectLocations((await axios.get(`${API}/dashboard/project-locations`)).data); } catch {}
   };
 
   const fetchDashboardData = async () => {
@@ -250,10 +255,13 @@ const Dashboard = () => {
             <div>
               <Label className="mb-2 block">Project Location(s)</Label>
               <div className="flex flex-wrap gap-2" data-testid="filter-locations">
-                {COUNTRIES.slice(0, 20).map(c => (
-                  <button key={c.code} onClick={() => toggleFilter("selectedLocationCodes", c.code)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${filters.selectedLocationCodes.includes(c.code) ? "bg-[#10B981] text-white border-[#10B981]" : "bg-white text-gray-700 border-gray-300 hover:border-[#10B981]"}`}>{c.name}</button>
-                ))}
+                {projectLocations.length > 0 ? projectLocations.map(code => {
+                  const country = COUNTRIES.find(c => c.code === code);
+                  return (
+                    <button key={code} onClick={() => toggleFilter("selectedLocationCodes", code)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${filters.selectedLocationCodes.includes(code) ? "bg-[#10B981] text-white border-[#10B981]" : "bg-white text-gray-700 border-gray-300 hover:border-[#10B981]"}`}>{country?.name || code}</button>
+                  );
+                }) : <p className="text-xs text-gray-400 italic">No project locations found</p>}
               </div>
             </div>
             <div>

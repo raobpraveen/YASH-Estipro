@@ -65,6 +65,12 @@ const ProjectEstimator = () => {
   
   const [salesManagerId, setSalesManagerId] = useState("");
   
+  // New fields
+  const [bidCategory, setBidCategory] = useState("");
+  const [forecastedClosureDate, setForecastedClosureDate] = useState("");
+  const [competencyIds, setCompetencyIds] = useState([]);
+  const [competencies, setCompetencies] = useState([]);
+  
   // Approval workflow
   const [projectStatus, setProjectStatus] = useState("draft");
   const [projectCreatorId, setProjectCreatorId] = useState("");
@@ -191,6 +197,7 @@ const ProjectEstimator = () => {
     fetchSalesManagers();
     fetchSubTechnologies();
     fetchAllUsers();
+    fetchCompetencies();
   }, []);
 
   useEffect(() => {
@@ -280,6 +287,9 @@ const ProjectEstimator = () => {
       setSalesManagerId(project.sales_manager_id || "");
       setIsLatestVersion(project.is_latest_version !== false);
       setProjectCreatorId(project.created_by_id || "");
+      setBidCategory(project.bid_category || "");
+      setForecastedClosureDate(project.forecasted_closure_date || "");
+      setCompetencyIds(project.competency_ids || []);
       
       // Access control
       setVisibility(project.visibility || "public");
@@ -422,6 +432,11 @@ const ProjectEstimator = () => {
       console.error("Failed to fetch sub-technologies");
     }
   };
+
+  const fetchCompetencies = async () => {
+    try { setCompetencies((await axios.get(`${API}/competencies`)).data); } catch {}
+  };
+
 
   const handleAddWave = () => {
     if (!newWave.name || !newWave.duration_months) {
@@ -1023,6 +1038,10 @@ const ProjectEstimator = () => {
       approver_email: approverEmail,
       sales_manager_id: salesManagerId,
       sales_manager_name: salesManagers.find(m => m.id === salesManagerId)?.name || "",
+      bid_category: bidCategory === "none" ? "" : bidCategory,
+      forecasted_closure_date: forecastedClosureDate,
+      competency_ids: competencyIds,
+      competency_names: competencyIds.map(id => competencies.find(c => c.id === id)?.name || "").filter(Boolean),
       // Access control
       visibility: visibility,
       restricted_user_ids: restrictedUserIds,
@@ -1937,6 +1956,9 @@ const ProjectEstimator = () => {
         projectDescription={projectDescription} setProjectDescription={setProjectDescription}
         versionNotes={versionNotes} setVersionNotes={setVersionNotes}
         projectId={projectId}
+        bidCategory={bidCategory} setBidCategory={setBidCategory}
+        forecastedClosureDate={forecastedClosureDate} setForecastedClosureDate={setForecastedClosureDate}
+        competencyIds={competencyIds} setCompetencyIds={setCompetencyIds} competencies={competencies}
       />
 
       {/* Gantt Chart */}

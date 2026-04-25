@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -5,8 +6,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronRight, X, Search, ChevronsUpDown, Check } from "lucide-react";
 import { COUNTRIES } from "@/utils/constants";
+
+const BID_CATEGORIES = [
+  { value: "", label: "None" },
+  { value: "Budgetary", label: "Budgetary" },
+  { value: "Most Likely", label: "Most Likely" },
+  { value: "Committed", label: "Committed" },
+  { value: "Won", label: "Won" },
+  { value: "Loss", label: "Loss" },
+];
 
 export const ProjectInfoCard = ({
   isReadOnly, isLatestVersion, projectStatus,
@@ -28,7 +40,21 @@ export const ProjectInfoCard = ({
   projectDescription, setProjectDescription,
   versionNotes, setVersionNotes,
   projectId,
+  bidCategory, setBidCategory,
+  forecastedClosureDate, setForecastedClosureDate,
+  competencyIds, setCompetencyIds, competencies,
 }) => {
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
+
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearch) return customers;
+    const term = customerSearch.toLowerCase();
+    return customers.filter(c => c.name.toLowerCase().includes(term));
+  }, [customers, customerSearch]);
+
+  const selectedCustomerName = customers.find(c => c.id === customerId)?.name || "";
+
   return (
     <Card className={`border ${isReadOnly ? 'border-amber-300 bg-amber-50/30' : 'border-[#E2E8F0]'} shadow-sm`}>
       <CardHeader className="flex flex-row items-center justify-between cursor-pointer select-none" onClick={() => toggleSection("projectInfo")}>
@@ -49,16 +75,51 @@ export const ProjectInfoCard = ({
       {!collapsedSections.projectInfo && (
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Customer with search */}
           <div>
             <Label htmlFor="customer">Customer *</Label>
-            <Select value={customerId} onValueChange={setCustomerId} disabled={isReadOnly}>
-              <SelectTrigger id="customer" data-testid="customer-select"><SelectValue placeholder="Select customer" /></SelectTrigger>
-              <SelectContent>
-                {customers.map((customer) => (
-                  <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isReadOnly ? (
+              <Input value={selectedCustomerName} disabled className="bg-gray-50" data-testid="customer-display" />
+            ) : (
+              <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full justify-between font-normal" data-testid="customer-select">
+                    {selectedCustomerName || "Select customer..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[320px] p-0" align="start">
+                  <div className="p-2 border-b">
+                    <div className="flex items-center gap-2 px-2">
+                      <Search className="w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search customers..."
+                        value={customerSearch}
+                        onChange={(e) => setCustomerSearch(e.target.value)}
+                        className="flex-1 text-sm outline-none bg-transparent"
+                        data-testid="customer-search-input"
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-[220px] overflow-y-auto p-1">
+                    {filteredCustomers.length === 0 ? (
+                      <p className="text-sm text-gray-500 text-center py-4">No customers found</p>
+                    ) : filteredCustomers.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => { setCustomerId(c.id); setCustomerPopoverOpen(false); setCustomerSearch(""); }}
+                        className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-gray-100 flex items-center gap-2 ${customerId === c.id ? "bg-blue-50 text-blue-700" : ""}`}
+                        data-testid={`customer-option-${c.id}`}
+                      >
+                        {customerId === c.id && <Check className="w-3 h-3" />}
+                        <span>{c.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
           <div>
             <Label htmlFor="project-name">Project Name *</Label>
@@ -208,6 +269,52 @@ export const ProjectInfoCard = ({
           <div>
             <Label htmlFor="crm-id">CRM ID</Label>
             <Input id="crm-id" placeholder="CRM Identifier (max 30 chars)" value={crmId} onChange={(e) => setCrmId(e.target.value.slice(0, 30))} maxLength={30} data-testid="crm-id-input" disabled={isReadOnly} />
+          </div>
+          {/* Bid Category - always editable */}
+          <div>
+            <Label>Bid Category</Label>
+            <Select value={bidCategory || ""} onValueChange={(v) => setBidCategory(v)}>
+              <SelectTrigger data-testid="bid-category-select"><SelectValue placeholder="Select bid category" /></SelectTrigger>
+              <SelectContent>
+                {BID_CATEGORIES.map(bc => (
+                  <SelectItem key={bc.value || "none"} value={bc.value || "none"}>{bc.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {/* Forecasted Closure Date */}
+          <div>
+            <Label>Forecasted Closure Date</Label>
+            <Input type="date" value={forecastedClosureDate} onChange={(e) => setForecastedClosureDate(e.target.value)} data-testid="forecasted-closure-date" disabled={isReadOnly} />
+          </div>
+          {/* Competency */}
+          <div>
+            <Label>Competency</Label>
+            <div className="flex flex-wrap gap-1 min-h-[40px] p-2 border rounded-md bg-white">
+              {(competencyIds || []).map(id => {
+                const comp = (competencies || []).find(c => c.id === id);
+                return (
+                  <Badge key={id} variant="secondary" className="flex items-center gap-1 bg-orange-100 text-orange-700">
+                    {comp?.name || id}
+                    {!isReadOnly && (
+                      <button onClick={() => setCompetencyIds(competencyIds.filter(c => c !== id))} className="ml-1 hover:text-red-500">
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </Badge>
+                );
+              })}
+              {!isReadOnly && (
+                <Select value="" onValueChange={(value) => { if (value && !(competencyIds || []).includes(value)) setCompetencyIds([...(competencyIds || []), value]); }}>
+                  <SelectTrigger className="w-[140px] h-7 text-xs border-dashed" data-testid="competency-select"><SelectValue placeholder="+ Add" /></SelectTrigger>
+                  <SelectContent>
+                    {(competencies || []).filter(c => !(competencyIds || []).includes(c.id)).map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
           {/* Access Control */}
           <div>

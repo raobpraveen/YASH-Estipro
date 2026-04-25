@@ -25,6 +25,7 @@ import Tutorials from "@/pages/Tutorials";
 import PaymentMilestones from "@/pages/PaymentMilestones";
 import CashflowStatement from "@/pages/CashflowStatement";
 import ActivityTemplates from "@/pages/ActivityTemplates";
+import Competencies from "@/pages/Competencies";
 import { Toaster } from "@/components/ui/sonner";
 
 function App() {
@@ -93,6 +94,7 @@ function App() {
               <Route path="payment-milestones" element={<PaymentMilestones />} />
               <Route path="cashflow" element={<CashflowStatement />} />
               <Route path="activity-templates" element={<ActivityTemplates />} />
+              <Route path="competencies" element={<Competencies />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
           )}

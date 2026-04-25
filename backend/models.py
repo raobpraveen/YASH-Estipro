@@ -196,6 +196,20 @@ class SalesManagerUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
+# ========== Competency Models ==========
+
+class Competency(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str = ""
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class CompetencyCreate(BaseModel):
+    name: str
+    description: str = ""
+
+
 # ========== Project Models ==========
 
 class WaveGridAllocation(BaseModel):
@@ -288,6 +302,10 @@ class Project(BaseModel):
     visibility: str = "public"
     restricted_user_ids: List[str] = []
     restricted_user_names: List[str] = []
+    bid_category: str = ""
+    forecasted_closure_date: str = ""
+    competency_ids: List[str] = []
+    competency_names: List[str] = []
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -322,6 +340,10 @@ class ProjectCreate(BaseModel):
     visibility: str = "public"
     restricted_user_ids: List[str] = []
     restricted_user_names: List[str] = []
+    bid_category: str = ""
+    forecasted_closure_date: str = ""
+    competency_ids: List[str] = []
+    competency_names: List[str] = []
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
@@ -356,6 +378,10 @@ class ProjectUpdate(BaseModel):
     visibility: Optional[str] = None
     restricted_user_ids: Optional[List[str]] = None
     restricted_user_names: Optional[List[str]] = None
+    bid_category: Optional[str] = None
+    forecasted_closure_date: Optional[str] = None
+    competency_ids: Optional[List[str]] = None
+    competency_names: Optional[List[str]] = None
 
 
 # ========== Notification & Audit Models ==========

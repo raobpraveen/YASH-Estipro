@@ -9,6 +9,7 @@ import {
   MapPin, 
   Layers, 
   Briefcase, 
+  Award,
   Calculator, 
   FolderKanban,
   LogOut,
@@ -135,6 +136,7 @@ const Layout = ({ user, onLogout }) => {
     { path: "/proficiency-rates", icon: Briefcase, label: "Proficiency Rates" },
     { path: "/sales-managers", icon: UserCircle, label: "Sales Managers" },
     { path: "/activity-templates", icon: FileText, label: "Activity Templates" },
+    { path: "/competencies", icon: Award, label: "Competencies" },
   ];
 
   const adminItems = [];

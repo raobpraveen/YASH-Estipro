@@ -69,6 +69,7 @@ const Projects = () => {
     salesManager: "",
     projectType: "",
     technology: "",
+    status: "",
   });
 
   useEffect(() => {
@@ -213,6 +214,10 @@ const Projects = () => {
         p.technology_names?.some(t => t.toLowerCase().includes(filters.technology.toLowerCase()))
       );
     }
+
+    if (filters.status) {
+      result = result.filter(p => p.status === filters.status);
+    }
     
     setFilteredProjects(result.sort((a, b) => {
       const numA = parseInt((a.project_number || "").replace(/\D/g, "")) || 0;
@@ -231,6 +236,7 @@ const Projects = () => {
       salesManager: "",
       projectType: "",
       technology: "",
+      status: "",
     });
   };
 
@@ -852,7 +858,7 @@ const Projects = () => {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label>Sales Manager</Label>
                 <Select 
@@ -901,6 +907,26 @@ const Projects = () => {
                     {technologies.map(t => (
                       <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select 
+                  value={filters.status || "all"} 
+                  onValueChange={(v) => setFilters({ ...filters, status: v === "all" ? "" : v })}
+                >
+                  <SelectTrigger data-testid="filter-status">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="in_review">In Review</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                    <SelectItem value="obsolete">Obsolete</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -994,6 +1020,27 @@ const Projects = () => {
                         </React.Fragment>
                       );
                     })}
+                    {/* Totals Row */}
+                    {filteredProjects.length > 0 && (() => {
+                      const totals = filteredProjects.reduce((acc, p) => {
+                        const vals = calculateProjectValue(p);
+                        acc.sellingPrice += vals.sellingPrice;
+                        acc.negoBuffer += vals.negoBuffer;
+                        acc.finalPrice += vals.finalPrice;
+                        acc.totalMM += vals.totalMM;
+                        return acc;
+                      }, { sellingPrice: 0, negoBuffer: 0, finalPrice: 0, totalMM: 0 });
+                      return (
+                        <TableRow className="bg-[#0F172A]/5 font-bold border-t-2 border-[#0F172A]">
+                          <TableCell colSpan={5} className="text-right text-[#0F172A]" data-testid="totals-label">Totals ({filteredProjects.length} projects)</TableCell>
+                          <TableCell className="text-right font-mono tabular-nums" data-testid="totals-mm">{totals.totalMM.toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-mono tabular-nums text-[#0F172A]" data-testid="totals-selling">{totals.sellingPrice.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</TableCell>
+                          <TableCell className="text-right font-mono tabular-nums text-blue-700" data-testid="totals-nego">{totals.negoBuffer.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</TableCell>
+                          <TableCell className="text-right font-mono tabular-nums text-emerald-700" data-testid="totals-final">{totals.finalPrice.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</TableCell>
+                          <TableCell colSpan={2}></TableCell>
+                        </TableRow>
+                      );
+                    })()}
                   </TableBody>
                 </Table>
               )}
