@@ -49,17 +49,19 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 23. Split month allocation dialog (supports "M1-M3:1, M4-M5:0.5, M6:0" ranges)
 24. Payment milestones linked to Target Month (Position column removed, auto-derived)
 
+### Phase 4: Status & Workflow (Completed Apr 2026)
+25. Retain Approved status on new version creation (`previous_status` tracking, "Suspended (was Approved)" UI label)
+26. Commercial status tracking (separate field, post-approval; 5 options)
+27. Milestone totals exclude previous versions (latest-only filter)
+28. Excel Export/Import: Add Technology column
+
+### Phase 5: Security & Cashflow (Completed Apr 2026)
+29. Session timeout — 15 min idle auto-logout with 2-min warning dialog (`useIdleTimeout` hook, AlertDialog with countdown, "Stay signed in" / "Sign out now" actions)
+30. Advance payment milestone indicator — `is_advance` flag on PaymentMilestone, Advance checkbox in milestone editor, purple summary card in Cashflow when `total_advance > 0`, row highlights + "ADV" badges in per-wave and combined monthly tables
+
 ## Pending Implementation
 
-### Phase 4: Status & Workflow
-25. Retain Approved status on new version creation
-26. Commercial status tracking (separate field, post-approval)
-27. Milestone totals exclude previous versions
-28. Excel Export: Add Technology column
-
-### Phase 5: Security & Cashflow
-29. Session timeout (15 min idle)
-30. Advance payment milestone indicator in cashflow
+(Awaiting user-compiled list of UI/logic issues from Phases 1-4)
 
 ### Future Tasks (Roadmap)
 - PDF Export with Branding
