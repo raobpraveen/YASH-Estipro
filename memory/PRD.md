@@ -12,16 +12,12 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 
 ### Core Features
 - Wave-based estimation grid with dynamic monthly phases
-- Editable resource definitions (Skill, Level, Location) with auto salary lookups
+- Editable resource definitions with auto salary lookups
 - Project & version management (CRUD, versioning, cloning, comments, read-only states)
-- Approval workflow (Draft, In Review, Approved, Rejected, Suspended, Obsolete)
-- Dashboard with analytics and filtering
-- Version comparison screen
-- Project archiving, access control, audit logging, cascade delete
+- Approval workflow, Dashboard, Version comparison, Archiving, Audit logging, Cascade delete
 
 ### Financial Features
-- Payment Terms in Cashflow, Cumulative line chart with break-even
-- Payment Milestones (renamed to "Key Milestones"), Nego Buffer
+- Payment Terms in Cashflow, Cumulative chart with break-even, Key Milestones, Nego Buffer
 
 ### Gantt Chart & Milestones
 - Phase Range Editor, Payment + Key milestones, Drag-and-Drop, PNG export
@@ -31,42 +27,29 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 - Smart Import with milestone re-import
 
 ### Phase Activities & Deliverables
-- Activity Templates Master Data (Ctrl+S shortcut), SAP seed templates
-- Project Activities Modal with template adoption
+- Activity Templates Master Data with Ctrl+S, SAP seed templates, Project Activities Modal
 
 ### Phase 1 Quick Wins (Completed Apr 2026)
-1. Sub Technologies: Parent Technology first + Edit option
-2. Base Locations: Edit Overhead %
-3. Activity Templates: Ctrl+S shortcut
-4. Customer Master: Added "Wholesale and Trading" & "Oil and Gas"
-5. Waves: Total MM → 2 decimal places
-6. "Marker Milestone" → "Key Milestone" globally
-7. Version notes non-editable for saved projects
-8. Status definitions updated in docs
-9. Unarchive bug fixed (auth token)
-10. Projects sorted by project number (descending)
-11. Backend PUT endpoints for sub-technologies and base-locations
+1-11: Sub Tech edit/reorder, Base Location edit, Ctrl+S, Industry verticals, 2 decimal MM, Key Milestones rename, Version notes lock, Status definitions, Unarchive fix, Sort by project number
 
-### Phase 2 Project Information & Filters (Completed Apr 2026)
-12. Customer dropdown with text search (Popover combobox)
-13. Bid Category field (Budgetary, Most Likely, Committed, Won, Loss, None) — always editable, Budgetary excluded from dashboard
+### Phase 2: Project Information & Filters (Completed Apr 2026)
+12. Customer searchable dropdown (Popover combobox)
+13. Bid Category field (always editable, Budgetary excluded from dashboard)
 14. Forecasted Closure Date (date picker)
-15. Competency field (multi-select) + new Competencies master data page with CRUD
-16. Dashboard: Location filter from actual project data (not hardcoded COUNTRIES)
-17. Saved Projects: Status filter (Draft, In Review, Approved, Rejected, Suspended, Obsolete)
-18. Saved Projects: Totals row for Man-Months, Selling Price, Nego Buffer, Final Price
-- Backend: CRUD /api/competencies, GET /api/dashboard/project-locations
-- Dashboard analytics now excludes Budgetary projects
+15. Competency multi-select + Competencies master data CRUD page
+16. Dashboard: Location filter from actual project data
+17. Projects: Status filter
+18. Projects: Totals row (Man-Months, Selling Price, Nego Buffer, Final Price)
+
+### Phase 3: Wave Grid Enhancements (Completed Apr 2026)
+19. Wave include/exclude toggle from overall summary pricing
+20. Floating "Add Resource Row" button at bottom of grid
+21. Grid freeze panes — first 6 columns (Skill→Travel) sticky with shadow separator
+22. Resource list filtered by project's selected Technologies
+23. Split month allocation dialog (supports "M1-M3:1, M4-M5:0.5, M6:0" ranges)
+24. Payment milestones linked to Target Month (Position column removed, auto-derived)
 
 ## Pending Implementation
-
-### Phase 3: Wave Grid Enhancements
-19. Toggle wave include/exclude from summary
-20. Floating "Add Row" button
-21. Split grid into 2 windows (freeze panes)
-22. Filter resources by Technology
-23. Split month allocation (ramp up/down: M1-M3:1, M4-M5:2)
-24. Payment milestones linked to target month
 
 ### Phase 4: Status & Workflow
 25. Retain Approved status on new version creation
