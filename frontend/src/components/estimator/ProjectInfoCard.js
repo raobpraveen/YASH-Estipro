@@ -16,8 +16,6 @@ const BID_CATEGORIES = [
   { value: "Budgetary", label: "Budgetary" },
   { value: "Most Likely", label: "Most Likely" },
   { value: "Committed", label: "Committed" },
-  { value: "Won", label: "Won" },
-  { value: "Loss", label: "Loss" },
 ];
 
 export const ProjectInfoCard = ({
@@ -286,10 +284,10 @@ export const ProjectInfoCard = ({
               </SelectContent>
             </Select>
           </div>
-          {/* Forecasted Closure Date */}
+          {/* Forecasted Closure Date - always editable (keeps moving) */}
           <div>
             <Label>Forecasted Closure Date</Label>
-            <Input type="date" value={forecastedClosureDate} onChange={(e) => setForecastedClosureDate(e.target.value)} data-testid="forecasted-closure-date" disabled={isReadOnly} />
+            <Input type="date" value={forecastedClosureDate} onChange={(e) => setForecastedClosureDate(e.target.value)} data-testid="forecasted-closure-date" />
           </div>
           {/* Commercial Status - always editable, visible after approval */}
           {(projectStatus === "approved" || projectStatus === "suspended" || projectStatus === "in_review" || commercialStatus) && (

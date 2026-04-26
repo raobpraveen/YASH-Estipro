@@ -44,6 +44,7 @@ const Projects = () => {
   const [technologies, setTechnologies] = useState([]);
   const [projectTypes, setProjectTypes] = useState([]);
   const [salesManagers, setSalesManagers] = useState([]);
+  const [competencies, setCompetencies] = useState([]);
   const [allVersions, setAllVersions] = useState({});
   const [expandedProjects, setExpandedProjects] = useState({});
   const [loadingVersions, setLoadingVersions] = useState({});
@@ -70,6 +71,10 @@ const Projects = () => {
     projectType: "",
     technology: "",
     status: "",
+    bidCategory: "",
+    competency: "",
+    forecastedFrom: "",
+    forecastedTo: "",
   });
 
   useEffect(() => {
@@ -81,6 +86,7 @@ const Projects = () => {
     fetchTechnologies();
     fetchProjectTypes();
     fetchSalesManagers();
+    fetchCompetencies();
   }, []);
 
   // Handle URL query params from dashboard drill-down
@@ -164,6 +170,9 @@ const Projects = () => {
   const fetchSalesManagers = async () => {
     try { setSalesManagers((await axios.get(`${API}/sales-managers`)).data); } catch {}
   };
+  const fetchCompetencies = async () => {
+    try { setCompetencies((await axios.get(`${API}/competencies`)).data); } catch {}
+  };
 
   const applyFilters = () => {
     let result = [...projects];
@@ -218,7 +227,25 @@ const Projects = () => {
     if (filters.status) {
       result = result.filter(p => p.status === filters.status);
     }
-    
+
+    if (filters.bidCategory) {
+      result = result.filter(p => (p.bid_category || "") === filters.bidCategory);
+    }
+
+    if (filters.competency) {
+      result = result.filter(p => (p.competency_ids || []).includes(filters.competency));
+    }
+
+    if (filters.forecastedFrom) {
+      const fromDate = new Date(filters.forecastedFrom);
+      result = result.filter(p => p.forecasted_closure_date && new Date(p.forecasted_closure_date) >= fromDate);
+    }
+
+    if (filters.forecastedTo) {
+      const toDate = new Date(filters.forecastedTo);
+      result = result.filter(p => p.forecasted_closure_date && new Date(p.forecasted_closure_date) <= toDate);
+    }
+
     setFilteredProjects(result.sort((a, b) => {
       const numA = parseInt((a.project_number || "").replace(/\D/g, "")) || 0;
       const numB = parseInt((b.project_number || "").replace(/\D/g, "")) || 0;
@@ -237,6 +264,10 @@ const Projects = () => {
       projectType: "",
       technology: "",
       status: "",
+      bidCategory: "",
+      competency: "",
+      forecastedFrom: "",
+      forecastedTo: "",
     });
   };
 
@@ -937,6 +968,60 @@ const Projects = () => {
                     <SelectItem value="obsolete">Obsolete</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <Label>Bid Category</Label>
+                <Select
+                  value={filters.bidCategory || "all"}
+                  onValueChange={(v) => setFilters({ ...filters, bidCategory: v === "all" ? "" : v })}
+                >
+                  <SelectTrigger data-testid="filter-bid-category">
+                    <SelectValue placeholder="All Bid Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Bid Categories</SelectItem>
+                    <SelectItem value="Budgetary">Budgetary</SelectItem>
+                    <SelectItem value="Most Likely">Most Likely</SelectItem>
+                    <SelectItem value="Committed">Committed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Competency</Label>
+                <Select
+                  value={filters.competency || "all"}
+                  onValueChange={(v) => setFilters({ ...filters, competency: v === "all" ? "" : v })}
+                >
+                  <SelectTrigger data-testid="filter-competency">
+                    <SelectValue placeholder="All Competencies" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Competencies</SelectItem>
+                    {competencies.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Forecasted Closure From</Label>
+                <Input
+                  type="date"
+                  value={filters.forecastedFrom}
+                  onChange={(e) => setFilters({ ...filters, forecastedFrom: e.target.value })}
+                  data-testid="filter-forecasted-from"
+                />
+              </div>
+              <div>
+                <Label>Forecasted Closure To</Label>
+                <Input
+                  type="date"
+                  value={filters.forecastedTo}
+                  onChange={(e) => setFilters({ ...filters, forecastedTo: e.target.value })}
+                  data-testid="filter-forecasted-to"
+                />
               </div>
             </div>
             <div className="flex justify-end mt-4">

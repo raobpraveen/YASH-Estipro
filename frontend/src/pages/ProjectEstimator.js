@@ -449,7 +449,7 @@ const ProjectEstimator = () => {
     }
 
     const numMonths = Math.ceil(parseFloat(newWave.duration_months));
-    const phaseNames = Array(numMonths).fill("").map((_, i) => `Month ${i + 1}`);
+    const phaseNames = Array(numMonths).fill("").map((_, i) => `M${i + 1}`);
 
     const wave = {
       id: Math.random().toString(36).substr(2, 9),
@@ -507,7 +507,7 @@ const ProjectEstimator = () => {
       return {
         ...w,
         duration_months: w.duration_months + 1,
-        phase_names: [...w.phase_names, `Month ${newIndex}`],
+        phase_names: [...w.phase_names, `M${newIndex}`],
         month_phases: [...(w.month_phases || []), ""],
       };
     }));
@@ -850,9 +850,12 @@ const ProjectEstimator = () => {
     }));
   };
 
-  // Add an empty row for quick data entry
+  // Add an empty row for quick data entry — defaults filtered by project's technologies
   const handleAddEmptyRow = (waveId) => {
-    const firstSkill = skills[0];
+    const filteredSkills = (technologyIds && technologyIds.length > 0)
+      ? skills.filter(s => !s.technology_id || technologyIds.includes(s.technology_id))
+      : skills;
+    const firstSkill = filteredSkills[0] || skills[0];
     const firstLocation = locations[0];
     const emptyAllocation = {
       id: Math.random().toString(36).substr(2, 9),

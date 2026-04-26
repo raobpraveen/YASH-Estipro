@@ -113,7 +113,8 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
                 t_idx = int(target_month_str.replace("M", "")) - 1
             except (ValueError, AttributeError):
                 t_idx = 0
-            cash_in_idx = t_idx + payment_offset
+            # Advance payments are paid in the same month as target_month (no payment terms shift)
+            cash_in_idx = t_idx if ms.get("is_advance") else t_idx + payment_offset
 
             # Extend wave_monthly if cash-in falls beyond project duration
             while cash_in_idx >= len(wave_monthly):

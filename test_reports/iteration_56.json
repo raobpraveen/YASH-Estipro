@@ -1,0 +1,50 @@
+{
+  "summary": "Iteration 56 (10-issue batch fix) tested end-to-end. Backend #10 covered by 3 new pytest tests (all PASS). Frontend #1, #2, #3, #4, #7, #8 verified live in browser. #5, #6, #9 verified via code review at referenced lines.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Estimator wave grid + payment milestones",
+        "issues": [
+          "Pre-existing React hydration warnings: <span> cannot be child of <tbody>/<tr>/<td>/<select>/<option>. Carry-over from earlier iterations (also reported in iter_55). Not new in this batch."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter56_batch10.py",
+    "/app/test_reports/pytest/pytest_iter56.xml"
+  ],
+  "action_items": [
+    "(Optional, pre-existing) Clean up <span> hydration warnings in Wave grid <tbody>/<tr> and PaymentMilestones table."
+  ],
+  "critical_code_review_comments": [
+    "financials.py L117: cash_in_idx = t_idx if ms.is_advance else t_idx + payment_offset — clean, minimal, exactly the spec.",
+    "ProjectInfoCard.js BID_CATEGORIES (L14-19) correctly lists only None/Budgetary/Most Likely/Committed; Bid Category Select (L278) and Forecasted Closure Date Input (L290) intentionally have NO disabled prop, so they stay editable when isReadOnly=true. Customer (L84), Project Name (L128), CRM ID (L273), etc., still use disabled={isReadOnly} — correct.",
+    "WaveContent.js L78 filteredSkills correctly checks technologyIds and includes skills with matching technology_id OR no technology_id (graceful fallback for legacy skill records).",
+    "WaveContent.js L620-649 thead uses position:sticky + top:0 + zIndex 20-30; first 9 columns also have left offsets for horizontal sticky — correct two-axis sticky.",
+    "WaveContent.js L952 'add-row-after-grid-{waveId}' button replaces the prior floating button and triggers handleAddEmptyRow (no dialog).",
+    "WaveContent.js L406 toggle-milestones button maintains per-wave collapse state via local state keyed by wave.id.",
+    "ProjectEstimator.js L452 handleAddWave uses `M${i+1}`; L510 handleAddPhaseColumn uses `M${newIndex}` — both produce the new short header format.",
+    "Projects.js L74-77 adds bidCategory/competency/forecastedFrom/forecastedTo to filter state; L231-237 applies them; UI L980/997/1014/1023 expose the matching data-testids.",
+    "PaymentMilestones existing hydration warnings (<span> in <tbody>) remain — pre-existing, not introduced in this batch."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter56_batch10.py"
+  ],
+  "success_rate": {
+    "backend": "100% (3/3 new pytest tests passed)",
+    "frontend": "100% on tested items (#1,#2,#3,#4,#7,#8 live; #5,#6,#9 code-reviewed)"
+  },
+  "test_credentials": "admin@yash.com / password (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Temporarily created TEST_Advance_M3 + TEST_Regular_M3 milestones on a project with >=6 months wave for cashflow assertions. test_cleanup_milestones clears them at end of test module.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All 10 batch fixes verified. Backend test suite at /app/backend/tests/test_iter56_batch10.py (run with REACT_APP_BACKEND_URL env). Frontend Playwright run on PRJ-0031 (id b8b0de7c-bea9-4f1c-984a-6e5ab22bd4c6) confirmed: Bid Category options = [None, Budgetary, Most Likely, Committed]; add-row-after-grid present (=1), floating-add-row-btn absent (=0), row count 3->4 after click; 22/22 thead <th> position:sticky+top:0; toggle-milestones present; skill dropdown filtered (12 options for SAP/PMO project). #5 (split parser index-keys), #6 (M1 default), and #9 (always-editable Bid Category + Forecasted Date) verified via code at /app/frontend/src/components/estimator/WaveContent.js:1190, /app/frontend/src/pages/ProjectEstimator.js:452,510, and /app/frontend/src/components/estimator/ProjectInfoCard.js:278,290.",
+  "rca of the issue": "N/A — no new issues found. Pre-existing hydration warnings persist across multiple iterations and should be addressed independently."
+}

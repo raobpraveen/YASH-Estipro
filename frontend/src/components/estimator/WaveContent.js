@@ -58,6 +58,7 @@ export const WaveContent = ({
   onSaveMilestones,
 }) => {
   const [phasesCollapsed, setPhasesCollapsed] = useState(false);
+  const [milestonesCollapsed, setMilestonesCollapsed] = useState(false);
   const [splitRangeDialogOpen, setSplitRangeDialogOpen] = useState(false);
   const [splitRangeAllocationId, setSplitRangeAllocationId] = useState(null);
   const [splitRangeInput, setSplitRangeInput] = useState("");
@@ -72,6 +73,11 @@ export const WaveContent = ({
         return technologyIds.includes(skill.technology_id);
       })
     : rates;
+
+  // Filter skills by project's selected technologies (used for inline grid Skill dropdown)
+  const filteredSkills = (technologyIds && technologyIds.length > 0)
+    ? skills.filter(s => !s.technology_id || technologyIds.includes(s.technology_id))
+    : skills;
 
   return (
     <div className="space-y-4">
@@ -393,7 +399,18 @@ export const WaveContent = ({
               const markerCount = milestones.filter(m => m.wave_name === wave.name && (m.milestone_type || "payment") === "marker").length;
               return (
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] text-gray-600 font-semibold uppercase tracking-wide">Phase Milestones</p>
+                  <button
+                    type="button"
+                    onClick={() => setMilestonesCollapsed(!milestonesCollapsed)}
+                    className="flex items-center gap-1.5 cursor-pointer select-none hover:opacity-80 transition-opacity"
+                    data-testid={`toggle-milestones-${wave.id}`}
+                  >
+                    {milestonesCollapsed ? <ChevronRight className="w-3.5 h-3.5 text-gray-500" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-500" />}
+                    <p className="text-[10px] text-gray-600 font-semibold uppercase tracking-wide">Phase Milestones</p>
+                    {milestonesCollapsed && wavePayMs.length + markerCount > 0 && (
+                      <span className="text-[9px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded-full font-medium">{wavePayMs.length + markerCount}</span>
+                    )}
+                  </button>
                   <div className="flex items-center gap-3">
                     {markerCount > 0 && <span className="text-[9px] text-blue-500 font-medium">{markerCount} marker{markerCount !== 1 ? "s" : ""}</span>}
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${totalPct > 100 ? "bg-red-100 text-red-700" : totalPct === 100 ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`} data-testid="wave-total-pct">
@@ -403,7 +420,7 @@ export const WaveContent = ({
                 </div>
               );
             })()}
-            {(wave.phase_ranges || []).map((pr, pIdx) => {
+            {!milestonesCollapsed && (wave.phase_ranges || []).map((pr, pIdx) => {
               const phaseMilestones = milestones.filter(m => m.wave_name === wave.name && m.phase_name === pr.name);
               const phaseColor = getPhaseColor(pr.name);
               return (
@@ -596,21 +613,21 @@ export const WaveContent = ({
         </div>
       ) : (
         <DragDropContext onDragEnd={(result) => onDragEnd(result, wave.id)}>
-        <div className="overflow-x-auto border border-[#E2E8F0] rounded" id="grid-split-container">
+        <div className="overflow-auto border border-[#E2E8F0] rounded max-h-[70vh]" id="grid-split-container">
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b-2 border-[#E2E8F0] bg-[#F8FAFC]">
-                <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 0, zIndex: 10, background: '#F8FAFC' }}></th>
-                <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 32, zIndex: 10, background: '#F8FAFC' }}>#</th>
-                <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 64, zIndex: 10, background: '#F8FAFC', minWidth: 120, maxWidth: 120 }}>Skill</th>
-                <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 184, zIndex: 10, background: '#F8FAFC', minWidth: 106, maxWidth: 106 }}>Level</th>
-                <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 290, zIndex: 10, background: '#F8FAFC', minWidth: 106, maxWidth: 106 }}>Location</th>
-                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', left: 396, zIndex: 10, background: '#F8FAFC', minWidth: 86, maxWidth: 86 }}>$/Month</th>
-                <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 482, zIndex: 10, background: '#F8FAFC', minWidth: 50, maxWidth: 50 }}>Onsite</th>
-                <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 532, zIndex: 10, background: '#F8FAFC', minWidth: 50, maxWidth: 50 }}>Travel</th>
-                <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 582, zIndex: 10, background: '#F8FAFC', minWidth: 40, maxWidth: 40, boxShadow: '3px 0 6px rgba(0,0,0,0.1)' }}>Grp</th>
+                <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 0, top: 0, zIndex: 30, background: '#F8FAFC' }}></th>
+                <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 32, top: 0, zIndex: 30, background: '#F8FAFC' }}>#</th>
+                <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 64, top: 0, zIndex: 30, background: '#F8FAFC', minWidth: 120, maxWidth: 120 }}>Skill</th>
+                <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 184, top: 0, zIndex: 30, background: '#F8FAFC', minWidth: 106, maxWidth: 106 }}>Level</th>
+                <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 290, top: 0, zIndex: 30, background: '#F8FAFC', minWidth: 106, maxWidth: 106 }}>Location</th>
+                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', left: 396, top: 0, zIndex: 30, background: '#F8FAFC', minWidth: 86, maxWidth: 86 }}>$/Month</th>
+                <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 482, top: 0, zIndex: 30, background: '#F8FAFC', minWidth: 50, maxWidth: 50 }}>Onsite</th>
+                <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 532, top: 0, zIndex: 30, background: '#F8FAFC', minWidth: 50, maxWidth: 50 }}>Travel</th>
+                <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 582, top: 0, zIndex: 30, background: '#F8FAFC', minWidth: 40, maxWidth: 40, boxShadow: '3px 0 6px rgba(0,0,0,0.1)' }}>Grp</th>
                 {wave.phase_names.map((phaseName, index) => (
-                  <th key={index} className="text-center p-2 bg-[#E0F2FE]">
+                  <th key={index} className="text-center p-2 bg-[#E0F2FE]" style={{ position: 'sticky', top: 0, zIndex: 20 }}>
                     <Input
                       value={phaseName}
                       onChange={(e) => onUpdatePhaseName(wave.id, index, e.target.value)}
@@ -620,16 +637,16 @@ export const WaveContent = ({
                     />
                   </th>
                 ))}
-                <th className="text-right p-2 font-semibold text-xs">Total MM</th>
-                <th className="text-right p-2 font-semibold text-xs">Salary Cost</th>
-                <th className="text-right p-2 font-semibold text-xs">Overhead</th>
-                <th className="text-right p-2 font-semibold text-xs bg-gray-100">Total Cost</th>
-                <th className="text-right p-2 font-semibold text-xs bg-green-50">Selling Price</th>
-                <th className="text-right p-2 font-semibold text-xs bg-blue-50">SP/MM</th>
-                <th className="text-right p-2 font-semibold text-xs bg-blue-50">Hourly</th>
-                <th className="text-right p-2 font-semibold text-xs bg-purple-50 w-16">Ovr $/Hr</th>
-                <th className="text-left p-2 font-semibold text-xs">Comments</th>
-                <th className="text-center p-2 font-semibold text-xs">Actions</th>
+                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#F8FAFC' }}>Total MM</th>
+                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#F8FAFC' }}>Salary Cost</th>
+                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#F8FAFC' }}>Overhead</th>
+                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#f3f4f6' }}>Total Cost</th>
+                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#f0fdf4' }}>Selling Price</th>
+                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#eff6ff' }}>SP/MM</th>
+                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#eff6ff' }}>Hourly</th>
+                <th className="text-right p-2 font-semibold text-xs w-16" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#faf5ff' }}>Ovr $/Hr</th>
+                <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#F8FAFC' }}>Comments</th>
+                <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#F8FAFC' }}>Actions</th>
               </tr>
             </thead>
             <Droppable droppableId={`wave-${wave.id}`}>
@@ -685,7 +702,7 @@ export const WaveContent = ({
                           <SearchableSelect
                             value={allocation.skill_id}
                             onValueChange={(value) => onGridFieldChange(wave.id, allocation.id, 'skill_id', value)}
-                            options={skills.map(s => ({ value: s.id, label: s.name }))}
+                            options={filteredSkills.map(s => ({ value: s.id, label: s.name }))}
                             placeholder="Skill..."
                             searchPlaceholder="Search skills..."
                             triggerClassName="w-[110px] text-xs"
@@ -924,6 +941,21 @@ export const WaveContent = ({
         </DragDropContext>
       )}
 
+      {/* Add Row button — placed immediately after grid, before logistics */}
+      {!isReadOnly && (
+        <div className="flex justify-center -mt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onAddEmptyRow(wave.id)}
+            className="bg-white border-dashed border-2 border-[#0EA5E9] text-[#0EA5E9] hover:bg-[#0EA5E9]/10"
+            data-testid={`add-row-after-grid-${wave.id}`}
+          >
+            <Plus className="w-4 h-4 mr-1" /> Add Row
+          </Button>
+        </div>
+      )}
+
       {/* Logistics Breakdown */}
       {wave.grid_allocations.length > 0 && waveSummary.travelingResourceCount > 0 && (
         <Card className="bg-purple-50/50 border border-purple-200">
@@ -1124,21 +1156,6 @@ export const WaveContent = ({
         </Card>
       )}
 
-      {/* Floating Add Row Button */}
-      {!isReadOnly && wave.grid_allocations.length > 0 && (
-        <div className="sticky bottom-0 z-10 flex justify-center py-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAddResourceDialogOpen(true)}
-            className="bg-white shadow-md border-dashed border-2 border-[#0EA5E9] text-[#0EA5E9] hover:bg-[#0EA5E9]/10"
-            data-testid="floating-add-row-btn"
-          >
-            <Plus className="w-4 h-4 mr-1" /> Add Resource Row
-          </Button>
-        </div>
-      )}
-
       {/* Split Range Allocation Dialog */}
       <Dialog open={splitRangeDialogOpen} onOpenChange={setSplitRangeDialogOpen}>
         <DialogContent className="max-w-md">
@@ -1191,7 +1208,8 @@ export const WaveContent = ({
                     for (let m = start; m <= end; m++) {
                       const idx = m - 1;
                       if (idx >= 0 && idx < phaseNames.length) {
-                        monthValues[phaseNames[idx]] = val;
+                        // phase_allocations is keyed by index (0,1,2...) — match the inline grid input
+                        monthValues[idx] = val;
                       }
                     }
                   }
@@ -1204,8 +1222,8 @@ export const WaveContent = ({
                         grid_allocations: w.grid_allocations.map(a => {
                           if (a.id !== splitRangeAllocationId) return a;
                           const newPhaseAllocations = { ...a.phase_allocations };
-                          Object.entries(monthValues).forEach(([phase, val]) => {
-                            newPhaseAllocations[phase] = val;
+                          Object.entries(monthValues).forEach(([idx, val]) => {
+                            newPhaseAllocations[idx] = val;
                           });
                           return { ...a, phase_allocations: newPhaseAllocations };
                         })
