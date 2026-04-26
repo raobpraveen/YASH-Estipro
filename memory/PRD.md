@@ -59,6 +59,18 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 29. Session timeout — 15 min idle auto-logout with 2-min warning dialog (`useIdleTimeout` hook, AlertDialog with countdown, "Stay signed in" / "Sign out now" actions)
 30. Advance payment milestone indicator — `is_advance` flag on PaymentMilestone, Advance checkbox in milestone editor, purple summary card in Cashflow when `total_advance > 0`, row highlights + "ADV" badges in per-wave and combined monthly tables
 
+### Iteration 56: Phase 1-4 User-Reported Fixes Batch (Completed Apr 2026)
+31. "Add Row" button moved from floating sticky-bottom to right after wave grid (before logistics); now adds blank row (no dialog)
+32. Inline grid Skill dropdown filtered by project's selected Technologies (matching skill.technology_id)
+33. Wave grid `<thead>` made sticky (top + left two-axis); container max-h:70vh with overflow-auto
+34. Per-wave collapse/expand toggle for Phase Milestones subsection (independent of Phase Ranges toggle)
+35. Bug fix: split-allocation parser ("M1-M3:1, M4-M5:2, M6:1") now uses index keys consistent with phase_allocations storage
+36. Default month-column headers changed from "Month 1, Month 2..." to "M1, M2..."
+37. Removed "Won" and "Loss" from Bid Category options (they belong on Commercial Status post-approval)
+38. Projects list filters: added Bid Category, Competency, Forecasted Closure date range (from / to)
+39. Bid Category & Forecasted Closure Date stay editable even when project is locked (read-only states)
+40. Bug fix: Advance payment milestones bypass payment_terms_days offset — cash-in posted at same target_month
+
 ## Pending Implementation
 
 (Awaiting user-compiled list of UI/logic issues from Phases 1-4)
