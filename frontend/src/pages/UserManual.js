@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 const TOC = [
+  { id: "whats-new", title: "0. What's New (2026)", icon: Info },
   { id: "getting-started", title: "1. Getting Started", icon: BookOpen },
   { id: "dashboard", title: "2. Dashboard & Analytics", icon: LayoutDashboard },
   { id: "projects", title: "3. Project Management", icon: FolderKanban },
@@ -154,6 +155,51 @@ export default function UserManual() {
 
         {/* Content */}
         <div className="flex-1 min-w-0" ref={contentRef}>
+          {/* Section 0: What's New */}
+          <Section id="whats-new" title="0. What's New (2026)">
+            <p>Recent updates rolled out across Phase 4, Phase 5, and Iteration 56. The most impactful changes are highlighted here so you can spot the differences quickly.</p>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.1 Status &amp; Workflow</h3>
+            <KeyValue label="Commercial Status">A separate post-approval field with options: Pending for Submission, Submitted to Customer, Won, Lost, Cancelled. Visible only on Approved / Suspended / In Review projects. Displayed as a badge in the Projects list.</KeyValue>
+            <KeyValue label="Previous Status Tracking">Suspending an Approved version now displays "Suspended (was Approved)" so you don't lose the original approval context when comparing versions.</KeyValue>
+            <KeyValue label="Latest-Version Filtering">The Milestones page and other downstream screens now show only the latest version of each project by default — no more accidental edits on superseded estimates.</KeyValue>
+            <KeyValue label="Excel Export Technology Column">A new Technology column has been added at column 2 of every wave sheet (between # and Skill). Smart Import maps this column back during upload.</KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.2 Security &amp; Cashflow</h3>
+            <KeyValue label="Session Timeout">After 15 minutes of inactivity (no mouse, keyboard, scroll, or touch events) you'll see a 2-minute warning dialog with a live countdown. Click <strong>"Stay signed in"</strong> to extend, or <strong>"Sign out now"</strong> to log out immediately. If the countdown hits zero you're auto-logged out and shown a notification toast.</KeyValue>
+            <KeyValue label="Advance Payment Milestone">A new Advance checkbox on each Payment Milestone marks it as an upfront payment. In the Cashflow:
+              <ul className="list-disc pl-6 mt-1 text-xs">
+                <li>A purple <strong>Advance Payment</strong> summary card appears (with % of total revenue).</li>
+                <li>Per-wave and Combined Monthly Summary rows holding advance receipts get a purple background and an <em>ADV</em> / <em>ADVANCE</em> badge.</li>
+                <li>Advance milestones <strong>bypass payment terms</strong> — cash-in posts in the same target month, regardless of the project's payment-terms-days setting.</li>
+              </ul>
+            </KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.3 Wave Grid Improvements</h3>
+            <KeyValue label="Sticky Header Row">Column titles in the Wave Grid stay visible while you scroll vertically through long resource lists. Frozen columns (Skill / Level / Location / $/Month / Onsite / Travel / Grp) also stay anchored on horizontal scroll, giving you a two-axis sticky view.</KeyValue>
+            <KeyValue label="Add Row Button Repositioned">The "Add Row" button is now placed <strong>directly below the wave grid</strong> and <strong>before</strong> the Logistics Cost breakdown. Clicking it adds a blank row with sensible defaults (no dialog) for fast manual entry.</KeyValue>
+            <KeyValue label="Skill Filter on Add Row">When you select Technologies in Project Information, the inline Skill dropdown (and the new Add Row default skill) is automatically narrowed to skills that match those technologies.</KeyValue>
+            <KeyValue label="Phase Milestones Collapse">A per-wave collapse/expand toggle has been added on the Phase Milestones subsection so you can keep long projects compact without affecting other waves.</KeyValue>
+            <KeyValue label="Split-Allocation Fix">The "Apply value to months" dialog now correctly handles split patterns like <code className="bg-gray-100 px-1 rounded">M1-M3:1, M4-M5:2, M6:1</code>. The previous version silently dropped values due to a key-mismatch bug.</KeyValue>
+            <KeyValue label="M1, M2 Default Headers">New waves and newly added months default to short headers (M1, M2, M3 …) instead of "Month 1, Month 2 …" to match the rest of the application's notation.</KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.4 Project Information Updates</h3>
+            <KeyValue label="Bid Category Cleanup">"Won" and "Loss" are removed from the Bid Category dropdown — those outcomes now belong on the Commercial Status field. Available values: <em>None, Budgetary, Most Likely, Committed</em>.</KeyValue>
+            <KeyValue label="Always-Editable Fields">Bid Category and Forecasted Closure Date stay editable even on Approved / Suspended / In Review projects, since these values legitimately change post-approval.</KeyValue>
+            <KeyValue label="Competency Master Data">A dedicated Competencies master with Add / Edit / Delete. Projects can be tagged with multiple competencies via the Competency multi-select.</KeyValue>
+            <KeyValue label="Searchable Customer Dropdown">Customer selection now uses a Popover combobox with type-ahead search — much faster than scrolling through long lists.</KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.5 New Filters in Projects List</h3>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>Bid Category</strong> — narrows results to Budgetary / Most Likely / Committed.</li>
+              <li><strong>Competency</strong> — single-select dropdown sourced from the Competencies master data.</li>
+              <li><strong>Forecasted Closure From / To</strong> — date range filter that includes only projects whose Forecasted Closure Date falls within the window.</li>
+              <li>The existing <strong>Status</strong> filter and <strong>Totals</strong> row still work alongside these new filters.</li>
+            </ul>
+
+            <Tip>If you see something in this section that's not yet visible in the UI, hard-refresh your browser (Ctrl+Shift+R / Cmd+Shift+R) to ensure you're on the latest build.</Tip>
+          </Section>
+
           {/* Section 1: Getting Started */}
           <Section id="getting-started" title="1. Getting Started">
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">1.1 Logging In</h3>
@@ -161,6 +207,10 @@ export default function UserManual() {
             <Step num="2">Enter your registered <strong>Email</strong> and <strong>Password</strong>.</Step>
             <Step num="3">Click <strong>"Sign In"</strong> to access the dashboard.</Step>
             <Tip>If you've forgotten your password, contact your administrator to have it reset.</Tip>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">1.1.1 Session Timeout</h3>
+            <p>For security, your session is automatically signed out after <strong>15 minutes of inactivity</strong> (no mouse, keyboard, scroll, or touch events). A warning dialog with a live countdown appears <strong>2 minutes</strong> before logout — click <strong>"Stay signed in"</strong> to extend, or <strong>"Sign out now"</strong> to log out immediately.</p>
+            <Tip>Long-running activities such as Excel exports or chart rendering count as activity, so you won't be timed out mid-task.</Tip>
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">1.2 User Roles</h3>
             <p>YASH EstiPro supports three user roles with different access levels:</p>
@@ -213,10 +263,16 @@ export default function UserManual() {
 
           {/* Section 3: Project Management */}
           <Section id="projects" title="3. Project Management">
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">3.1 Projects List</h3>
-            <p>The Projects page displays all estimations with filtering and sorting capabilities.</p>
-            <KeyValue label="Search">Filter by project name or number.</KeyValue>
-            <KeyValue label="Status Filter">Filter by Draft, In Review, Approved, or Rejected.</KeyValue>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">3.1 Projects List &amp; Filters</h3>
+            <p>The Projects page displays all estimations with filtering and sorting capabilities. Open the <strong>Filters</strong> panel from the toolbar to access:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>Customer Name</strong>, <strong>Project Name / Description</strong>, <strong>Created By</strong>, <strong>Date From / To</strong> (creation date range).</li>
+              <li><strong>Sales Manager</strong>, <strong>Project Type</strong>, <strong>Technology</strong>, <strong>Status</strong>.</li>
+              <li><strong>Bid Category</strong> — Budgetary / Most Likely / Committed.</li>
+              <li><strong>Competency</strong> — single-select dropdown sourced from the Competencies master data.</li>
+              <li><strong>Forecasted Closure From / To</strong> — date range filter on the Forecasted Closure Date field.</li>
+            </ul>
+            <p>Projects are sorted by <strong>Project Number descending</strong> by default. The <strong>Totals</strong> row at the bottom of the list always reflects the currently filtered set (Man-Months, Selling Price, Nego Buffer, Final Price). The "Latest Version" green dot badge highlights the most recent version of each project number.</p>
             <KeyValue label="Actions">Edit, view summary, compare versions, clone, or archive projects.</KeyValue>
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">3.2 Creating a New Project</h3>
@@ -302,7 +358,7 @@ export default function UserManual() {
                   <tr className="border-b"><td className="p-2 font-semibold">Onsite</td><td className="p-2">ON/OFF toggle indicating if the resource is onsite.</td></tr>
                   <tr className="border-b"><td className="p-2 font-semibold">Travel</td><td className="p-2">YES/NO toggle indicating if travel logistics apply.</td></tr>
                   <tr className="border-b"><td className="p-2 font-semibold">Grp</td><td className="p-2">Resource Group ID to link related rows (e.g., same person split onsite/offshore). Matching groups get a colored left border.</td></tr>
-                  <tr className="border-b"><td className="p-2 font-semibold">Month 1..N</td><td className="p-2">Man-month allocation for each phase (0 to 1.0 typically).</td></tr>
+                  <tr className="border-b"><td className="p-2 font-semibold">M1..MN</td><td className="p-2">Man-month allocation for each phase month (0 to 1.0 typically). Default headers are M1, M2, M3 — you can rename them to phase labels like "Sprint 1" if you prefer.</td></tr>
                   <tr className="border-b"><td className="p-2 font-semibold">Total MM</td><td className="p-2">Sum of all monthly allocations for this row.</td></tr>
                   <tr className="border-b"><td className="p-2 font-semibold">Salary Cost</td><td className="p-2">$/Month &times; Total MM.</td></tr>
                   <tr className="border-b"><td className="p-2 font-semibold">Overhead</td><td className="p-2">Overhead cost (Salary &times; OH%).</td></tr>
@@ -315,8 +371,9 @@ export default function UserManual() {
               </table>
             </div>
 
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.2 Frozen Columns</h3>
-            <p>The following columns are <strong>frozen</strong> (sticky) and remain visible when scrolling the grid horizontally:</p>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.2 Frozen Columns &amp; Sticky Header</h3>
+            <p>Column titles are now <strong>sticky on vertical scroll</strong> — when you scroll down through a long resource list, the header row stays pinned to the top of the grid container.</p>
+            <p>The following columns are also <strong>frozen on horizontal scroll</strong> (left-side sticky):</p>
             <ul className="list-disc pl-6 space-y-1 text-sm ml-4">
               <li><strong>#</strong> - Row number</li>
               <li><strong>Skill</strong> - Resource skill/role</li>
@@ -331,11 +388,12 @@ export default function UserManual() {
             <Tip>This design allows you to always identify which resource you're viewing while scrolling to the monthly allocations, Selling Price, or Override Hourly columns on the right.</Tip>
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.3 Row Operations</h3>
-            <KeyValue label="Add Resource">Opens a dialog to select Skill, Level, Location. Salary is auto-populated.</KeyValue>
-            <KeyValue label="Add Row">Adds a blank row for quick manual entry.</KeyValue>
+            <KeyValue label="Add Resource">Toolbar button. Opens a dialog to select Skill, Level, Location with full filtering. Salary auto-populates from proficiency rates.</KeyValue>
+            <KeyValue label="Add Row (toolbar)">Adds a single blank row at the bottom of the grid using project-default skill (filtered by selected Technologies) and the first available location.</KeyValue>
+            <KeyValue label="Add Row (below grid)">A second Add Row button is positioned <strong>directly under the wave grid</strong> (before the Logistics breakdown). It performs the same blank-row insert and is the recommended quick-entry control.</KeyValue>
             <KeyValue label="Drag & Drop">Reorder rows by dragging the grip handle on the left.</KeyValue>
             <KeyValue label="Delete Row">Click the trash icon on the right to remove a resource.</KeyValue>
-            <KeyValue label="Apply to All">Click the "Apply to all months" button to set the same allocation across all phases.</KeyValue>
+            <KeyValue label="Apply to Months">Click the calculator icon to set the same allocation across all months — supports split ranges like <code className="bg-gray-100 px-1 rounded">M1-M3:1, M4-M5:2, M6:1</code>.</KeyValue>
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">5.4 Resource Group ID</h3>
             <p>Use the <strong>Grp</strong> column to link related rows. For example, if the same consultant works 50% onsite and 50% offshore, create two rows and assign them the same Group ID (e.g., "1"). Rows with the same group get matching colored left borders for easy visual identification.</p>
@@ -715,6 +773,7 @@ export default function UserManual() {
             <p>Click <strong>"+ Payment Milestone"</strong> within a wave section. For each payment milestone, set:</p>
             <ul className="list-disc pl-6 space-y-1 text-sm">
               <li><strong>Milestone Name</strong>: Descriptive label (e.g., "Phase 1 UAT Complete").</li>
+              <li><strong>Advance</strong>: Tick this checkbox if the payment is an upfront / advance receipt. Advance payments are displayed with an <em>ADV</em> badge and bypass the project's payment-terms shift in the Cashflow.</li>
               <li><strong>Linked Phase</strong>: Optionally link to a phase (e.g., Explore, Realize). When linked, the Target Month auto-computes from the phase range and position.</li>
               <li><strong>Position</strong>: Start, Mid, or End of the linked phase.</li>
               <li><strong>Target Month</strong>: Overridable — select M1, M2, M3, etc. Auto-set when a phase is linked.</li>
@@ -779,6 +838,15 @@ export default function UserManual() {
             </div>
             <p>A purple banner at the top of the cashflow page displays the active payment terms and offset.</p>
             <Tip>If a milestone in the last project month has payment terms that push Cash-In beyond the project duration, the Cashflow automatically adds extra months (highlighted in purple with "M*" labels).</Tip>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.2.1 Advance Payments</h3>
+            <p>Milestones marked as <strong>Advance</strong> in the Milestones page are treated specially:</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li>Cash-In is recorded in the <strong>same month</strong> as the milestone's target month — payment terms <strong>do not apply</strong>.</li>
+              <li>A <strong>purple "Advance Payment" summary card</strong> appears at the top of the Cashflow when the project has any advance receipts. The card shows the total advance amount and what % of total revenue it represents.</li>
+              <li>Per-wave and Combined Monthly Summary rows that include advance receipts get a <strong>purple background</strong> with an <em>ADV</em> / <em>ADVANCE</em> badge for instant identification.</li>
+            </ul>
+            <Tip>This is helpful for milestone-billed engagements where customers pay an upfront mobilization fee — the cash arrives immediately rather than after a 30/60/90-day lag.</Tip>
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">16.3 Wave-Wise Breakdown</h3>
             <p>Each wave has its own collapsible section showing monthly Cash-Out (resource costs + logistics) and Cash-In (milestone payments shifted by payment terms). The header summarizes total outflow, inflow, net, and shows extended month count if applicable.</p>

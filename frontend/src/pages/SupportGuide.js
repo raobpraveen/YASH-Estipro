@@ -23,6 +23,7 @@ const TOC = [
   { id: "maintenance", title: "12. Maintenance & Updates", icon: RefreshCw },
   { id: "monitoring", title: "13. Monitoring & Health Checks", icon: Activity },
   { id: "faq", title: "14. FAQ & Known Issues", icon: Info },
+  { id: "release-notes", title: "15. Release Notes (2026)", icon: RefreshCw },
 ];
 
 const Section = ({ id, title, children }) => (
@@ -863,6 +864,44 @@ mongosh --eval "db.adminCommand('ping')"`}
               <li>Excel export may be slow for very large projects (&gt; 100 resources total).</li>
               <li>Concurrent editing of the same project by multiple users is not supported. Use the version system for collaborative work.</li>
             </ul>
+          </Section>
+
+          {/* Section 15: Release Notes */}
+          <Section id="release-notes" title="15. Release Notes (2026)">
+            <p>This section summarises everything shipped in the recent rollouts. Use this as a reference when communicating changes to users.</p>
+
+            <h3 className="text-lg font-semibold text-[#10B981] mt-4">15.1 Phase 4 — Status &amp; Workflow</h3>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>Commercial Status</strong> field on Approved / Suspended / In Review projects: Pending for Submission, Submitted to Customer, Won, Lost, Cancelled. Stored in <code>projects.commercial_status</code>. Surfaced as a badge on the Projects list.</li>
+              <li><strong>Previous Status tracking</strong>: <code>projects.previous_status</code> records the prior status when transitioning to Suspended/Superseded so the UI can render "Suspended (was Approved)".</li>
+              <li><strong>Latest-Version Filter</strong>: <code>GET /api/projects</code> returns only latest versions by default. Milestones page now lists only latest versions to prevent edits on superseded estimates.</li>
+              <li><strong>Excel Technology column</strong>: A new "Technology" column at index 2 of every wave sheet (between # and Skill). Smart Import maps it back via <code>findCol("technology")</code>.</li>
+            </ul>
+
+            <h3 className="text-lg font-semibold text-[#10B981] mt-6">15.2 Phase 5 — Security &amp; Cashflow</h3>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>Session timeout</strong>: 15-minute idle window with a 2-minute warning dialog. Implemented as <code>useIdleTimeout</code> hook in <code>/app/frontend/src/hooks/useIdleTimeout.js</code>, integrated in <code>App.js</code> when a user is signed in. Activity events: mousemove, mousedown, keydown, scroll, touchstart, click. The dialog is mounted via Shadcn AlertDialog.</li>
+              <li><strong>Advance payment milestone</strong>: New <code>is_advance: bool = False</code> field on the <code>PaymentMilestone</code> Pydantic model. Cashflow endpoint sets <code>cash_in_idx = t_idx if ms.is_advance else t_idx + payment_offset</code> — advance receipts bypass the payment-terms shift.</li>
+              <li>Cashflow response now includes <code>summary.total_advance</code>, <code>wave_data[].total_advance</code>, and <code>monthly_data[].advance_revenue</code> at both the per-wave and combined levels.</li>
+              <li>UI: purple "Advance Payment" summary card (visible only when <code>total_advance &gt; 0</code>), purple-tinted rows + ADV/ADVANCE badges in the Cashflow tables.</li>
+            </ul>
+
+            <h3 className="text-lg font-semibold text-[#10B981] mt-6">15.3 Iteration 56 — User-Reported Fixes Batch (10 items)</h3>
+            <ol className="list-decimal pl-6 space-y-1 text-sm">
+              <li><strong>Add Row repositioned</strong>: The "Add Resource Row" floating button has been replaced with a dedicated <em>Add Row</em> button placed directly under the wave grid (before the Logistics breakdown). It calls <code>onAddEmptyRow</code> instead of opening the resource dialog.</li>
+              <li><strong>Skill filter on Add Row</strong>: <code>handleAddEmptyRow</code> in <code>ProjectEstimator.js</code> picks the first skill matching the project's selected technologies. The inline Skill SearchableSelect in <code>WaveContent.js</code> uses <code>filteredSkills</code> for its option list.</li>
+              <li><strong>Sticky thead on Wave Grid</strong>: <code>position: sticky</code> + <code>top: 0</code> on every <code>&lt;th&gt;</code>; container uses <code>max-h-[70vh]</code> with <code>overflow-auto</code> for two-axis sticky.</li>
+              <li><strong>Per-wave Milestone collapse</strong>: New local <code>milestonesCollapsed</code> state in <code>WaveContent.js</code>, with a chevron toggle button (<code>data-testid=&#34;toggle-milestones-&#123;waveId&#125;&#34;</code>).</li>
+              <li><strong>Split-allocation bug fix</strong>: The split parser now uses <strong>index keys</strong> (0, 1, 2 …) instead of phase-name keys, matching how <code>phase_allocations</code> is stored everywhere else.</li>
+              <li><strong>Default month headers</strong> are now <code>M1, M2, …</code> (not "Month 1, Month 2 …"). Both <code>handleAddWave</code> and <code>handleAddPhaseColumn</code> updated.</li>
+              <li><strong>Bid Category cleanup</strong>: "Won" and "Loss" removed from the Bid Category dropdown (these belong on Commercial Status).</li>
+              <li><strong>New Projects-list filters</strong>: Bid Category, Competency, Forecasted Closure From / To. State + applyFilters/clearFilters extended; new filter row added in the Filters panel.</li>
+              <li><strong>Always-editable fields</strong>: The <code>disabled</code> prop has been removed from Bid Category and Forecasted Closure Date inputs in <code>ProjectInfoCard.js</code>, since these legitimately change post-approval.</li>
+              <li><strong>Advance milestone bypasses payment terms</strong>: see 15.2 above.</li>
+            </ol>
+
+            <h3 className="text-lg font-semibold text-[#10B981] mt-6">15.4 Test Coverage</h3>
+            <p>Iteration tests are stored in <code>/app/backend/tests/</code> and reports under <code>/app/test_reports/iteration_*.json</code>. Latest runs: <code>iteration_55.json</code> (Phase 5 — 4/4 backend, 100% frontend) and <code>iteration_56.json</code> (10-issue batch — 3/3 backend, 100% frontend).</p>
           </Section>
 
           {/* Footer */}
