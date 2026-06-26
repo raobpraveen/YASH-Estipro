@@ -135,6 +135,19 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
   const negoBufferAmount = waveSellingPrice * (negoBufferPct / 100);
   const finalPrice = waveSellingPrice + negoBufferAmount;
 
+  // AMS Shared Support billing (no margin / no nego buffer applied) — added on top of dedicated final price
+  const engagementType = wave.engagement_type || "Implementation";
+  const isAms = engagementType === "AMS_Shared" || engagementType === "AMS_Mix";
+  const contractMonths = parseInt(wave.ams_contract_months) || 12;
+  const amsSharedMonthly = isAms
+    ? (wave.ams_shared_buckets || []).reduce(
+        (sum, b) => sum + (parseFloat(b.hours_per_month) || 0) * (parseFloat(b.hourly_rate) || 0),
+        0
+      )
+    : 0;
+  const amsSharedAnnual = amsSharedMonthly * contractMonths;
+  const grandTotalFinalPrice = finalPrice + amsSharedAnnual;
+
   return {
     totalMM, onsiteMM, offshoreMM,
     onsiteSalaryCost, offshoreSalaryCost,
@@ -152,6 +165,12 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
     sellingPrice: waveSellingPrice,
     negoBufferPercentage: negoBufferPct,
     negoBufferAmount, finalPrice,
+    // AMS Shared Support billing aggregates
+    engagementType,
+    amsSharedMonthly,
+    amsSharedAnnual,
+    amsContractMonths: contractMonths,
+    grandTotalFinalPrice,
     onsiteResourceCount: logistics.onsiteResourceCount,
     offshoreResourceCount: (wave.grid_allocations || []).length - logistics.onsiteResourceCount,
     travelingResourceCount: logistics.travelingResourceCount,
@@ -168,6 +187,7 @@ export const calculateOverallSummary = (waves, profitMarginPercentage, negoBuffe
   let onsiteSellingPrice = 0, offshoreSellingPrice = 0;
   let totalCostToCompany = 0, onsiteOverheadCost = 0, offshoreOverheadCost = 0;
   let totalOnsiteResourceCount = 0, totalOffshoreResourceCount = 0;
+  let totalAmsSharedMonthly = 0, totalAmsSharedAnnual = 0;
 
   waves.forEach(wave => {
     if (wave.exclude_from_summary) return; // Skip excluded waves
@@ -190,10 +210,13 @@ export const calculateOverallSummary = (waves, profitMarginPercentage, negoBuffe
     offshoreSellingPrice += summary.offshoreSellingPrice;
     totalOnsiteResourceCount += summary.onsiteResourceCount;
     totalOffshoreResourceCount += summary.offshoreResourceCount;
+    totalAmsSharedMonthly += summary.amsSharedMonthly || 0;
+    totalAmsSharedAnnual += summary.amsSharedAnnual || 0;
   });
 
   const onsiteAvgPerMM = onsiteMM > 0 ? onsiteSellingPrice / onsiteMM : 0;
   const offshoreAvgPerMM = offshoreMM > 0 ? offshoreSellingPrice / offshoreMM : 0;
+  const grandTotalFinalPrice = totalFinalPrice + totalAmsSharedAnnual;
 
   return {
     totalMM, onsiteMM, offshoreMM,
@@ -210,6 +233,10 @@ export const calculateOverallSummary = (waves, profitMarginPercentage, negoBuffe
     sellingPrice: totalSellingPrice,
     negoBuffer: totalNegoBuffer,
     finalPrice: totalFinalPrice,
+    // AMS Shared Support roll-ups
+    totalAmsSharedMonthly,
+    totalAmsSharedAnnual,
+    grandTotalFinalPrice,
     onsiteSellingPrice, offshoreSellingPrice,
     onsiteAvgPerMM, offshoreAvgPerMM,
   };

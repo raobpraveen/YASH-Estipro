@@ -159,7 +159,7 @@ export const OverallSummary = ({ overall, profitMarginPercentage, collapsedSecti
           </CardContent>
         </Card>
         <Card className="border-2 border-emerald-600 shadow-md bg-emerald-50/50">
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-emerald-700">Final Price</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-emerald-700">Final Price (Implementation)</CardTitle></CardHeader>
           <CardContent>
             <p className="text-2xl font-extrabold font-mono text-emerald-700" data-testid="final-price">
               ${overall.finalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -168,6 +168,39 @@ export const OverallSummary = ({ overall, profitMarginPercentage, collapsedSecti
           </CardContent>
         </Card>
       </div>
+
+      {/* AMS Shared Support roll-up (only if any AMS Shared / Mix wave has billing) */}
+      {(overall.totalAmsSharedAnnual || 0) > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-testid="ams-shared-summary-row">
+          <Card className="border border-[#8B5CF6] shadow-sm bg-purple-50/30">
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-600">AMS Shared Support — Monthly Billing</CardTitle></CardHeader>
+            <CardContent>
+              <p className="text-2xl font-extrabold font-mono text-[#8B5CF6]" data-testid="ams-shared-monthly">
+                ${overall.totalAmsSharedMonthly.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">sum across AMS waves, no margin/buffer</p>
+            </CardContent>
+          </Card>
+          <Card className="border border-[#8B5CF6] shadow-sm bg-purple-50/50">
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-600">AMS Shared Support — Annual Billing</CardTitle></CardHeader>
+            <CardContent>
+              <p className="text-2xl font-extrabold font-mono text-[#8B5CF6]" data-testid="ams-shared-annual">
+                ${overall.totalAmsSharedAnnual.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">monthly × contract length per wave</p>
+            </CardContent>
+          </Card>
+          <Card className="border-2 border-[#0F172A] shadow-lg bg-gradient-to-br from-emerald-50 to-purple-50">
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-[#0F172A]">Grand Total (Impl + AMS Y1)</CardTitle></CardHeader>
+            <CardContent>
+              <p className="text-2xl font-extrabold font-mono text-[#0F172A]" data-testid="grand-total-final">
+                ${overall.grandTotalFinalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">Final Price + Annual AMS Billing</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Effective Profit Margin */}
       {Math.abs(overall.effectiveProfitMargin - profitMarginPercentage) > 0.01 && (

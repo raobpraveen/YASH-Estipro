@@ -1179,6 +1179,32 @@ export const WaveContent = ({
                 <p className="font-mono font-bold text-2xl text-emerald-700 mt-1">${waveSummary.finalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
               </div>
             </div>
+            {/* AMS Shared Support roll-up for the wave (only when wave has AMS shared billing) */}
+            {(waveSummary.amsSharedAnnual || 0) > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3" data-testid={`wave-ams-summary-${wave.id}`}>
+                <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                  <p className="text-xs text-purple-700 uppercase tracking-wide">AMS Monthly Billing</p>
+                  <p className="font-mono font-bold text-xl text-[#8B5CF6] mt-1" data-testid={`wave-ams-monthly-${wave.id}`}>
+                    ${waveSummary.amsSharedMonthly.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">hours × hourly rate (all buckets)</p>
+                </div>
+                <div className="bg-purple-100 p-3 rounded-lg border border-purple-300">
+                  <p className="text-xs text-purple-700 uppercase tracking-wide">AMS Annual ({waveSummary.amsContractMonths} mo)</p>
+                  <p className="font-mono font-bold text-xl text-[#8B5CF6] mt-1" data-testid={`wave-ams-annual-${wave.id}`}>
+                    ${waveSummary.amsSharedAnnual.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">no margin / no buffer</p>
+                </div>
+                <div className="bg-gradient-to-br from-emerald-50 to-purple-50 p-3 rounded-lg border-2 border-[#0F172A]">
+                  <p className="text-xs text-[#0F172A] uppercase tracking-wide font-semibold">Wave Grand Total</p>
+                  <p className="font-mono font-bold text-2xl text-[#0F172A] mt-1" data-testid={`wave-grand-total-${wave.id}`}>
+                    ${waveSummary.grandTotalFinalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </p>
+                  <p className="text-xs text-gray-600 mt-0.5">Final Price + Annual AMS</p>
+                </div>
+              </div>
+            )}
             {/* Effective Profit Margin indicator */}
             {Math.abs(waveSummary.effectiveProfitMargin - profitMarginPercentage) > 0.01 && (
               <div className="flex items-center gap-3 bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-2.5">
@@ -1230,6 +1256,40 @@ export const WaveContent = ({
         </Card>
       )}
       </>
+      )}
+
+      {/* AMS-only Wave Summary (renders for pure AMS_Shared waves where Wave Summary card above is hidden) */}
+      {wave.engagement_type === "AMS_Shared" && (waveSummary.amsSharedAnnual || 0) > 0 && (
+        <Card className="bg-[#F8FAFC] border border-[#E2E8F0]" data-testid={`wave-ams-only-summary-${wave.id}`}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-bold text-[#0F172A]">{wave.name} Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                <p className="text-xs text-purple-700 uppercase tracking-wide">AMS Monthly Billing</p>
+                <p className="font-mono font-bold text-xl text-[#8B5CF6] mt-1" data-testid={`wave-ams-monthly-${wave.id}`}>
+                  ${waveSummary.amsSharedMonthly.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">hours × hourly rate (all buckets)</p>
+              </div>
+              <div className="bg-purple-100 p-3 rounded-lg border border-purple-300">
+                <p className="text-xs text-purple-700 uppercase tracking-wide">AMS Annual ({waveSummary.amsContractMonths} mo)</p>
+                <p className="font-mono font-bold text-xl text-[#8B5CF6] mt-1" data-testid={`wave-ams-annual-${wave.id}`}>
+                  ${waveSummary.amsSharedAnnual.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">no margin / no buffer</p>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-50 to-purple-50 p-3 rounded-lg border-2 border-[#0F172A]">
+                <p className="text-xs text-[#0F172A] uppercase tracking-wide font-semibold">Wave Grand Total</p>
+                <p className="font-mono font-bold text-2xl text-[#0F172A] mt-1" data-testid={`wave-grand-total-${wave.id}`}>
+                  ${waveSummary.grandTotalFinalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </p>
+                <p className="text-xs text-gray-600 mt-0.5">Year-1 contract value</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Split Range Allocation Dialog */}
