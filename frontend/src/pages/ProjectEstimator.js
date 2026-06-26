@@ -501,6 +501,10 @@ const ProjectEstimator = () => {
         id: Math.random().toString(36).substr(2, 9),
         phase_allocations: { ...a.phase_allocations },
       })),
+      ams_shared_buckets: (source.ams_shared_buckets || []).map(b => ({
+        ...b,
+        id: Math.random().toString(36).substr(2, 9),
+      })),
     };
     setWaves([...waves, cloned]);
     setActiveWaveId(cloned.id);
@@ -1048,6 +1052,10 @@ const ProjectEstimator = () => {
         nego_buffer_percentage: w.nego_buffer_percentage || 0,
         exclude_from_summary: w.exclude_from_summary || false,
         grid_allocations: w.grid_allocations,
+        // AMS engagement fields
+        engagement_type: w.engagement_type || "Implementation",
+        ams_shared_buckets: w.ams_shared_buckets || [],
+        ams_contract_months: parseInt(w.ams_contract_months) || 12,
       })),
       version_notes: versionNotes,
       status: projectStatus,
