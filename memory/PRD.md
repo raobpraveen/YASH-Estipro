@@ -71,6 +71,15 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 39. Bid Category & Forecasted Closure Date stay editable even when project is locked (read-only states)
 40. Bug fix: Advance payment milestones bypass payment_terms_days offset — cash-in posted at same target_month
 
+### Iteration 57: Salary Formulas + AMS Engagement Types (Completed Jun 2026)
+41. $/Month cell accepts arithmetic expressions: `3200`, `3200+500`, `3200-200`, `3200*2`, `3200/100`, plus `3200*25%` (= 4000), `3200+25%` (= 4000), `3200-25%` (= 2400). New `/utils/salaryExpression.js` evaluator (13/13 unit tests pass). Inline `SalaryExpressionInput` component with blur/Enter commit, Escape revert, toast on invalid.
+42. Phase Range inputs step/min reduced to 0.25 (was 0.5). Timeline bar render: when `start_month < 1`, bar snaps to left edge of M1 (position 0%); legacy values ≥1 keep their convention.
+43. AMS Engagement Types: new `engagement_type` field on Wave model — `Implementation` (default), `AMS_Shared`, `AMS_Dedicated`, `AMS_Mix`. New `AmsSharedBucket` model: `{name, hours_per_month, hourly_rate, notes}` + `ams_contract_months` (default 12).
+44. New `AmsSharedPanel.js` component with service-bucket CRUD table. Per-bucket Billing/Month + Billing/Year, totals row. Free-text bucket names (no master data per user choice).
+45. WaveContent.js conditionally renders: AMS_Shared hides Phase Ranges + Resource Grid + Logistics (shared-only); AMS_Mix shows AmsSharedPanel above resource grid; AMS_Dedicated/Implementation unchanged.
+46. Cashflow API (`/api/projects/{id}/cashflow`) — new `summary.total_ams_shared`, per-wave `total_ams_shared`, per-month `ams_shared_revenue`. AMS shared waves bypass payment-terms offset and have no internal cost; AMS_Shared waves auto-extend `wave_monthly` to `ams_contract_months`.
+47. Add Wave dialog: new `Engagement Type` dropdown at top + conditional `Contract Length (Months)` input when engagement_type starts with `AMS_`.
+
 ## Pending Implementation
 
 (Awaiting user-compiled list of UI/logic issues from Phases 1-4)
