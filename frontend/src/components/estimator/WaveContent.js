@@ -397,13 +397,14 @@ export const WaveContent = ({
                 {/* Phase bars rendered as continuous strips */}
                 {(wave.phase_ranges || []).map((pr, i) => {
                   const totalMonths = wave.phase_names.length;
-                  // Sub-1 values (0.25, 0.5, 0.75) are fractional positions INTO M1 (e.g. 0.5 = mid-M1).
-                  // Values >= 1 use the legacy 1-indexed-month convention (1 = start of M1, 2 = start of M2, etc.).
-                  const startElapsed = pr.start_month < 1 ? pr.start_month : pr.start_month - 1;
-                  const endElapsed = pr.end_month < 1 ? pr.end_month : pr.end_month;
+                  // Sub-1 start values (0.25, 0.5, 0.75) snap to the BEGINNING of M1 (position 0%).
+                  // For start >= 1: legacy 1-indexed-month convention (1 = start of M1, 2 = start of M2).
+                  // end_month is treated as elapsed months (e.g. 0.5 = half-way into M1, 1 = end of M1, 3 = end of M3).
+                  const startElapsed = pr.start_month < 1 ? 0 : pr.start_month - 1;
+                  const endElapsed = pr.end_month;
                   let leftPct = (startElapsed / totalMonths) * 100;
                   let widthPct = ((endElapsed - startElapsed) / totalMonths) * 100;
-                  // Minimum visible marker for zero-width ranges (e.g. start=end=0.5)
+                  // Minimum visible marker for zero-width ranges
                   if (widthPct < 0.5) widthPct = Math.max(0.5, (1 / totalMonths) * 8);
                   return (
                     <div key={i} className="relative h-6 mb-0.5">
