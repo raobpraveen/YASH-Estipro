@@ -101,6 +101,30 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
                 "advance_revenue": 0,
             })
 
+        # Step 1b: AMS Shared Support monthly billing (no margin/buffer applied)
+        engagement_type = wave.get("engagement_type", "Implementation")
+        if engagement_type in ("AMS_Shared", "AMS_Mix"):
+            shared_buckets = wave.get("ams_shared_buckets", []) or []
+            shared_monthly_billing = sum(
+                (b.get("hours_per_month", 0) or 0) * (b.get("hourly_rate", 0) or 0)
+                for b in shared_buckets
+            )
+            # For pure AMS_Shared waves, extend wave_monthly to cover the full contract length
+            if engagement_type == "AMS_Shared":
+                contract_months = int(wave.get("ams_contract_months", 12) or 12)
+                while len(wave_monthly) < contract_months:
+                    wave_monthly.append({
+                        "month": len(wave_monthly) + 1,
+                        "phase": "AMS",
+                        "cost": 0,
+                        "revenue": 0,
+                        "advance_revenue": 0,
+                    })
+            # Apply level monthly billing across the AMS duration
+            for m in wave_monthly:
+                m["revenue"] = round(m["revenue"] + shared_monthly_billing, 2)
+                m["ams_shared_revenue"] = round(m.get("ams_shared_revenue", 0) + shared_monthly_billing, 2)
+
         # Step 2: Assign revenue with payment term offset
         for ms in milestones:
             if ms.get("wave_name") != wave.get("name"):
@@ -141,14 +165,17 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
         wave_total_cost = sum(m["cost"] for m in wave_monthly)
         wave_total_rev = sum(m["revenue"] for m in wave_monthly)
         wave_total_advance = sum(m.get("advance_revenue", 0) for m in wave_monthly)
+        wave_total_ams_shared = sum(m.get("ams_shared_revenue", 0) for m in wave_monthly)
         wave_data.append({
             "wave_name": wave.get("name", f"Wave {len(wave_data)+1}"),
+            "engagement_type": engagement_type,
             "months": n_months,
             "extended_months": len(wave_monthly),
             "monthly_data": wave_monthly,
             "total_cost": round(wave_total_cost, 2),
             "total_revenue": round(wave_total_rev, 2),
             "total_advance": round(wave_total_advance, 2),
+            "total_ams_shared": round(wave_total_ams_shared, 2),
             "net": round(wave_total_rev - wave_total_cost, 2),
         })
 
@@ -179,6 +206,7 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
     total_cost = sum(m["cost"] for m in combined)
     total_revenue = sum(m["revenue"] for m in combined)
     total_advance = sum(m.get("advance_revenue", 0) for m in combined)
+    total_ams_shared = sum(wd.get("total_ams_shared", 0) for wd in wave_data)
 
     return {
         "project_id": project_id,
@@ -192,6 +220,7 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
             "total_cost": round(total_cost, 2),
             "total_revenue": round(total_revenue, 2),
             "total_advance": round(total_advance, 2),
+            "total_ams_shared": round(total_ams_shared, 2),
             "net_cashflow": round(total_revenue - total_cost, 2),
         }
     }

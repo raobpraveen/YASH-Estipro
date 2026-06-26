@@ -1,0 +1,50 @@
+{
+  "summary": "Iteration 57 (Salary formulas + Phase Range 0.25 step + AMS engagement_type) tested end-to-end. Backend covered by 6 new pytest tests (all PASS). Frontend salary formula evaluator (7 expressions + invalid) and Add-Wave engagement dropdown (4 options, contract input conditional) verified live in Playwright on PRJ-0031.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Dashboard / Estimator wave grid",
+        "issues": [
+          "Pre-existing React hydration warnings: <span data-ve-dynamic> wrapping <tr> inside <tbody>. Carry-over from iter_55/iter_56 — not new in this batch."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter57_ams_shared.py",
+    "/app/test_reports/pytest/pytest_iter57.xml"
+  ],
+  "action_items": [
+    "(Optional, pre-existing) Clean up <span> hydration warnings around Dashboard table rows."
+  ],
+  "critical_code_review_comments": [
+    "salaryExpression.js: regex r'^(\\d+(?:\\.\\d+)?)\\s*([+\\-*/])\\s*(\\d+(?:\\.\\d+)?)(%?)$' is single-binary-op only — handles all listed cases. Correctly clamps non-finite results to null. Note: '+%' and '*%' both add the percent amount (intentional per spec line 8-10). Good.",
+    "financials.py L106-126: AMS_Shared / AMS_Mix branch correctly (a) bypasses cost (no cost added — only revenue), (b) for AMS_Shared extends wave_monthly to ams_contract_months, and (c) accumulates revenue and ams_shared_revenue with level monthly billing.",
+    "financials.py L171: wave_data[].engagement_type field is set on every wave (defaults to 'Implementation'). Confirmed via test.",
+    "financials.py L209: summary.total_ams_shared sums per-wave totals — correct.",
+    "ProjectEstimator.js L2054: condition `(newWave.engagement_type || '').startsWith('AMS_')` correctly reveals ams-contract-months-input for AMS_Shared, AMS_Dedicated, AMS_Mix only. Verified in browser: visible after AMS_Shared and AMS_Mix select; hidden after Implementation.",
+    "models.py AmsSharedBucket (L241-247): id auto-generated; round-trips through Mongo with hours_per_month=200 and hourly_rate=20 preserved as numerics.",
+    "Phase-range inputs (verified via DOM probe): 6 total inputs all carry step='0.25' and min='0.25' (or higher floor for end inputs). Existing PRJ-0031 already shows start=0.25, end=0.5 on first row — Timeline Preview bar visible at left edge of M1 as required.",
+    "Salary expression invalid input handling: when user enters 'abc', the input reverts to previous value (2400 in our test) and a sonner toast 'Invalid expression: \"abc\"' is shown — exactly the spec.",
+    "No /api/projects/{id}/version/{version} route exists; backend exposes /api/projects/{id} (latest) and /api/projects/{id}/versions (list). Tests use both. Main agent may want to clarify or rename the spec language."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter57_ams_shared.py"
+  ],
+  "success_rate": {
+    "backend": "100% (6/6 pytest tests passed)",
+    "frontend": "100% on tested items — 7/7 salary formulas correct, invalid reverts + toast, 4/4 engagement options present, contract input conditional verified, phase-range step=0.25 confirmed"
+  },
+  "test_credentials": "admin@yash.com / password (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created TEST_AMS_Shared_Iter57, TEST_AMS_Mix_Iter57, TEST_Impl_Iter57 projects via API for cashflow assertions; each test deletes its own project in the teardown.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iter57 verifies (a) salaryExpression evaluator end-to-end in the WaveContent grid (7 expressions: 3200*25%=4000, 5000+500=5500, 4000*2=8000, 8000-1000=7000, 4000/2=2000, 3200+25%=4000, 3200-25%=2400 + invalid 'abc' → toast + value revert), (b) Phase-range inputs use step=0.25 and min=0.25 (confirmed on DOM), (c) Add-Wave dialog Engagement dropdown shows 4 options ['Implementation (default)', 'AMS — Shared Support', 'AMS — Dedicated Resources', 'AMS — Mix (Shared + Dedicated)'] and the ams-contract-months-input only appears when engagement_type starts with 'AMS_' (default 12). Backend pytest test file at /app/backend/tests/test_iter57_ams_shared.py covers persistence (engagement_type, ams_shared_buckets, ams_contract_months) and cashflow API (total_ams_shared=48000 for 200×20×12, monthly ams_shared_revenue=4000, wave_data[].engagement_type set, cost bypass). The frontend AmsSharedPanel + AMS_Mix grid-side-by-side combinations were code-reviewed but not interactively tested (need a fully created AMS_Shared wave save + reload; project PRJ-0031 used for tests was a pre-existing Implementation wave). Main agent or next iteration can create a fresh AMS_Shared wave via UI and exercise AmsSharedPanel (data-testid='ams-shared-panel-{waveId}', 'ams-add-bucket-{waveId}', 'ams-bucket-name/hours/rate-{bucketId}', 'ams-shared-total-yearly-{waveId}').",
+  "rca of the issue": "N/A — all requested behaviours pass. The only quirk observed: spec mentioned GET /api/projects/{id}/version/{version} endpoint but backend instead exposes /api/projects/{id} + /api/projects/{id}/versions. Both are exercised and return the same persisted ProjectWave document with engagement_type & ams_shared_buckets intact."
+}

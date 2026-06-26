@@ -16,6 +16,7 @@ import { calculateResourceBaseCost as calcResourceBaseCostUtil } from "@/utils/e
 import { evaluateSalaryExpression } from "@/utils/salaryExpression";
 import { toast } from "sonner";
 import { PROFICIENCY_LEVELS, getGroupColor, PHASE_OPTIONS, getPhaseColor } from "./constants";
+import { AmsSharedPanel } from "./AmsSharedPanel";
 
 // Inline cell that accepts arithmetic expressions (e.g. "3200*25%", "3200+500")
 // and commits the evaluated numeric value on blur / Enter.
@@ -137,6 +138,21 @@ export const WaveContent = ({
               data-testid={`wave-name-${wave.id}`}
             />
           )}
+          {(() => {
+            const et = wave.engagement_type || "Implementation";
+            if (et === "Implementation") return null;
+            const labels = {
+              "AMS_Shared": { text: "AMS — Shared Support", cls: "bg-[#8B5CF6]/10 text-[#8B5CF6] border-[#8B5CF6]/30" },
+              "AMS_Dedicated": { text: "AMS — Dedicated", cls: "bg-[#0EA5E9]/10 text-[#0EA5E9] border-[#0EA5E9]/30" },
+              "AMS_Mix": { text: "AMS — Mix", cls: "bg-[#10B981]/10 text-[#10B981] border-[#10B981]/30" },
+            };
+            const cfg = labels[et] || labels["AMS_Shared"];
+            return (
+              <Badge variant="outline" className={`text-[10px] uppercase tracking-wide ${cfg.cls}`} data-testid={`wave-engagement-badge-${wave.id}`}>
+                {cfg.text}
+              </Badge>
+            );
+          })()}
           <span className="text-sm text-gray-600">Duration: {wave.duration_months} months</span>
           <span className="text-sm text-gray-600">Resources: {wave.grid_allocations.length}</span>
           <span className="text-sm text-[#F59E0B]">Onsite: {waveSummary.onsiteResourceCount}</span>
@@ -289,7 +305,13 @@ export const WaveContent = ({
         </div>
       </div>
 
-      {/* Phase Range Editor */}
+      {/* AMS Engagement Type — show shared support panel for Shared/Mix */}
+      {(wave.engagement_type === "AMS_Shared" || wave.engagement_type === "AMS_Mix") && (
+        <AmsSharedPanel wave={wave} waves={waves} setWaves={setWaves} isReadOnly={isReadOnly} />
+      )}
+
+      {/* Phase Range Editor — hidden for pure AMS Shared (no project phases) */}
+      {wave.engagement_type !== "AMS_Shared" && (
       <div className="bg-emerald-50/50 border border-emerald-200 rounded-lg p-3" data-testid={`phase-range-editor-${wave.id}`}>
         <div className="flex items-center justify-between">
           <button
@@ -655,8 +677,11 @@ export const WaveContent = ({
         </div>
         )}
       </div>
+      )}
 
-      {/* Grid Table */}
+      {/* Grid Table — hidden for pure AMS Shared (no resource allocation grid) */}
+      {wave.engagement_type !== "AMS_Shared" && (
+      <>
       {wave.grid_allocations.length === 0 ? (
         <div className="text-center py-8 border border-dashed border-gray-300 rounded">
           <p className="text-gray-500">No resources in this wave. Click &quot;Add Resource&quot; or &quot;Add Row&quot; to start.</p>
@@ -1203,6 +1228,8 @@ export const WaveContent = ({
             </div>
           </CardContent>
         </Card>
+      )}
+      </>
       )}
 
       {/* Split Range Allocation Dialog */}

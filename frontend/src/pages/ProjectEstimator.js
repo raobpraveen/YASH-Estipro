@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -106,7 +107,7 @@ const ProjectEstimator = () => {
   const [editingWaveId, setEditingWaveId] = useState("");
   const [saveAsNewVersionDialog, setSaveAsNewVersionDialog] = useState(false);
   
-  const [newWave, setNewWave] = useState({ name: "", duration_months: "" });
+  const [newWave, setNewWave] = useState({ name: "", duration_months: "", engagement_type: "Implementation", ams_contract_months: 12 });
   const [newAllocation, setNewAllocation] = useState({
     rate_id: "",
     is_onsite: false,
@@ -438,7 +439,7 @@ const ProjectEstimator = () => {
   };
 
   const fetchCompetencies = async () => {
-    try { setCompetencies((await axios.get(`${API}/competencies`)).data); } catch {}
+    try { setCompetencies((await axios.get(`${API}/competencies`)).data); } catch { /* noop */ }
   };
 
 
@@ -448,6 +449,9 @@ const ProjectEstimator = () => {
       return;
     }
 
+    const engagementType = newWave.engagement_type || "Implementation";
+    const isAms = engagementType.startsWith("AMS_");
+    // For AMS_Shared we don't need phase columns, but keep duration intact
     const numMonths = Math.ceil(parseFloat(newWave.duration_months));
     const phaseNames = Array(numMonths).fill("").map((_, i) => `M${i + 1}`);
 
@@ -463,11 +467,14 @@ const ProjectEstimator = () => {
       logistics_config: { ...waveLogistics },
       nego_buffer_percentage: 0,
       grid_allocations: [],
+      engagement_type: engagementType,
+      ams_shared_buckets: [],
+      ams_contract_months: isAms ? (parseInt(newWave.ams_contract_months) || 12) : 12,
     };
 
     setWaves([...waves, wave]);
     setActiveWaveId(wave.id);
-    setNewWave({ name: "", description: "", duration_months: "" });
+    setNewWave({ name: "", description: "", duration_months: "", engagement_type: "Implementation", ams_contract_months: 12 });
     setAddWaveDialogOpen(false);
     toast.success("Wave added successfully");
   };
@@ -1999,6 +2006,28 @@ const ProjectEstimator = () => {
                   <DialogDescription>Configure wave details and logistics rates</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="wave-engagement">Engagement Type</Label>
+                    <Select
+                      value={newWave.engagement_type || "Implementation"}
+                      onValueChange={(v) => setNewWave({ ...newWave, engagement_type: v })}
+                    >
+                      <SelectTrigger id="wave-engagement" data-testid="wave-engagement-select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Implementation">Implementation (default)</SelectItem>
+                        <SelectItem value="AMS_Shared">AMS — Shared Support</SelectItem>
+                        <SelectItem value="AMS_Dedicated">AMS — Dedicated Resources</SelectItem>
+                        <SelectItem value="AMS_Mix">AMS — Mix (Shared + Dedicated)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {newWave.engagement_type && newWave.engagement_type !== "Implementation" && (
+                      <p className="text-[11px] text-gray-500 mt-1">
+                        AMS waves use rolling monthly billing. Profit margin & nego buffer apply only to <em>Dedicated</em> portions; <em>Shared Support</em> uses pure billed rates.
+                      </p>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="wave-name">Wave Name</Label>
@@ -2022,6 +2051,22 @@ const ProjectEstimator = () => {
                       />
                     </div>
                   </div>
+                  {(newWave.engagement_type || "").startsWith("AMS_") && (
+                    <div>
+                      <Label htmlFor="ams-contract-months">Contract Length (Months)</Label>
+                      <Input
+                        id="ams-contract-months"
+                        type="number"
+                        min="1"
+                        max="60"
+                        placeholder="12"
+                        value={newWave.ams_contract_months}
+                        onChange={(e) => setNewWave({ ...newWave, ams_contract_months: e.target.value })}
+                        data-testid="ams-contract-months-input"
+                      />
+                      <p className="text-[11px] text-gray-500 mt-1">Used for yearly billing summary. Default 12 months.</p>
+                    </div>
+                  )}
                   <div>
                     <Label htmlFor="wave-desc-new">Description</Label>
                     <Input
@@ -2113,7 +2158,7 @@ const ProjectEstimator = () => {
         <CardContent>
           {waves.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">No waves added yet. Click "Add Wave" to start.</p>
+              <p className="text-gray-500">No waves added yet. Click &quot;Add Wave&quot; to start.</p>
             </div>
           ) : (
             <Tabs value={activeWaveId} onValueChange={setActiveWaveId}>

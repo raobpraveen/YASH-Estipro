@@ -238,6 +238,14 @@ class WaveGridAllocation(BaseModel):
     visa_insurance_per_trip: float = 0
     num_trips: int = 0
 
+class AmsSharedBucket(BaseModel):
+    """Service bucket for AMS Shared Support model (e.g. L1, L2)."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str  # free-text label (e.g. "L1 Tickets", "L2 Tickets", "On-call")
+    hours_per_month: float = 0
+    hourly_rate: float = 0  # USD per hour
+    notes: str = ""
+
 class ProjectWave(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
@@ -251,6 +259,10 @@ class ProjectWave(BaseModel):
     logistics_config: Dict[str, float] = {}
     nego_buffer_percentage: float = 0
     grid_allocations: List[WaveGridAllocation] = []
+    # AMS support
+    engagement_type: str = "Implementation"  # "Implementation" | "AMS_Shared" | "AMS_Dedicated" | "AMS_Mix"
+    ams_shared_buckets: List[AmsSharedBucket] = []
+    ams_contract_months: int = 12  # Used when engagement_type starts with "AMS_"
 
 class Project(BaseModel):
     model_config = ConfigDict(extra="ignore")
