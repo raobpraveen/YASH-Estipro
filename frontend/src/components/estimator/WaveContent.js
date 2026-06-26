@@ -10,10 +10,53 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Plus, Trash2, Plane, Settings, Copy, FileSpreadsheet, Minus, Upload, Download, GripVertical, Calculator, X, ChevronDown, ChevronRight } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { calculateResourceBaseCost as calcResourceBaseCostUtil } from "@/utils/estimatorCalcs";
+import { evaluateSalaryExpression } from "@/utils/salaryExpression";
+import { toast } from "sonner";
 import { PROFICIENCY_LEVELS, getGroupColor, PHASE_OPTIONS, getPhaseColor } from "./constants";
+
+// Inline cell that accepts arithmetic expressions (e.g. "3200*25%", "3200+500")
+// and commits the evaluated numeric value on blur / Enter.
+const SalaryExpressionInput = ({ value, onCommit, disabled, testId }) => {
+  const [draft, setDraft] = useState(String(value ?? ""));
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDraft(String(value ?? ""));
+  }, [value, editing]);
+
+  const commit = () => {
+    const evald = evaluateSalaryExpression(draft);
+    if (evald === null) {
+      toast.error(`Invalid expression: "${draft}"`);
+      setDraft(String(value ?? ""));
+    } else if (evald !== Number(value)) {
+      onCommit(evald);
+    }
+    setEditing(false);
+  };
+
+  return (
+    <Input
+      type="text"
+      inputMode="text"
+      className="w-[74px] text-right font-mono text-xs h-7"
+      value={draft}
+      onChange={(e) => { setEditing(true); setDraft(e.target.value); }}
+      onFocus={() => setEditing(true)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") { e.preventDefault(); e.target.blur(); }
+        if (e.key === "Escape") { setDraft(String(value ?? "")); setEditing(false); e.target.blur(); }
+      }}
+      data-testid={testId}
+      disabled={disabled}
+      title="Enter a number or an expression like 3200+500, 3200*25%, 3200/2"
+    />
+  );
+};
 
 export const WaveContent = ({
   wave,
@@ -302,12 +345,12 @@ export const WaveContent = ({
                   <option value="__custom__">+ Custom...</option>
                 </select>
                 <Input
-                  type="number" min={0.5} max={wave.phase_names.length} step="0.5"
+                  type="number" min={0.25} max={wave.phase_names.length} step="0.25"
                   value={pr.start_month}
                   onChange={(e) => {
                     const raw = parseFloat(e.target.value);
                     if (isNaN(raw)) return;
-                    const val = Math.max(0.5, Math.min(wave.phase_names.length, Math.round(raw * 2) / 2));
+                    const val = Math.max(0.25, Math.min(wave.phase_names.length, Math.round(raw * 4) / 4));
                     const ranges = [...(wave.phase_ranges || [])];
                     ranges[idx] = { ...ranges[idx], start_month: val, end_month: Math.max(val, ranges[idx].end_month) };
                     setWaves(waves.map(w => w.id === wave.id ? { ...w, phase_ranges: ranges } : w));
@@ -317,12 +360,12 @@ export const WaveContent = ({
                   data-testid={`phase-range-start-${idx}`}
                 />
                 <Input
-                  type="number" min={pr.start_month} max={wave.phase_names.length} step="0.5"
+                  type="number" min={pr.start_month} max={wave.phase_names.length} step="0.25"
                   value={pr.end_month}
                   onChange={(e) => {
                     const raw = parseFloat(e.target.value);
                     if (isNaN(raw)) return;
-                    const val = Math.max(pr.start_month, Math.min(wave.phase_names.length, Math.round(raw * 2) / 2));
+                    const val = Math.max(pr.start_month, Math.min(wave.phase_names.length, Math.round(raw * 4) / 4));
                     const ranges = [...(wave.phase_ranges || [])];
                     ranges[idx] = { ...ranges[idx], end_month: val };
                     setWaves(waves.map(w => w.id === wave.id ? { ...w, phase_ranges: ranges } : w));
@@ -354,8 +397,14 @@ export const WaveContent = ({
                 {/* Phase bars rendered as continuous strips */}
                 {(wave.phase_ranges || []).map((pr, i) => {
                   const totalMonths = wave.phase_names.length;
-                  const leftPct = ((pr.start_month - 1) / totalMonths) * 100;
-                  const widthPct = ((pr.end_month - pr.start_month + 1) / totalMonths) * 100;
+                  // Sub-1 values (0.25, 0.5, 0.75) are fractional positions INTO M1 (e.g. 0.5 = mid-M1).
+                  // Values >= 1 use the legacy 1-indexed-month convention (1 = start of M1, 2 = start of M2, etc.).
+                  const startElapsed = pr.start_month < 1 ? pr.start_month : pr.start_month - 1;
+                  const endElapsed = pr.end_month < 1 ? pr.end_month : pr.end_month;
+                  let leftPct = (startElapsed / totalMonths) * 100;
+                  let widthPct = ((endElapsed - startElapsed) / totalMonths) * 100;
+                  // Minimum visible marker for zero-width ranges (e.g. start=end=0.5)
+                  if (widthPct < 0.5) widthPct = Math.max(0.5, (1 / totalMonths) * 8);
                   return (
                     <div key={i} className="relative h-6 mb-0.5">
                       {/* Background grid lines */}
@@ -609,7 +658,7 @@ export const WaveContent = ({
       {/* Grid Table */}
       {wave.grid_allocations.length === 0 ? (
         <div className="text-center py-8 border border-dashed border-gray-300 rounded">
-          <p className="text-gray-500">No resources in this wave. Click "Add Resource" or "Add Row" to start.</p>
+          <p className="text-gray-500">No resources in this wave. Click &quot;Add Resource&quot; or &quot;Add Row&quot; to start.</p>
         </div>
       ) : (
         <DragDropContext onDragEnd={(result) => onDragEnd(result, wave.id)}>
@@ -757,16 +806,15 @@ export const WaveContent = ({
                     {/* $/Month */}
                     <td className="p-1 text-right" style={{ position: 'sticky', left: 396, zIndex: 2, background: stickyBg, minWidth: 86, maxWidth: 86 }}>
                       <Tooltip><TooltipTrigger asChild><div>
-                        <Input
-                          type="number"
-                          className="w-[74px] text-right font-mono text-xs h-7"
+                        <SalaryExpressionInput
                           value={allocation.avg_monthly_salary}
-                          onChange={(e) => onSalaryChange(wave.id, allocation.id, e.target.value)}
-                          data-testid={`salary-${allocation.id}`}
+                          onCommit={(newVal) => onSalaryChange(wave.id, allocation.id, newVal)}
                           disabled={isReadOnly}
+                          testId={`salary-${allocation.id}`}
                         />
                       </div></TooltipTrigger><TooltipContent side="bottom">
                         <p className="text-xs font-medium">${Number(allocation.avg_monthly_salary || 0).toLocaleString()}/month</p>
+                        <p className="text-[10px] text-gray-500">Tip: enter formulas like <code>3200+500</code>, <code>3200*25%</code>, <code>3200/2</code></p>
                         {allocation.original_monthly_salary > 0 && allocation.avg_monthly_salary !== allocation.original_monthly_salary && (
                           <p className="text-[10px] text-gray-400">Master rate: ${Number(allocation.original_monthly_salary).toLocaleString()}</p>
                         )}
@@ -1177,7 +1225,7 @@ export const WaveContent = ({
               <p className="text-xs text-gray-500 mt-2">
                 <strong>Simple:</strong> Enter a number (e.g., <code className="bg-gray-100 px-1 rounded">1</code>) to apply to all months.<br />
                 <strong>Split range:</strong> Use <code className="bg-gray-100 px-1 rounded">M1-M3:1, M4-M5:0.5, M6:0</code> format.<br />
-                Months use M1, M2, ... matching the wave's column headers.
+                Months use M1, M2, ... matching the wave&apos;s column headers.
               </p>
             </div>
             <div className="flex gap-2">
