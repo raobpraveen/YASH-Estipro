@@ -253,8 +253,46 @@ export async function buildExportWorkbook({
 
     // Phase dependencies section removed — milestones are now linked to phases directly
 
+    // ---- AMS Shared Support Section ----
+    const engagementType = wave.engagement_type || "Implementation";
+    const isAms = engagementType === "AMS_Shared" || engagementType === "AMS_Mix";
+    const amsBuckets = isAms ? (wave.ams_shared_buckets || []) : [];
+    let amsMonthlyCell = null;
+    let amsAnnualCell = null;
+    if (isAms && amsBuckets.length > 0) {
+      const contractMonths = parseInt(wave.ams_contract_months) || 12;
+      dws.addRow([]);
+      const amsHdr = dws.addRow([`AMS SHARED SUPPORT (${engagementType.replace("AMS_", "")} — ${contractMonths} months contract)`]);
+      amsHdr.font = { bold: true, size: 11, color: { argb: "FF8B5CF6" } };
+      amsHdr.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDE9FE" } };
+      const amsCol = dws.addRow(["#", "Service / Bucket", "Hours/Month", "Hourly Rate", "Billing/Month", "Billing/Year", "Notes"]);
+      amsCol.eachCell(c => { c.fill = subHeaderFill; c.font = { bold: true }; c.border = thinBorder; });
+      const amsStartRow = dws.lastRow.number + 1;
+      amsBuckets.forEach((b, idx) => {
+        const r = dws.addRow([idx + 1, b.name || "", b.hours_per_month || 0, b.hourly_rate || 0, "", "", b.notes || ""]);
+        const rn = r.number;
+        r.getCell(5).value = { formula: `C${rn}*D${rn}`, result: (b.hours_per_month || 0) * (b.hourly_rate || 0) };
+        r.getCell(5).numFmt = moneyFmt;
+        r.getCell(6).value = { formula: `E${rn}*${contractMonths}`, result: (b.hours_per_month || 0) * (b.hourly_rate || 0) * contractMonths };
+        r.getCell(6).numFmt = moneyFmt;
+        r.getCell(4).numFmt = moneyFmt;
+        r.eachCell(c => { c.border = thinBorder; });
+      });
+      const amsEndRow = dws.lastRow.number;
+      const amsTot = dws.addRow(["", "Total", "", "", "", "", ""]);
+      amsTot.font = totalsFont;
+      amsTot.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDE9FE" } }; c.border = thinBorder; });
+      amsTot.getCell(5).value = { formula: `SUM(E${amsStartRow}:E${amsEndRow})`, result: amsBuckets.reduce((s, b) => s + (b.hours_per_month || 0) * (b.hourly_rate || 0), 0) };
+      amsTot.getCell(5).numFmt = moneyFmt;
+      amsTot.getCell(6).value = { formula: `SUM(F${amsStartRow}:F${amsEndRow})`, result: amsBuckets.reduce((s, b) => s + (b.hours_per_month || 0) * (b.hourly_rate || 0) * contractMonths, 0) };
+      amsTot.getCell(6).numFmt = moneyFmt;
+      amsMonthlyCell = `E${amsTot.number}`;
+      amsAnnualCell = `F${amsTot.number}`;
+    }
+
     waveRefs.push({
       name: wave.name, sheet: sRef,
+      engagementType,
       totalMM: `${sRef}!${colL(C_TMM)}${TR}`,
       onsiteMM: `${sRef}!${onsMMCell}`,
       offshoreMM: `${sRef}!${offMMCell}`,
@@ -264,6 +302,9 @@ export async function buildExportWorkbook({
       sellingPrice: `${sRef}!${waveSPCell}`,
       negoBuffer: `${sRef}!${negoCell}`,
       finalPrice: `${sRef}!${finalCell}`,
+      amsMonthly: amsMonthlyCell ? `${sRef}!${amsMonthlyCell}` : null,
+      amsAnnual: amsAnnualCell ? `${sRef}!${amsAnnualCell}` : null,
+      contractMonths: isAms ? (parseInt(wave.ams_contract_months) || 12) : null,
     });
   });
 
@@ -330,6 +371,17 @@ export async function buildExportWorkbook({
     fpRow.getCell(2).value = { formula: ref.finalPrice, result: 0 };
     fpRow.getCell(2).numFmt = moneyFmt;
     fpRow.font = { bold: true }; fpRow.eachCell(c => { c.fill = greenFill; });
+    if (ref.amsMonthly) {
+      const amsHd = summaryWs.addRow([`AMS Shared Support (${ref.contractMonths} mo)`]);
+      amsHd.font = { bold: true, italic: true, color: { argb: "FF8B5CF6" } };
+      const amsMR = summaryWs.addRow(["AMS Monthly Billing"]);
+      amsMR.getCell(2).value = { formula: ref.amsMonthly, result: 0 };
+      amsMR.getCell(2).numFmt = moneyFmt;
+      const amsAR = summaryWs.addRow(["AMS Annual Billing"]);
+      amsAR.getCell(2).value = { formula: ref.amsAnnual, result: 0 };
+      amsAR.getCell(2).numFmt = moneyFmt;
+      amsAR.font = { bold: true }; amsAR.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDE9FE" } }; });
+    }
     summaryWs.addRow([]);
   });
 
@@ -356,6 +408,28 @@ export async function buildExportWorkbook({
   grandRow.getCell(2).value = { formula: waveRefs.map(r => r.finalPrice).join("+"), result: 0 };
   grandRow.getCell(2).numFmt = moneyFmt;
   grandRow.eachCell(c => { c.fill = finalFill; c.font = finalFont; c.border = thinBorder; });
+
+  // AMS roll-up across waves (only if any AMS wave exists)
+  const amsRefs = waveRefs.filter(r => r.amsAnnual);
+  if (amsRefs.length > 0) {
+    summaryWs.addRow([]);
+    const amsHdr = summaryWs.addRow(["AMS SHARED SUPPORT ROLL-UP"]);
+    amsHdr.font = { bold: true, size: 12, color: { argb: "FF8B5CF6" } };
+    amsHdr.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDE9FE" } }; c.border = thinBorder; });
+    const amsMon = summaryWs.addRow(["AMS Monthly Billing (sum)"]);
+    amsMon.getCell(2).value = { formula: amsRefs.map(r => r.amsMonthly).join("+"), result: 0 };
+    amsMon.getCell(2).numFmt = moneyFmt;
+    const amsAnn = summaryWs.addRow(["AMS Annual Billing (sum)"]);
+    amsAnn.getCell(2).value = { formula: amsRefs.map(r => r.amsAnnual).join("+"), result: 0 };
+    amsAnn.getCell(2).numFmt = moneyFmt;
+    amsAnn.font = { bold: true };
+    amsAnn.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDE9FE" } }; c.border = thinBorder; });
+
+    const gtRow = summaryWs.addRow(["GRAND TOTAL (Impl + AMS Y1)"]);
+    gtRow.getCell(2).value = { formula: `(${waveRefs.map(r => r.finalPrice).join("+")})+(${amsRefs.map(r => r.amsAnnual).join("+")})`, result: 0 };
+    gtRow.getCell(2).numFmt = moneyFmt;
+    gtRow.eachCell(c => { c.fill = finalFill; c.font = finalFont; c.border = thinBorder; });
+  }
 
   const overallSummary = calculateOverallSummary(waves, profitMarginPercentage, negoBufferPercentage);
   if (Math.abs(overallSummary.effectiveProfitMargin - profitMarginPercentage) > 0.01) {

@@ -538,6 +538,58 @@ const PaymentMilestones = () => {
               </CardHeader>
               {!isCollapsed && (
                 <CardContent className="pt-0 pb-4">
+                  {/* AMS Shared Support Recurring Billing — read-only info card */}
+                  {(wave.engagement_type === "AMS_Shared" || wave.engagement_type === "AMS_Mix") && (wave.ams_shared_buckets || []).length > 0 && (() => {
+                    const buckets = wave.ams_shared_buckets || [];
+                    const contractMonths = parseInt(wave.ams_contract_months) || 12;
+                    const monthly = buckets.reduce((s, b) => s + (parseFloat(b.hours_per_month) || 0) * (parseFloat(b.hourly_rate) || 0), 0);
+                    const annual = monthly * contractMonths;
+                    return (
+                      <div className="mb-4 border border-purple-200 rounded-lg p-3 bg-purple-50/40" data-testid={`ams-recurring-card-${waveName}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold bg-[#8B5CF6] text-white px-2 py-0.5 rounded uppercase tracking-wide">AMS Recurring Billing</span>
+                            <span className="text-xs text-gray-500">read-only · auto-flows to Cashflow</span>
+                          </div>
+                          <div className="text-xs text-gray-600">{contractMonths} months contract</div>
+                        </div>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-8">#</TableHead>
+                              <TableHead>Service / Bucket</TableHead>
+                              <TableHead className="text-right w-28">Hours / Month</TableHead>
+                              <TableHead className="text-right w-28">Hourly Rate</TableHead>
+                              <TableHead className="text-right w-32">Billing / Month</TableHead>
+                              <TableHead className="text-right w-32">Billing / Year</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {buckets.map((b, i) => {
+                              const m = (parseFloat(b.hours_per_month) || 0) * (parseFloat(b.hourly_rate) || 0);
+                              return (
+                                <TableRow key={b.id || i} className="text-xs">
+                                  <TableCell className="text-gray-400 font-mono">{i + 1}</TableCell>
+                                  <TableCell className="font-medium">{b.name}</TableCell>
+                                  <TableCell className="text-right font-mono">{b.hours_per_month}</TableCell>
+                                  <TableCell className="text-right font-mono">${b.hourly_rate}</TableCell>
+                                  <TableCell className="text-right font-mono text-[#8B5CF6]">${m.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
+                                  <TableCell className="text-right font-mono text-[#8B5CF6]">${(m * contractMonths).toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                            <TableRow className="bg-purple-100/50 font-semibold text-xs">
+                              <TableCell colSpan={4} className="text-right">Total</TableCell>
+                              <TableCell className="text-right font-mono text-[#8B5CF6]" data-testid={`ams-recurring-monthly-${waveName}`}>${monthly.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
+                              <TableCell className="text-right font-mono text-[#8B5CF6]" data-testid={`ams-recurring-annual-${waveName}`}>${annual.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                        <p className="text-[11px] text-gray-500 mt-2">Edit hours / rate from the wave grid (AMS Shared Support panel). This information is not part of the payment milestone schedule — it is billed automatically each month.</p>
+                      </div>
+                    );
+                  })()}
+
                   {/* Payment Milestones Table */}
                   {paymentMilestones.length > 0 && (
                     <div className="overflow-x-auto mb-4">

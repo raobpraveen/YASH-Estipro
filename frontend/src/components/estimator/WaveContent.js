@@ -92,9 +92,6 @@ export const WaveContent = ({
   onAllocationCommentChange,
   onApplyToAllMonths,
   onAddEmptyRow,
-  onDownloadWaveTemplate,
-  onDownloadWaveData,
-  onUploadWaveGrid,
   onCloneWave,
   onDeleteWave,
   onGridFieldChange,
@@ -278,20 +275,6 @@ export const WaveContent = ({
           <Button size="sm" variant="outline" onClick={() => onRemovePhaseColumn(wave.id)} className="border-orange-600 text-orange-600 hover:bg-orange-50" data-testid={`remove-month-${wave.id}`} disabled={isReadOnly}>
             <Minus className="w-4 h-4 mr-1" /> Remove Month
           </Button>
-          <Button size="sm" variant="outline" onClick={onDownloadWaveTemplate} className="border-emerald-600 text-emerald-600 hover:bg-emerald-50" data-testid="download-template-button">
-            <FileSpreadsheet className="w-4 h-4 mr-2" /> Download Template
-          </Button>
-          <Button size="sm" variant="outline" onClick={onDownloadWaveData} className="border-indigo-600 text-indigo-600 hover:bg-indigo-50" data-testid="download-data-button">
-            <Download className="w-4 h-4 mr-2" /> Download Data
-          </Button>
-          {!isReadOnly && (
-          <div className="relative">
-            <input type="file" accept=".xlsx,.xls" onChange={onUploadWaveGrid} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" data-testid="upload-grid-input" />
-            <Button size="sm" variant="outline" className="border-purple-600 text-purple-600 hover:bg-purple-50 pointer-events-none">
-              <Upload className="w-4 h-4 mr-2" /> Upload Grid
-            </Button>
-          </div>
-          )}
           {!isReadOnly && (
           <Button size="sm" variant="outline" className="border-indigo-500 text-indigo-500 hover:bg-indigo-50" onClick={() => onCloneWave(wave.id)} data-testid={`clone-wave-${wave.id}`}>
             <Copy className="w-4 h-4 mr-2" /> Clone Wave

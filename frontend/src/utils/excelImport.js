@@ -220,6 +220,9 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
       // Parse phase ranges section
       let phaseRanges = [];
       let phaseDependencies = [];
+      let amsBuckets = [];
+      let amsContractMonths = 12;
+      let engagementType = "Implementation";
       for (let r = headerRowNum + allocations.length + 2; r <= ws.rowCount; r++) {
         const row = ws.getRow(r);
         const cellA = (getCellVal(row.getCell(1)) || "").toString().trim();
@@ -243,6 +246,30 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
             phaseDependencies.push({ from_phase: fromPhase, to_phase: toPhase, type: depType });
           }
         }
+        // Parse "AMS SHARED SUPPORT (<Type> — <N> months contract)" section
+        if (cellA.toUpperCase().includes("AMS SHARED SUPPORT")) {
+          const headerMatch = cellA.match(/AMS SHARED SUPPORT \((\w+)\s*[—-]\s*(\d+)\s*months/i);
+          if (headerMatch) {
+            engagementType = headerMatch[1].toLowerCase().includes("mix") ? "AMS_Mix" : "AMS_Shared";
+            amsContractMonths = parseInt(headerMatch[2]) || 12;
+          }
+          for (let ar = r + 2; ar <= ws.rowCount; ar++) {
+            const aRow = ws.getRow(ar);
+            const numCell = (getCellVal(aRow.getCell(1)) || "").toString().trim();
+            const nameCell = (getCellVal(aRow.getCell(2)) || "").toString().trim();
+            const hoursCell = parseFloat(getCellVal(aRow.getCell(3)));
+            const rateCell = parseFloat(getCellVal(aRow.getCell(4)));
+            // Stop on Total row or blank
+            if (!nameCell || nameCell.toUpperCase() === "TOTAL" || numCell.toUpperCase() === "TOTAL") break;
+            if (!Number.isFinite(hoursCell) || !Number.isFinite(rateCell)) continue;
+            amsBuckets.push({
+              name: nameCell,
+              hours_per_month: hoursCell,
+              hourly_rate: rateCell,
+              notes: (getCellVal(aRow.getCell(7)) || "").toString().trim(),
+            });
+          }
+        }
       }
 
       parsedWaves.push({
@@ -252,6 +279,9 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
         phaseRanges,
         phaseDependencies,
         logistics: Object.keys(parsedLogistics).length > 0 ? parsedLogistics : null,
+        engagementType: amsBuckets.length > 0 ? engagementType : "Implementation",
+        amsBuckets,
+        amsContractMonths,
       });
     }
   });

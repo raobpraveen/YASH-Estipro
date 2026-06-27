@@ -922,43 +922,6 @@ const ProjectEstimator = () => {
     return { totalMM, onsiteMM, offshoreMM, onsiteCost, offshoreCost, baseCost, overheadCost, totalCost, sellingPrice: sp, spPerMM, hourly, finalPrice: sp + nego, negoBuffer: nego };
   })();
 
-  // Download current wave grid data (not template)
-  const handleDownloadWaveData = () => {
-    const wave = waves.find(w => w.id === activeWaveId);
-    if (!wave || wave.grid_allocations.length === 0) {
-      toast.error("No data to download");
-      return;
-    }
-    const wb = XLSX.utils.book_new();
-    const headers = [
-      "Skill Name", "Proficiency Level", "Base Location", "Monthly Salary",
-      "Overhead %", "Is Onsite", "Travel Required",
-      ...wave.phase_names.map(p => `${p} (MM)`),
-      "Total MM", "Salary Cost", "Selling Price", "Comments"
-    ];
-    const data = [headers];
-    wave.grid_allocations.forEach(a => {
-      const totalMM = Object.values(a.phase_allocations || {}).reduce((s, v) => s + v, 0);
-      const salary = a.avg_monthly_salary * totalMM;
-      const overhead = salary * (a.overhead_percentage / 100);
-      const sp = (salary + overhead) / (1 - profitMarginPercentage / 100);
-      data.push([
-        a.skill_name, a.proficiency_level, a.base_location_name,
-        a.avg_monthly_salary, a.overhead_percentage,
-        a.is_onsite ? "TRUE" : "FALSE",
-        a.travel_required ? "TRUE" : "FALSE",
-        ...wave.phase_names.map((_, i) => a.phase_allocations[i] || 0),
-        totalMM.toFixed(2), salary.toFixed(2), sp.toFixed(2),
-        a.comments || ""
-      ]);
-    });
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    ws["!cols"] = headers.map(() => ({ wch: 16 }));
-    XLSX.utils.book_append_sheet(wb, ws, wave.name.substring(0, 30));
-    XLSX.writeFile(wb, `${projectNumber || projectName || "Wave"}_${wave.name.replace(/\s+/g, '_')}_Data.xlsx`);
-    toast.success("Wave grid data downloaded");
-  };
-
   // Apply a value to all months for a resource
   const handleApplyToAllMonths = (waveId, allocationId, value) => {
     const wave = waves.find(w => w.id === waveId);
@@ -1400,284 +1363,6 @@ const ProjectEstimator = () => {
     } catch { toast.error("Failed to remove Gantt chart"); }
   };
 
-  const handleDownloadWaveTemplate = () => {
-    const activeWave = waves.find(w => w.id === activeWaveId);
-    if (!activeWave) {
-      toast.error("Please select a wave first");
-      return;
-    }
-
-    const wb = XLSX.utils.book_new();
-    
-    // Instructions sheet
-    const instructionsData = [
-      ["YASH EstiPro - Wave Grid Upload Template"],
-      [""],
-      ["INSTRUCTIONS:"],
-      ["1. Fill in the 'Resource Data' sheet with your resource allocations"],
-      ["2. Each row represents one resource in the wave grid"],
-      ["3. Required fields are marked with * in the header"],
-      ["4. Phase columns (M1, M2, etc.) should contain man-month values (e.g., 0.5, 1, 1.5)"],
-      ["5. Save this file and upload it using the 'Upload Grid' button"],
-      [""],
-      ["FIELD DESCRIPTIONS:"],
-      ["Skill Name* - Name of the skill/role (must match master data)"],
-      ["Proficiency Level* - Level like Junior, Mid, Senior, Lead, Expert"],
-      ["Base Location* - Location name (must match master data)"],
-      ["Monthly Salary - Override salary (leave empty to use master rate)"],
-      ["Overhead % - Overhead percentage (default: from master data)"],
-      ["Is Onsite - TRUE or FALSE (default: FALSE)"],
-      ["Travel Required - TRUE or FALSE for logistics calculation (default: FALSE)"],
-      ["M1, M2, M3... - Man-months for each phase/month"],
-      [""],
-      ["NOTES:"],
-      ["- Skill Name and Base Location must exist in master data"],
-      ["- Leave Monthly Salary empty to auto-fetch from Proficiency Rates"],
-      ["- Phase columns should match the wave duration"],
-    ];
-    const instructionsWs = XLSX.utils.aoa_to_sheet(instructionsData);
-    instructionsWs["!cols"] = [{ wch: 80 }];
-    XLSX.utils.book_append_sheet(wb, instructionsWs, "Instructions");
-
-    // Resource Data sheet with headers based on wave phases
-    const phaseHeaders = activeWave.phase_names?.length > 0 
-      ? activeWave.phase_names 
-      : Array.from({ length: Math.ceil(activeWave.duration_months) }, (_, i) => `M${i + 1}`);
-    
-    const headers = [
-      "Skill Name*",
-      "Proficiency Level*",
-      "Base Location*",
-      "Monthly Salary",
-      "Overhead %",
-      "Is Onsite",
-      "Travel Required",
-      ...phaseHeaders.map(p => `${p} (MM)`),
-      "Comments"
-    ];
-    
-    const resourceData = [headers];
-    
-    // Add example rows
-    resourceData.push([
-      "Project Manager",
-      "Senior",
-      "India",
-      "",
-      "",
-      "FALSE",
-      "FALSE",
-      ...phaseHeaders.map(() => "1")
-    ]);
-    resourceData.push([
-      "Developer",
-      "Mid",
-      "India",
-      "",
-      "",
-      "FALSE",
-      "FALSE",
-      ...phaseHeaders.map(() => "1")
-    ]);
-    resourceData.push([
-      "Solution Architect",
-      "Expert",
-      "United States",
-      "",
-      "",
-      "TRUE",
-      "TRUE",
-      ...phaseHeaders.map(() => "0.5")
-    ]);
-    
-    const resourceWs = XLSX.utils.aoa_to_sheet(resourceData);
-    
-    // Set column widths
-    resourceWs["!cols"] = [
-      { wch: 20 }, // Skill Name
-      { wch: 15 }, // Proficiency Level
-      { wch: 18 }, // Base Location
-      { wch: 14 }, // Monthly Salary
-      { wch: 12 }, // Overhead %
-      { wch: 10 }, // Is Onsite
-      { wch: 14 }, // Travel Required
-      ...phaseHeaders.map(() => ({ wch: 10 }))
-    ];
-    
-    XLSX.utils.book_append_sheet(wb, resourceWs, "Resource Data");
-    
-    // Master Data Reference sheet
-    const skillsRef = skills.map(s => [s.name, s.category || ""]);
-    const locationsRef = locations.map(l => [l.name, l.country || "", `${l.overhead_percentage || 0}%`]);
-    const proficiencyLevels = ["Junior", "Mid", "Senior", "Lead", "Expert"];
-    
-    const masterData = [
-      ["AVAILABLE SKILLS", "Category"],
-      ...skillsRef,
-      [""],
-      ["AVAILABLE BASE LOCATIONS", "Country", "Default Overhead %"],
-      ...locationsRef,
-      [""],
-      ["PROFICIENCY LEVELS"],
-      ...proficiencyLevels.map(l => [l])
-    ];
-    
-    const masterWs = XLSX.utils.aoa_to_sheet(masterData);
-    masterWs["!cols"] = [{ wch: 25 }, { wch: 20 }, { wch: 18 }];
-    XLSX.utils.book_append_sheet(wb, masterWs, "Master Data Reference");
-    
-    // Download the file
-    const fileName = `WaveGrid_Template_${activeWave.name.replace(/\s+/g, '_')}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-    toast.success(`Template downloaded: ${fileName}`);
-  };
-
-  const handleUploadWaveGrid = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const activeWave = waves.find(w => w.id === activeWaveId);
-    if (!activeWave) {
-      toast.error("Please select a wave first");
-      return;
-    }
-
-    try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      
-      // Find the Resource Data sheet
-      const sheetName = workbook.SheetNames.find(name => 
-        name.toLowerCase().includes('resource') || name === 'Resource Data'
-      ) || workbook.SheetNames[0];
-      
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      
-      if (jsonData.length < 2) {
-        toast.error("No data found in the uploaded file");
-        return;
-      }
-
-      // Get headers from first row
-      const headers = jsonData[0].map(h => h?.toString().toLowerCase().replace(/[^a-z0-9]/g, '') || '');
-      
-      // Find column indexes
-      const colIndexes = {
-        skillName: headers.findIndex(h => h.includes('skillname') || h === 'skill'),
-        proficiency: headers.findIndex(h => h.includes('proficiency') || h.includes('level')),
-        location: headers.findIndex(h => h.includes('location') || h.includes('base')),
-        salary: headers.findIndex(h => h.includes('salary') || h.includes('monthly')),
-        overhead: headers.findIndex(h => h.includes('overhead')),
-        isOnsite: headers.findIndex(h => h.includes('onsite')),
-        travelRequired: headers.findIndex(h => h.includes('travel')),
-        comments: headers.findIndex(h => h.includes('comment')),
-      };
-
-      // Find phase columns (anything with MM or M1, M2, etc.) - exclude Comments column
-      const phaseStartIndex = Math.max(
-        colIndexes.travelRequired + 1,
-        headers.findIndex(h => h.includes('mm') || /^m\d+/.test(h))
-      );
-      
-      // Phase columns end before Comments column (if present)
-      const phaseEndIndex = colIndexes.comments > phaseStartIndex ? colIndexes.comments : headers.length;
-
-      const newAllocations = [];
-      let successCount = 0;
-      let errorCount = 0;
-
-      // Process data rows (skip header)
-      for (let i = 1; i < jsonData.length; i++) {
-        const row = jsonData[i];
-        if (!row || row.length === 0) continue;
-
-        const skillName = row[colIndexes.skillName]?.toString().trim();
-        const proficiencyLevel = row[colIndexes.proficiency]?.toString().trim();
-        const locationName = row[colIndexes.location]?.toString().trim();
-
-        if (!skillName || !proficiencyLevel || !locationName) {
-          errorCount++;
-          continue;
-        }
-
-        // Find matching rate from master data
-        const matchingRate = rates.find(r => 
-          r.skill_name?.toLowerCase() === skillName.toLowerCase() &&
-          r.proficiency_level?.toLowerCase() === proficiencyLevel.toLowerCase() &&
-          r.base_location_name?.toLowerCase() === locationName.toLowerCase()
-        );
-
-        // Find location for overhead
-        const location = locations.find(l => 
-          l.name?.toLowerCase() === locationName.toLowerCase()
-        );
-
-        // Get custom salary if provided
-        const customSalary = colIndexes.salary >= 0 ? parseFloat(row[colIndexes.salary]) : NaN;
-        const overheadPct = colIndexes.overhead >= 0 ? parseFloat(row[colIndexes.overhead]) : NaN;
-        const isOnsite = colIndexes.isOnsite >= 0 ? 
-          ['true', 'yes', '1'].includes(row[colIndexes.isOnsite]?.toString().toLowerCase()) : false;
-        const travelRequired = colIndexes.travelRequired >= 0 ? 
-          ['true', 'yes', '1'].includes(row[colIndexes.travelRequired]?.toString().toLowerCase()) : false;
-
-        // Build phase allocations
-        const phaseAllocations = {};
-        const phaseNames = activeWave.phase_names?.length > 0 
-          ? activeWave.phase_names 
-          : Array.from({ length: Math.ceil(activeWave.duration_months) }, (_, i) => `M${i + 1}`);
-
-        for (let p = 0; p < phaseNames.length; p++) {
-          const colIdx = phaseStartIndex + p;
-          if (colIdx < phaseEndIndex && colIdx < row.length) {
-            const value = parseFloat(row[colIdx]) || 0;
-            phaseAllocations[p] = value;
-          }
-        }
-
-        const avgSalary = !isNaN(customSalary) && customSalary > 0 
-          ? customSalary 
-          : (matchingRate?.avg_monthly_salary || 0);
-
-        const allocation = {
-          id: `upload-${Date.now()}-${i}`,
-          skill_id: matchingRate?.skill_id || "",
-          skill_name: skillName,
-          proficiency_level: proficiencyLevel,
-          avg_monthly_salary: avgSalary,
-          original_monthly_salary: matchingRate?.avg_monthly_salary || avgSalary,
-          base_location_id: matchingRate?.base_location_id || location?.id || "",
-          base_location_name: locationName,
-          overhead_percentage: !isNaN(overheadPct) ? overheadPct : (location?.overhead_percentage ?? 0),
-          is_onsite: isOnsite,
-          travel_required: travelRequired,
-          phase_allocations: phaseAllocations,
-          comments: colIndexes.comments >= 0 ? (row[colIndexes.comments]?.toString().trim() || "") : "",
-        };
-
-        newAllocations.push(allocation);
-        successCount++;
-      }
-
-      if (newAllocations.length > 0) {
-        // Update the wave with new allocations
-        setWaves(waves.map(w => 
-          w.id === activeWaveId 
-            ? { ...w, grid_allocations: [...w.grid_allocations, ...newAllocations] }
-            : w
-        ));
-        toast.success(`Imported ${successCount} resources successfully${errorCount > 0 ? ` (${errorCount} rows skipped)` : ''}`);
-      } else {
-        toast.error("No valid resources found in the file. Check skill names, proficiency levels, and locations match master data.");
-      }
-    } catch (error) {
-      console.error("Upload error:", error);
-      toast.error("Failed to process the uploaded file");
-    }
-
-    // Reset the file input
-    event.target.value = '';
-  };
 
   const handleExportToExcel = async () => {
     if (waves.length === 0) {
@@ -1799,6 +1484,16 @@ const ProjectEstimator = () => {
           skill_id: skillMap[a.skill_name.toLowerCase()]?.id || a.skill_id,
           base_location_id: locMap[a.base_location_name.toLowerCase()]?.id || a.base_location_id,
         })),
+        // AMS fields (imported from "AMS SHARED SUPPORT" section in Excel)
+        engagement_type: pw.engagementType || "Implementation",
+        ams_shared_buckets: (pw.amsBuckets || []).map(b => ({
+          id: `bucket_imp_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+          name: b.name,
+          hours_per_month: b.hours_per_month,
+          hourly_rate: b.hourly_rate,
+          notes: b.notes || "",
+        })),
+        ams_contract_months: pw.amsContractMonths || 12,
       }));
 
       if (asNewVersion && projectId) {
@@ -2198,8 +1893,7 @@ const ProjectEstimator = () => {
                     onToggleTravelRequired={handleToggleTravelRequired} onPhaseAllocationChange={handlePhaseAllocationChange}
                     onSalaryChange={handleSalaryChange} onDragEnd={handleDragEnd}
                     onAllocationCommentChange={handleAllocationCommentChange} onApplyToAllMonths={handleApplyToAllMonths}
-                    onAddEmptyRow={handleAddEmptyRow} onDownloadWaveTemplate={handleDownloadWaveTemplate}
-                    onDownloadWaveData={handleDownloadWaveData} onUploadWaveGrid={handleUploadWaveGrid}
+                    onAddEmptyRow={handleAddEmptyRow}
                     onCloneWave={handleCloneWave} onDeleteWave={handleDeleteWave}
                     onGridFieldChange={handleGridFieldChange}
                     milestones={ganttMilestones} onSaveMilestones={saveGanttMilestones}

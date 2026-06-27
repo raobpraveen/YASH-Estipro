@@ -390,8 +390,10 @@ const CashflowStatement = () => {
                           const net = m.revenue - m.cost;
                           const isExtended = idx >= wd.months;
                           const hasAdvance = (m.advance_revenue || 0) > 0;
+                          const hasAms = (m.ams_shared_revenue || 0) > 0;
+                          const rowCls = isExtended ? "bg-[#6366F1]/5" : (hasAms ? "bg-[#8B5CF6]/10" : (hasAdvance ? "bg-[#8B5CF6]/5" : ""));
                           return (
-                            <TableRow key={idx} className={isExtended ? "bg-[#6366F1]/5" : (hasAdvance ? "bg-[#8B5CF6]/5" : "")}>
+                            <TableRow key={idx} className={rowCls}>
                               <TableCell className="font-mono">{isExtended ? <span className="text-[#6366F1]">M{m.month}*</span> : `M${m.month}`}</TableCell>
                               <TableCell className="text-gray-600">
                                 <div className="flex items-center gap-2">
@@ -401,6 +403,11 @@ const CashflowStatement = () => {
                                       <Zap className="w-2.5 h-2.5" /> Advance
                                     </span>
                                   )}
+                                  {hasAms && (
+                                    <span className="text-[10px] font-bold bg-[#8B5CF6] text-white px-1.5 py-0.5 rounded uppercase tracking-wide flex items-center gap-0.5" data-testid={`ams-badge-wave-${idx}`}>
+                                      <Zap className="w-2.5 h-2.5" /> AMS
+                                    </span>
+                                  )}
                                 </div>
                               </TableCell>
                               <TableCell className="text-right font-mono text-red-600">{fmt(m.cost)}</TableCell>
@@ -408,6 +415,9 @@ const CashflowStatement = () => {
                                 {fmt(m.revenue)}
                                 {hasAdvance && m.revenue !== m.advance_revenue && (
                                   <span className="block text-[10px] text-[#8B5CF6] font-normal">incl. {fmt(m.advance_revenue)} adv.</span>
+                                )}
+                                {hasAms && (
+                                  <span className="block text-[10px] text-[#8B5CF6] font-normal">incl. {fmt(m.ams_shared_revenue)} AMS</span>
                                 )}
                               </TableCell>
                               <TableCell className={`text-right font-mono font-semibold ${net >= 0 ? "text-[#10B981]" : "text-red-600"}`}>{fmt(net)}</TableCell>
@@ -452,8 +462,10 @@ const CashflowStatement = () => {
                 <TableBody>
                   {combined_data.map((m, idx) => {
                     const hasAdvance = (m.advance_revenue || 0) > 0;
+                    const hasAms = (m.ams_shared_revenue || 0) > 0;
+                    const rowCls = hasAms ? "bg-[#8B5CF6]/10" : (hasAdvance ? "bg-[#8B5CF6]/5" : "");
                     return (
-                      <TableRow key={idx} className={hasAdvance ? "bg-[#8B5CF6]/5" : ""} data-testid={`combined-row-${idx}`}>
+                      <TableRow key={idx} className={rowCls} data-testid={`combined-row-${idx}`}>
                         <TableCell className="font-mono">
                           <div className="flex items-center gap-2">
                             <span>M{m.month}</span>
@@ -462,10 +474,20 @@ const CashflowStatement = () => {
                                 <Zap className="w-2.5 h-2.5" /> Adv
                               </span>
                             )}
+                            {hasAms && (
+                              <span className="text-[10px] font-bold bg-[#8B5CF6] text-white px-1.5 py-0.5 rounded uppercase tracking-wide flex items-center gap-0.5" data-testid={`ams-badge-combined-${idx}`}>
+                                <Zap className="w-2.5 h-2.5" /> AMS
+                              </span>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-mono text-red-600">{fmt(m.cost)}</TableCell>
-                        <TableCell className="text-right font-mono text-[#10B981]">{fmt(m.revenue)}</TableCell>
+                        <TableCell className="text-right font-mono text-[#10B981]">
+                          {fmt(m.revenue)}
+                          {hasAms && (
+                            <span className="block text-[10px] text-[#8B5CF6] font-normal">incl. {fmt(m.ams_shared_revenue)} AMS</span>
+                          )}
+                        </TableCell>
                         <TableCell className={`text-right font-mono font-semibold ${m.net >= 0 ? "text-[#10B981]" : "text-red-600"}`}>{fmt(m.net)}</TableCell>
                       </TableRow>
                     );

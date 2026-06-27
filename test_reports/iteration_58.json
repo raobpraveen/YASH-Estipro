@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 58 (AMS roll-up follow-ups #1-#3) tested end-to-end. Backend: 5 new pytest tests PASS (combined_data[].ams_shared_revenue + sums + non-AMS zero + persistence). Frontend: verified live in Playwright on freshly-created TEST projects — (a) Estimator toolbar buttons 'download-template-button', 'download-data-button', 'upload-grid-input' are absent; (b) Milestones page shows ams-recurring-card-{wave} for AMS_Shared waves with correct $7,000/mo and $42,000/yr totals across two buckets, and is NOT rendered for Implementation projects; (c) Cashflow page shows 6 purple 'AMS' badges per-wave and 6 in Combined Summary with 'incl. $7,000 AMS' sub-line, and zero badges for non-AMS project. Excel export/import code paths reviewed only (not executed in browser).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard", "issues": ["Pre-existing hydration warnings on <span data-ve-dynamic> wrapping <tr> rows — carry-over from iter_55/56/57, not introduced this iteration."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter58_ams_rollup.py",
+    "/app/test_reports/pytest/pytest_iter58.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "financials.py L189,196,205,212: combined_data[].ams_shared_revenue is correctly summed from wave_monthly[].ams_shared_revenue per month; summary.total_ams_shared sums per-wave totals. Sum invariant verified by test_combined_data_ams_sums_to_summary.",
+    "Implementation projects correctly emit ams_shared_revenue=0 in every combined_data row (default branch). No KeyError risk in frontend.",
+    "PaymentMilestones.js L548: ams-recurring-card only renders for waves with engagement_type starting with 'AMS_' AND ams_shared_buckets.length > 0 — confirmed via Implementation project showing 0 cards.",
+    "CashflowStatement.js L407 / L478: ams-badge-wave-{idx} and ams-badge-combined-{idx} render only when row.ams_shared_revenue > 0 — visual confirmation shows purple badge + 'incl. $X AMS' sub-line on revenue cell; Impl project shows zero badges.",
+    "WaveContent.js: three handlers (handleDownloadWaveTemplate, handleDownloadWaveData, handleUploadWaveGrid) and their props/buttons are fully removed; the data-testids 'download-template-button', 'download-data-button', 'upload-grid-input' are not present anywhere in /app/frontend/src (grep confirmed).",
+    "excelExport.js L262-290 + L416-432: Per-wave AMS section ('AMS SHARED SUPPORT (...— N months contract)') and Summary 'AMS SHARED SUPPORT ROLL-UP' + 'GRAND TOTAL (Impl + AMS Y1)' rows added. existing 'GRAND TOTAL (Final Price)' row preserved at L407. NOTE: only reviewed statically — Excel buffer not parsed in this run.",
+    "excelImport.js L249-284: Header regex 'AMS SHARED SUPPORT \\((\\w+)\\s*[—-]\\s*(\\d+)\\s*months' captures engagement subtype ('Shared'/'Mix') and contract length; buckets pushed with name/hours/rate/notes; engagementType defaults back to 'Implementation' if no buckets — sensible. NOTE: parser distinguishes Mix only by substring 'mix' — 'Dedicated' would map to AMS_Shared today; this matches the spec which lists only AMS_Shared OR AMS_Mix as acceptable import targets.",
+    "Excel round-trip (export → import) was NOT exercised end-to-end in this run (would require a browser download + exceljs parse). Recommend a self-test by main agent or follow-up iteration with a Node script invoking the same util functions."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter58_ams_rollup.py",
+    "/app/test_reports/iteration_58.json"
+  ],
+  "success_rate": {
+    "backend": "100% (5/5 pytest tests passed)",
+    "frontend": "100% on tested items — toolbar buttons gone, milestones AMS card renders with correct totals ($7,000/mo $42,000/yr), 6 wave-row + 6 combined AMS badges visible with 'incl.' sub-line, non-AMS project shows zero AMS UI"
+  },
+  "test_credentials": "admin@yash.com / password",
+  "seed_data_creation": "TEST_AMS_RollUp_Iter58 (backend), TEST_Impl_Iter58 (backend), TEST_AMS_UI58 (frontend), TEST_Impl_UI58 (frontend). All deleted via fixture teardown / script cleanup.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iter58 covers the three follow-ups on top of iter_57's AMS engagement_type work: (1A) ams-recurring-card-{waveName} on /payment-milestones shows per-wave AMS bucket table with Hours/Month, Hourly Rate, Billing/Month, Billing/Year + Total row using data-testid ams-recurring-monthly-{wave}/ams-recurring-annual-{wave}; verified $7,000 monthly / $42,000 annual for two buckets (200×20 + 100×30) over 6-month contract. (1B) /cashflow renders purple 'AMS' badge per monthly row that has ams_shared_revenue>0, both in per-wave table (ams-badge-wave-{idx}) and Combined Monthly Summary (ams-badge-combined-{idx}), plus 'incl. $X AMS' sub-line under Cash-In cell; the backend now returns combined_data[].ams_shared_revenue (verified via /api/projects/{id}/cashflow → 5 pytest tests in test_iter58_ams_rollup.py). (3) Estimator toolbar buttons download-template-button, download-data-button, upload-grid-input are all removed and their JS handlers are gone — confirmed via grep + live DOM query. Routes: frontend uses /estimator?edit={id}, /payment-milestones?project={id}, /cashflow?project={id} — there is no /projects/:id/<page> pattern. Excel export/import (Item #2) reviewed statically only — round-trip parsing not executed; main agent may want a Node-level test using exceljs to assert the new AMS sections.",
+  "rca of the issue": "N/A — all targeted behaviors pass."
+}

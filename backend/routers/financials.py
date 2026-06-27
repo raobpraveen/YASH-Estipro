@@ -186,12 +186,14 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
         cost_sum = 0
         rev_sum = 0
         adv_sum = 0
+        ams_sum = 0
         phase_label = ""
         for wd in wave_data:
             if m_idx < len(wd["monthly_data"]):
                 cost_sum += wd["monthly_data"][m_idx]["cost"]
                 rev_sum += wd["monthly_data"][m_idx]["revenue"]
                 adv_sum += wd["monthly_data"][m_idx].get("advance_revenue", 0)
+                ams_sum += wd["monthly_data"][m_idx].get("ams_shared_revenue", 0)
                 if not phase_label and wd["monthly_data"][m_idx].get("phase"):
                     phase_label = wd["monthly_data"][m_idx]["phase"]
         net = rev_sum - cost_sum
@@ -200,6 +202,7 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
             "month": m_idx + 1, "phase": phase_label,
             "cost": round(cost_sum, 2), "revenue": round(rev_sum, 2),
             "advance_revenue": round(adv_sum, 2),
+            "ams_shared_revenue": round(ams_sum, 2),
             "net": round(net, 2), "cumulative": round(running, 2),
         })
 
