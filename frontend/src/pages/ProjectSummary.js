@@ -12,7 +12,7 @@ import {
   calculateWaveLogistics as calcWaveLog,
   calculateWaveSummary as calcWaveSum,
   calculateOverallSummary as calcOverall,
-} from "@/utils/calculations";
+} from "@/utils/estimatorCalcs";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
