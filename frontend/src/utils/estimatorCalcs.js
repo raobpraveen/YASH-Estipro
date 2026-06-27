@@ -129,13 +129,8 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
 
   const logistics = calculateWaveLogistics(wave);
   const waveSellingPrice = totalRowsSellingPrice + logistics.totalLogistics;
-  const totalCost = totalBaseSalaryCost + totalOverheadCost + logistics.totalLogistics;
-  const costToCompany = totalBaseSalaryCost + totalOverheadCost;
-  const negoBufferPct = negoBufferPercentage || 0;
-  const negoBufferAmount = waveSellingPrice * (negoBufferPct / 100);
-  const finalPrice = waveSellingPrice + negoBufferAmount;
 
-  // AMS Shared Support billing (no margin / no nego buffer applied) — added on top of dedicated final price
+  // AMS Shared Support: billing (revenue) and cost (CTC) aggregates
   const engagementType = wave.engagement_type || "Implementation";
   const isAms = engagementType === "AMS_Shared" || engagementType === "AMS_Mix";
   const contractMonths = parseInt(wave.ams_contract_months) || 12;
@@ -146,6 +141,19 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
       )
     : 0;
   const amsSharedAnnual = amsSharedMonthly * contractMonths;
+  // AMS internal cost (hours × cost_rate × contract_months) — flows into CTC
+  const amsTotalCost = isAms
+    ? (wave.ams_shared_buckets || []).reduce(
+        (sum, b) => sum + (parseFloat(b.hours_per_month) || 0) * (parseFloat(b.cost_rate) || 0),
+        0
+      ) * contractMonths
+    : 0;
+
+  const totalCost = totalBaseSalaryCost + totalOverheadCost + logistics.totalLogistics + amsTotalCost;
+  const costToCompany = totalBaseSalaryCost + totalOverheadCost + amsTotalCost;
+  const negoBufferPct = negoBufferPercentage || 0;
+  const negoBufferAmount = waveSellingPrice * (negoBufferPct / 100);
+  const finalPrice = waveSellingPrice + negoBufferAmount;
   const grandTotalFinalPrice = finalPrice + amsSharedAnnual;
 
   return {
@@ -169,6 +177,7 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
     engagementType,
     amsSharedMonthly,
     amsSharedAnnual,
+    amsTotalCost,
     amsContractMonths: contractMonths,
     grandTotalFinalPrice,
     onsiteResourceCount: logistics.onsiteResourceCount,
@@ -187,7 +196,7 @@ export const calculateOverallSummary = (waves, profitMarginPercentage, negoBuffe
   let onsiteSellingPrice = 0, offshoreSellingPrice = 0;
   let totalCostToCompany = 0, onsiteOverheadCost = 0, offshoreOverheadCost = 0;
   let totalOnsiteResourceCount = 0, totalOffshoreResourceCount = 0;
-  let totalAmsSharedMonthly = 0, totalAmsSharedAnnual = 0;
+  let totalAmsSharedMonthly = 0, totalAmsSharedAnnual = 0, totalAmsCost = 0;
 
   waves.forEach(wave => {
     if (wave.exclude_from_summary) return; // Skip excluded waves
@@ -212,6 +221,7 @@ export const calculateOverallSummary = (waves, profitMarginPercentage, negoBuffe
     totalOffshoreResourceCount += summary.offshoreResourceCount;
     totalAmsSharedMonthly += summary.amsSharedMonthly || 0;
     totalAmsSharedAnnual += summary.amsSharedAnnual || 0;
+    totalAmsCost += summary.amsTotalCost || 0;
   });
 
   const onsiteAvgPerMM = onsiteMM > 0 ? onsiteSellingPrice / onsiteMM : 0;
@@ -236,6 +246,7 @@ export const calculateOverallSummary = (waves, profitMarginPercentage, negoBuffe
     // AMS Shared Support roll-ups
     totalAmsSharedMonthly,
     totalAmsSharedAnnual,
+    totalAmsCost,
     grandTotalFinalPrice,
     onsiteSellingPrice, offshoreSellingPrice,
     onsiteAvgPerMM, offshoreAvgPerMM,

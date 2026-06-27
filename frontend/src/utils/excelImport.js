@@ -202,7 +202,15 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
       });
     }
 
-    if (allocations.length > 0) {
+    // Detect whether this sheet has an AMS SHARED SUPPORT section even when there
+    // are no implementation resource rows (pure AMS_Shared waves).
+    let hasAmsSection = false;
+    for (let r = headerRowNum + 1; r <= ws.rowCount; r++) {
+      const a = (getCellVal(ws.getRow(r).getCell(1)) || "").toString().trim().toUpperCase();
+      if (a.includes("AMS SHARED SUPPORT")) { hasAmsSection = true; break; }
+    }
+
+    if (allocations.length > 0 || hasAmsSection) {
       // Parse logistics section
       const parsedLogistics = {};
       for (let r = headerRowNum + allocations.length + 2; r <= ws.rowCount; r++) {

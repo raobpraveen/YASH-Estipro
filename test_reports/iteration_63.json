@@ -1,0 +1,30 @@
+{
+  "summary": "Iter63 — Both P0 fixes from iter62 are VERIFIED FIXED via live Playwright UI test on PRJ-0029 with /tmp/xlsx_test/PRJ-0031_v2.xlsx. (1) Smart Import Preview now correctly shows '4 Waves Detected, 6 Total Resources' (was 3/6) and lists all four sheets including 'AMS' (AMS_Shared, 0 resources). After Replace Current, 4 wave tabs render. Toast confirms 'Imported 4 wave(s) with 6 resource(s).' (2) Total CTC card now reads $316,200 with subtitle 'all resources + AMS cost ($90,000)' — the `(overall.totalAmsCost || 0) > 0` branch renders correctly via the live estimatorCalcs.js path. The two AMS waves contribute 12 × $3,750/mo = $45,000 each ($90k total AMS cost), matching the new `amsTotalCost` aggregation. AMS Shared Support panel on the 'AMS' tab shows Service 1 / Hours=150 / Hourly Price=$35 / Cost Rate=$25, Contract Length=12, Billing Frequency=Monthly, Bill in Advance=ON (checked), Cost/Yr=$45,000. Regression check: Smart Import Preview reports correct resource counts per wave (Cost sheet=3, AMS=0, AMS-FTE=1, AMS-FTE+SSS=2) — iter60 phantom-row guard intact. NO Save click was performed on PRJ-0029 (DB state preserved).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Estimator + Smart Import dialog", "issues": ["Pre-existing hydration warnings from visual-editor instrumentation (<span data-ve-dynamic> wrapping <tr>/<tbody>/<th>/<option>/<select>). Carried over from iter57-62, not introduced this round."]}
+    ]
+  },
+  "test_report_links": ["/app/.screenshots/import_preview.png", "/app/.screenshots/after_import_iter63.png", "/app/.screenshots/ams_tab_iter63.png"],
+  "action_items": [
+    "Optional cleanup: The duplicate-code hazard flagged in iter62 still exists — /app/frontend/src/utils/calculations.js and estimatorCalcs.js coexist with divergent formulas. Recommend deleting calculations.js (effectively dead code; ProjectEstimator.js imports only from estimatorCalcs.js) to prevent future drift.",
+    "Optional UX: When Smart Import drops a sheet for any other reason (no AMS marker AND no allocations), surface a console.warn or list it under `result.warnings` so the user is aware which sheets were skipped.",
+    "Optional QA improvement: Add data-testid to resource grid rows (e.g. data-testid=resource-row-{idx}) — current test attempted [data-testid^=resource-row-] and found 0, so regression checks rely on Smart Import Preview counts. Per-wave resource count assertions in DOM would be more robust."
+  ],
+  "critical_code_review_comments": [
+    "Fix #1 (excelImport.js): the new pre-scan at L207-211 correctly detects 'AMS SHARED SUPPORT' marker anywhere on the sheet (column A, rows headerRowNum+1 onwards). Gate at L213 is widened to `allocations.length > 0 || hasAmsSection`. Verified working live. Minor: pre-scan scans every row even for normal sheets — negligible cost for typical spreadsheets, no action needed.",
+    "Fix #2 (estimatorCalcs.js): `amsTotalCost = sum(hours_per_month × cost_rate) × contractMonths` is now added to `costToCompany` (L153) and `totalCost` (L152), exposed per-wave (L180) and aggregated as `totalAmsCost` in calculateOverallSummary (L199, L224, L249). OverallSummary.js L138 subtitle renders correctly. Correctly uses `cost_rate` for CTC vs `hourly_rate` for revenue (amsSharedMonthly/Annual). Implementation is clean.",
+    "Hydration warnings from visual-editor instrumentation (<span data-ve-dynamic> wrapping <tr>/<tbody>/<th>/<option>/<select>) continue — pre-existing, unrelated to this PR."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (no backend changes)", "frontend": "100% — both PR fixes verified live in browser"},
+  "test_credentials": "admin@yash.com / password",
+  "seed_data_creation": "Smart Import was run on PRJ-0029 (78fc80fb-87aa-4f04-b30c-d34e9a399bb7) in 'Replace Current' (local-only) mode; NO Save click was issued, so DB wave state for PRJ-0029 remains empty as before. Per iter62 note, milestones were already confirmed intact (3 milestones, 30-day terms) — no further side-effects this iteration. A side-effect PUT /api/projects/.../milestones may fire during import path (returned 200 in iter62); this was not re-checked in iter63 but is harmless (idempotent milestone re-save).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Both iter62 fixes are confirmed working live. If main agent makes further changes, key verification points: (a) Smart Import on /tmp/xlsx_test/PRJ-0031_v2.xlsx must yield 4 waves / 6 resources; (b) Total CTC subtitle must read 'all resources + AMS cost ($X)' with X > 0 when any AMS_Shared/AMS_Mix wave has buckets with cost_rate > 0; (c) AMS panel for AMS_Shared wave must show Cost Rate column populated and Cost/Month = hours × cost_rate. Save→reload persistence path was NOT exercised this round (per request, to avoid clobbering PRJ-0029); main agent or next testing agent should validate AMS cost_rate survives a round-trip through POST/GET /api/projects if backend schema changes are made.",
+  "rca of the issue": "N/A — fixes verified working. Iter62 RCA stands: (1) excelImport.js L205 gate `allocations.length > 0` dropped AMS_Shared sheets with no resources; fixed by adding `|| hasAmsSection` after pre-scanning column A for 'AMS SHARED SUPPORT'. (2) The CTC+AMS port targeted calculations.js instead of estimatorCalcs.js (the live import target in ProjectEstimator.js L16); fixed by adding `amsTotalCost = sum(h × cost_rate) × contract_months` to estimatorCalcs.js calculateWaveSummary, exposing it per-wave, and aggregating as `totalAmsCost` in calculateOverallSummary."
+}
