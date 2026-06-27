@@ -397,17 +397,6 @@ export async function buildExportWorkbook({
     fpRow.getCell(2).value = { formula: ref.finalPrice, result: 0 };
     fpRow.getCell(2).numFmt = moneyFmt;
     fpRow.font = { bold: true }; fpRow.eachCell(c => { c.fill = greenFill; });
-    if (ref.amsMonthly) {
-      const amsHd = summaryWs.addRow([`AMS Shared Support (${ref.contractMonths} mo)`]);
-      amsHd.font = { bold: true, italic: true, color: { argb: "FF8B5CF6" } };
-      const amsMR = summaryWs.addRow(["AMS Monthly Billing"]);
-      amsMR.getCell(2).value = { formula: ref.amsMonthly, result: 0 };
-      amsMR.getCell(2).numFmt = moneyFmt;
-      const amsAR = summaryWs.addRow(["AMS Annual Billing"]);
-      amsAR.getCell(2).value = { formula: ref.amsAnnual, result: 0 };
-      amsAR.getCell(2).numFmt = moneyFmt;
-      amsAR.font = { bold: true }; amsAR.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDE9FE" } }; });
-    }
     summaryWs.addRow([]);
   });
 
