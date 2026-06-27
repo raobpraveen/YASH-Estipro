@@ -268,11 +268,13 @@ export async function buildExportWorkbook({
     let amsAnnualCell = null;
     if (hasAmsRows) {
       const contractMonths = parseInt(wave.ams_contract_months) || 12;
+      const billingFreq = wave.ams_billing_frequency || "Monthly";
+      const billingAdv = !!wave.ams_billing_advance;
       dws.addRow([]);
-      const amsHdr = dws.addRow([`AMS SHARED SUPPORT (${engagementType.replace("AMS_", "")} — ${contractMonths} months contract)`]);
+      const amsHdr = dws.addRow([`AMS SHARED SUPPORT (${engagementType.replace("AMS_", "")} — ${contractMonths} months contract — Billing: ${billingFreq}${billingAdv ? " · Advance" : ""})`]);
       amsHdr.font = { bold: true, size: 11, color: { argb: "FF8B5CF6" } };
       amsHdr.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDE9FE" } };
-      const amsCol = dws.addRow(["#", "Service / Bucket", "Hours/Month", "Hourly Rate", "Cost Rate", "Billing/Month", "Cost/Month", "Billing/Year", "Notes"]);
+      const amsCol = dws.addRow(["#", "Service / Bucket", "Hours/Month", "Hourly Price", "Cost Rate", "Billing/Month", "Cost/Month", "Billing/Year", "Notes"]);
       amsCol.eachCell(c => { c.fill = subHeaderFill; c.font = { bold: true }; c.border = thinBorder; });
       const amsStartRow = dws.lastRow.number + 1;
       amsBuckets.forEach((b, idx) => {

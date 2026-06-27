@@ -1,0 +1,42 @@
+{
+  "summary": "Iteration 60 — AMS Billing Frequency + Bill in Advance + 'Hourly Price' label rename + Excel phantom-row import fix. Backend: 8/8 pytest PASS — 4 cashflow math scenarios (Monthly+Advance level revenue every month with advance_revenue==revenue, Quarterly+Advance lumps at M1/M4/M7 with advance_revenue set, Monthly+60-day arrears shifts +2 months, Quarterly+30-day arrears lands at month_end+1) and 4 round-trip tests (POST/GET persists ams_billing_frequency & ams_billing_advance for Monthly|Quarterly × Advance ON|OFF, PUT updates both, default values when omitted are Monthly+false). ams_shared_cost stays level monthly in every scenario as required. Live UI verified on PRJ-0031 'AMS1 (12m)' (AMS_Shared, 12mo contract, bucket: 100hrs × $35 → $3,500/mo × 12 = $42,000): inline controls render data-testid=ams-contract-months-{waveId}=12, ams-billing-frequency-{waveId} (Select), ams-billing-advance-{waveId} (Checkbox). Bucket table head reads 'Hourly Price' (Hourly Rate th count = 0). Set frequency=Quarterly + Advance=ON, clicked Save, reloaded — both fields persisted (frequency=Quarterly, advance=True). Payment Milestones page (/payment-milestones?project={id}): AMS Recurring Billing card shows data-testid=ams-billing-freq-badge-{wave}='Quarterly', ams-billing-advance-badge-{wave}=' Advance', ams-billing-schedule-{wave} table with Q1/Q2/Q3/Q4 rows (data-testid=ams-billing-period-{wave}-{i}) each at $10,500 ($3,500 × 3 mo), Cash-In Timing column shows 'M1'/'M4'/'M7'/'M10' for Advance, and total data-testid=ams-billing-schedule-total-{wave}=$42,000 (matches monthly × contractMonths). Bucket table head also reads 'Hourly Price'. Excel export source confirms AMS sheet header literal includes ' — Billing: <Monthly|Quarterly>[ · Advance]' (excelExport.js L274) and bucket header column 4 = 'Hourly Price' (L277). Excel import phantom-row fix confirmed: excelImport.js L128-143 isSectionTerminator() scans first 3 columns for 'TOTALS', 'LOGISTICS BREAKDOWN', 'AMS SHARED SUPPORT', 'WAVE SUMMARY', 'PHASE RANGES', etc., correctly halting allocation parse even when Technology column shifts the section header into a non-#1 column. excelImport.js L284-288 parses 'Billing: (Monthly|Quarterly)' and ' · Advance' substrings from the AMS sheet header, mapping into ams_billing_frequency / ams_billing_advance on the imported wave.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard/Projects table", "issues": ["Carry-over hydration warnings: <span data-ve-dynamic> wrapping <tr>/<tbody> from visual-editor instrumentation. Pre-existing from iter57-59, not introduced this round."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_ams_billing_frequency.py",
+    "/app/backend/tests/test_iter60_ams_billing_roundtrip.py",
+    "/app/test_reports/pytest/pytest_iter60.xml",
+    "/app/test_reports/pytest/pytest_iter60_rt.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "models.py L267-269: ProjectWave.ams_billing_frequency='Monthly' (Literal) + ams_billing_advance=False defaults are backward-compatible — existing AMS waves continue monthly-arrears behaviour without migration.",
+    "financials.py L104-170 (get_cashflow): period iteration handles both Monthly (step=1) and Quarterly (step=3); advance branch sets month['advance_revenue']=period_total and lands at period_start (no payment_terms_days offset); arrears branch lands at period_end + payment_offset months and auto-extends the months array when offset spills past the contract. Verified numerically across 4 scenarios.",
+    "AmsSharedPanel.js L75-110: new inline controls (Contract Length + Billing Frequency Select + Bill in Advance Checkbox) all carry the {wave.id} suffix on data-testid as spec requires; readable layout with proper labels.",
+    "AmsSharedPanel.js L128: TableHead reads 'Hourly Price' — confirmed live (Hourly Rate th count = 0 in both Estimator and PaymentMilestones).",
+    "ProjectEstimator.js L1783-1810: Add-Wave dialog AMS section reveals on engagement_type startsWith 'AMS_'; uses data-testid='ams-billing-frequency-input' + 'ams-billing-advance-input' for the modal (distinct from the inline {waveId}-suffixed testids).",
+    "PaymentMilestones.js L572-651: AMS Recurring Billing card renders frequency badge + advance badge + period schedule table with per-period {waveName}-{i} testids. totalScheduled formula matches monthly × contractMonths; period amounts equal monthlyBilling × periodLen with last-period truncation handled.",
+    "excelExport.js L274,277: AMS sheet header includes Billing clause; column 4 of 9-col header = 'Hourly Price'.",
+    "excelImport.js L128-143: isSectionTerminator scans first 3 columns — the P0 fix that prevents 'TOTALS' / 'LOGISTICS BREAKDOWN' / 'AMS SHARED SUPPORT' rows landing in col 2 (when Technology column shifts # to col 3) from being mis-parsed as allocations. L284-288 extracts ams_billing_frequency + ams_billing_advance from header substrings."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter60_ams_billing_roundtrip.py",
+    "/app/test_reports/iteration_60.json"
+  ],
+  "success_rate": {
+    "backend": "100% (8/8 pytest tests — 4 math + 4 round-trip)",
+    "frontend": "100% — inline AMS controls render with correct testids, 'Hourly Price' label appears everywhere (Hourly Rate count = 0), Quarterly+Advance saved and reloaded successfully, PaymentMilestones AMS schedule table renders Q1-Q4 with $10,500 each and total $42,000"
+  },
+  "test_credentials": "admin@yash.com / password",
+  "seed_data_creation": "TEST_AMS_BillingFreq_* projects (4 from test_ams_billing_frequency.py) + TEST_Iter60_RT_* projects (4 from test_iter60_ams_billing_roundtrip.py) — all cleaned up via try/finally requests.delete(). Live UI mutation on PRJ-0031 'AMS1 (12m)' wave: changed ams_billing_frequency Monthly→Quarterly and ams_billing_advance false→true; persisted (left in this state — main agent may want to reset to Monthly/false if downstream test fixtures require it).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iter60 covers AMS Billing Frequency (Monthly|Quarterly) + Bill in Advance + 'Hourly Price' rename + Excel phantom-row import fix. Verified end-to-end: backend round-trip of ams_billing_frequency/advance, cashflow math (4 scenarios), live UI inline controls on PRJ-0031 'AMS1 (12m)' wave (now set to Quarterly+Advance — note this mutation if running subsequent tests on this project), PaymentMilestones AMS schedule rendering (data-testid prefix=ams-billing-*-{waveName}). Excel export/import code paths source-confirmed (excelExport.js L274,277; excelImport.js L128-143, L284-288). Backend cashflow tests live at /app/backend/tests/test_ams_billing_frequency.py and round-trip at /app/backend/tests/test_iter60_ams_billing_roundtrip.py — both runnable with `pytest backend/tests/test_ams_billing_frequency.py backend/tests/test_iter60_ams_billing_roundtrip.py`.",
+  "rca of the issue": "N/A — all flows verified passing. P0 excel-import phantom-row bug fix (excelImport.js section-terminator scanning first 3 columns) confirmed in source; no regression scenarios surfaced during live testing."
+}

@@ -122,11 +122,37 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
     }
 
     const allocations = [];
+    // Section terminators that must end the resource-grid parse. Match against the *first 3*
+    // columns (any of: #/Technology/Skill) — section headers can land in different columns
+    // depending on whether the Technology column is present in the export.
+    const isSectionTerminator = (row) => {
+      for (let c = 1; c <= 3; c++) {
+        const v = (getCellVal(row.getCell(c)) || "").toString().trim().toLowerCase();
+        if (!v) continue;
+        if (
+          v === "totals" || v === "total" ||
+          v.includes("logistics breakdown") || v === "total logistics" ||
+          v.includes("phase ranges") || v.includes("phase dependencies") ||
+          v.includes("ams shared support") || v.includes("wave summary") ||
+          v.includes("resources selling price") || v.includes("wave selling price") ||
+          v.includes("wave final price") || v.includes("implementation sub-total") ||
+          v.startsWith("nego buffer") || v === "onsite mm" || v === "offshore mm"
+        ) return true;
+      }
+      return false;
+    };
     for (let r = headerRowNum + 1; r <= ws.rowCount; r++) {
       const row = ws.getRow(r);
-      const skillName = safeCell(row, colSkill)?.toString().trim();
-      if (!skillName) continue;
-      if (skillName.toLowerCase().includes("sub-total") || skillName.toLowerCase().includes("logistics") || skillName.toLowerCase().includes("total")) break;
+      if (isSectionTerminator(row)) break;
+      // The # column must be a positive integer for a real allocation row.
+      const numRaw = getCellVal(row.getCell(1));
+      const numVal = typeof numRaw === "number" ? numRaw : parseInt(numRaw);
+      if (!Number.isFinite(numVal) || numVal <= 0) continue;
+      const skillRaw = safeCell(row, colSkill);
+      const skillName = (skillRaw ?? "").toString().trim();
+      // Reject rows where the skill cell is a number (sub-total/formula leakage)
+      if (!skillName || /^\$?\s*[\d,.]+(\.\d+)?$/.test(skillName)) continue;
+      if (skillName.toLowerCase().includes("sub-total") || skillName.toLowerCase().includes("logistics") || skillName.toLowerCase() === "total" || skillName.toLowerCase() === "totals") break;
 
       const level = safeCell(row, colLevel)?.toString().trim() || "Mid";
       const location = safeCell(row, colLocation)?.toString().trim() || "";
@@ -222,6 +248,8 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
       let phaseDependencies = [];
       let amsBuckets = [];
       let amsContractMonths = 12;
+      let amsBillingFrequency = "Monthly";
+      let amsBillingAdvance = false;
       let engagementType = "Implementation";
       for (let r = headerRowNum + allocations.length + 2; r <= ws.rowCount; r++) {
         const row = ws.getRow(r);
@@ -246,13 +274,18 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
             phaseDependencies.push({ from_phase: fromPhase, to_phase: toPhase, type: depType });
           }
         }
-        // Parse "AMS SHARED SUPPORT (<Type> — <N> months contract)" section
+        // Parse "AMS SHARED SUPPORT (<Type> — <N> months contract[ — Billing: <Freq>[ · Advance]])"
         if (cellA.toUpperCase().includes("AMS SHARED SUPPORT")) {
           const headerMatch = cellA.match(/AMS SHARED SUPPORT \((\w+)\s*[—-]\s*(\d+)\s*months/i);
           if (headerMatch) {
             engagementType = headerMatch[1].toLowerCase().includes("mix") ? "AMS_Mix" : "AMS_Shared";
             amsContractMonths = parseInt(headerMatch[2]) || 12;
           }
+          const freqMatch = cellA.match(/Billing:\s*(Monthly|Quarterly)/i);
+          if (freqMatch) {
+            amsBillingFrequency = freqMatch[1].toLowerCase().startsWith("quarter") ? "Quarterly" : "Monthly";
+          }
+          amsBillingAdvance = /Advance/i.test(cellA);
           // Read the header row (r+1) to detect column layout (legacy 7-col vs new 9-col with Cost Rate)
           const colHdr = ws.getRow(r + 1);
           const colHdrText = [];
@@ -293,6 +326,8 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
         engagementType: amsBuckets.length > 0 ? engagementType : "Implementation",
         amsBuckets,
         amsContractMonths,
+        amsBillingFrequency,
+        amsBillingAdvance,
       });
     }
   });

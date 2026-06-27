@@ -101,7 +101,9 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
                 "advance_revenue": 0,
             })
 
-        # Step 1b: AMS Shared Support monthly billing + cost (no margin/buffer applied)
+        # Step 1b: AMS Shared Support billing + cost (no margin/buffer applied)
+        # Honors ams_billing_frequency (Monthly|Quarterly) and ams_billing_advance.
+        # Costs are kept as level monthly outflows (independent of billing schedule).
         engagement_type = wave.get("engagement_type", "Implementation")
         if engagement_type in ("AMS_Shared", "AMS_Mix"):
             shared_buckets = wave.get("ams_shared_buckets", []) or []
@@ -113,6 +115,9 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
                 (b.get("hours_per_month", 0) or 0) * (b.get("cost_rate", 0) or 0)
                 for b in shared_buckets
             )
+            billing_freq = (wave.get("ams_billing_frequency", "Monthly") or "Monthly")
+            period_len = 3 if billing_freq.lower().startswith("quarter") else 1
+            billing_in_advance = bool(wave.get("ams_billing_advance", False))
             # For pure AMS_Shared waves, extend wave_monthly to cover the full contract length
             if engagement_type == "AMS_Shared":
                 contract_months = int(wave.get("ams_contract_months", 12) or 12)
@@ -124,12 +129,38 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
                         "revenue": 0,
                         "advance_revenue": 0,
                     })
-            # Apply level monthly billing + cost across the AMS duration
+            ams_total_months = len(wave_monthly)
+            # 1) Monthly cost outflow — level across every month
             for m in wave_monthly:
-                m["revenue"] = round(m["revenue"] + shared_monthly_billing, 2)
-                m["ams_shared_revenue"] = round(m.get("ams_shared_revenue", 0) + shared_monthly_billing, 2)
                 m["cost"] = round(m["cost"] + shared_monthly_cost, 2)
                 m["ams_shared_cost"] = round(m.get("ams_shared_cost", 0) + shared_monthly_cost, 2)
+            # 2) Period billing inflow — placed per period at the correct cash-in month
+            num_periods = (ams_total_months + period_len - 1) // period_len
+            for pi in range(num_periods):
+                period_start = pi * period_len  # 0-indexed month
+                period_end = min(period_start + period_len - 1, ams_total_months - 1)
+                # If the last period is short (e.g. 2 months left in quarterly), bill only those months
+                actual_months = period_end - period_start + 1
+                period_amount = shared_monthly_billing * actual_months
+                if billing_in_advance:
+                    cash_in_idx = period_start  # first day of billing period
+                else:
+                    cash_in_idx = period_end + payment_offset
+                # Extend wave_monthly if cash-in falls beyond AMS duration
+                while cash_in_idx >= len(wave_monthly):
+                    wave_monthly.append({
+                        "month": len(wave_monthly) + 1,
+                        "phase": "AMS",
+                        "cost": 0,
+                        "revenue": 0,
+                        "advance_revenue": 0,
+                    })
+                wm = wave_monthly[cash_in_idx]
+                wm["revenue"] = round(wm["revenue"] + period_amount, 2)
+                wm["ams_shared_revenue"] = round(wm.get("ams_shared_revenue", 0) + period_amount, 2)
+                if billing_in_advance:
+                    wm["advance_revenue"] = round(wm.get("advance_revenue", 0) + period_amount, 2)
+                    wm["ams_advance_revenue"] = round(wm.get("ams_advance_revenue", 0) + period_amount, 2)
 
         # Step 2: Assign revenue with payment term offset
         for ms in milestones:

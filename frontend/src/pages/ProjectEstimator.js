@@ -107,7 +107,7 @@ const ProjectEstimator = () => {
   const [editingWaveId, setEditingWaveId] = useState("");
   const [saveAsNewVersionDialog, setSaveAsNewVersionDialog] = useState(false);
   
-  const [newWave, setNewWave] = useState({ name: "", duration_months: "", engagement_type: "Implementation", ams_contract_months: 12 });
+  const [newWave, setNewWave] = useState({ name: "", duration_months: "", engagement_type: "Implementation", ams_contract_months: 12, ams_billing_frequency: "Monthly", ams_billing_advance: false });
   const [newAllocation, setNewAllocation] = useState({
     rate_id: "",
     is_onsite: false,
@@ -470,11 +470,13 @@ const ProjectEstimator = () => {
       engagement_type: engagementType,
       ams_shared_buckets: [],
       ams_contract_months: isAms ? (parseInt(newWave.ams_contract_months) || 12) : 12,
+      ams_billing_frequency: isAms ? (newWave.ams_billing_frequency || "Monthly") : "Monthly",
+      ams_billing_advance: isAms ? !!newWave.ams_billing_advance : false,
     };
 
     setWaves([...waves, wave]);
     setActiveWaveId(wave.id);
-    setNewWave({ name: "", description: "", duration_months: "", engagement_type: "Implementation", ams_contract_months: 12 });
+    setNewWave({ name: "", description: "", duration_months: "", engagement_type: "Implementation", ams_contract_months: 12, ams_billing_frequency: "Monthly", ams_billing_advance: false });
     setAddWaveDialogOpen(false);
     toast.success("Wave added successfully");
   };
@@ -1019,6 +1021,8 @@ const ProjectEstimator = () => {
         engagement_type: w.engagement_type || "Implementation",
         ams_shared_buckets: w.ams_shared_buckets || [],
         ams_contract_months: parseInt(w.ams_contract_months) || 12,
+        ams_billing_frequency: w.ams_billing_frequency || "Monthly",
+        ams_billing_advance: !!w.ams_billing_advance,
       })),
       version_notes: versionNotes,
       status: projectStatus,
@@ -1495,6 +1499,8 @@ const ProjectEstimator = () => {
           notes: b.notes || "",
         })),
         ams_contract_months: pw.amsContractMonths || 12,
+        ams_billing_frequency: pw.amsBillingFrequency || "Monthly",
+        ams_billing_advance: !!pw.amsBillingAdvance,
       }));
 
       if (asNewVersion && projectId) {
@@ -1769,6 +1775,41 @@ const ProjectEstimator = () => {
                         data-testid="ams-contract-months-input"
                       />
                       <p className="text-[11px] text-gray-500 mt-1">Used for yearly billing summary. Default 12 months.</p>
+                    </div>
+                  )}
+                  {(newWave.engagement_type || "").startsWith("AMS_") && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="ams-billing-frequency">Billing Frequency</Label>
+                        <Select
+                          value={newWave.ams_billing_frequency || "Monthly"}
+                          onValueChange={(v) => setNewWave({ ...newWave, ams_billing_frequency: v })}
+                        >
+                          <SelectTrigger id="ams-billing-frequency" data-testid="ams-billing-frequency-input">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Monthly">Monthly</SelectItem>
+                            <SelectItem value="Quarterly">Quarterly</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[11px] text-gray-500 mt-1">Cadence at which the customer is billed.</p>
+                      </div>
+                      <div className="flex flex-col">
+                        <Label htmlFor="ams-billing-advance" className="mb-2">Bill in Advance</Label>
+                        <label className="flex items-center gap-2 mt-1.5 cursor-pointer select-none" htmlFor="ams-billing-advance">
+                          <input
+                            id="ams-billing-advance"
+                            type="checkbox"
+                            checked={!!newWave.ams_billing_advance}
+                            onChange={(e) => setNewWave({ ...newWave, ams_billing_advance: e.target.checked })}
+                            className="h-4 w-4 accent-[#8B5CF6] cursor-pointer"
+                            data-testid="ams-billing-advance-input"
+                          />
+                          <span className="text-sm text-gray-700">Paid immediately (ignore payment-terms days)</span>
+                        </label>
+                        <p className="text-[11px] text-gray-500 mt-1">If off, AMS billing follows project payment terms (+N days).</p>
+                      </div>
                     </div>
                   )}
                   <div>

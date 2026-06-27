@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Trash2, Zap } from "lucide-react";
 import { evaluateSalaryExpression } from "@/utils/salaryExpression";
@@ -12,6 +13,12 @@ import { evaluateSalaryExpression } from "@/utils/salaryExpression";
 export const AmsSharedPanel = ({ wave, waves, setWaves, isReadOnly }) => {
   const buckets = wave.ams_shared_buckets || [];
   const contractMonths = parseInt(wave.ams_contract_months) || 12;
+  const billingFrequency = wave.ams_billing_frequency || "Monthly";
+  const billingAdvance = !!wave.ams_billing_advance;
+
+  const updateWaveField = (field, value) => {
+    setWaves(waves.map(w => w.id === wave.id ? { ...w, [field]: value } : w));
+  };
 
   const updateBuckets = (newBuckets) => {
     setWaves(waves.map(w => w.id === wave.id ? { ...w, ams_shared_buckets: newBuckets } : w));
@@ -60,6 +67,53 @@ export const AmsSharedPanel = ({ wave, waves, setWaves, isReadOnly }) => {
         )}
       </div>
 
+      {/* AMS contract & billing controls */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3 p-3 bg-white border border-purple-100 rounded-md">
+        <div>
+          <Label className="text-xs text-gray-600">Contract Length (Months)</Label>
+          <Input
+            type="number"
+            min="1"
+            max="60"
+            value={wave.ams_contract_months ?? 12}
+            disabled={isReadOnly}
+            onChange={(e) => updateWaveField("ams_contract_months", parseInt(e.target.value) || 12)}
+            className="h-8 text-sm"
+            data-testid={`ams-contract-months-${wave.id}`}
+          />
+        </div>
+        <div>
+          <Label className="text-xs text-gray-600">Billing Frequency</Label>
+          <Select
+            value={billingFrequency}
+            onValueChange={(v) => updateWaveField("ams_billing_frequency", v)}
+            disabled={isReadOnly}
+          >
+            <SelectTrigger className="h-8 text-sm" data-testid={`ams-billing-frequency-${wave.id}`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Monthly">Monthly</SelectItem>
+              <SelectItem value="Quarterly">Quarterly</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col">
+          <Label className="text-xs text-gray-600">Bill in Advance</Label>
+          <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={billingAdvance}
+              disabled={isReadOnly}
+              onChange={(e) => updateWaveField("ams_billing_advance", e.target.checked)}
+              className="h-4 w-4 accent-[#8B5CF6] cursor-pointer"
+              data-testid={`ams-billing-advance-${wave.id}`}
+            />
+            <span className="text-xs text-gray-700">{billingAdvance ? "Paid immediately (ignores payment terms)" : "Follow payment terms (+N days)"}</span>
+          </label>
+        </div>
+      </div>
+
       {buckets.length === 0 ? (
         <div className="text-center py-6 border border-dashed border-purple-200 rounded text-sm text-gray-500">
           No service buckets yet. Click <strong>Add Service</strong> to create L1/L2/On-call/etc. buckets.
@@ -71,7 +125,7 @@ export const AmsSharedPanel = ({ wave, waves, setWaves, isReadOnly }) => {
               <TableHead className="w-8">#</TableHead>
               <TableHead className="min-w-[150px]">Service / Bucket</TableHead>
               <TableHead className="w-24 text-right">Hours / Month</TableHead>
-              <TableHead className="w-24 text-right">Hourly Rate</TableHead>
+              <TableHead className="w-24 text-right">Hourly Price</TableHead>
               <TableHead className="w-24 text-right">Cost Rate</TableHead>
               <TableHead className="w-28 text-right">Billing / Month</TableHead>
               <TableHead className="w-28 text-right">Cost / Month</TableHead>
@@ -108,7 +162,7 @@ export const AmsSharedPanel = ({ wave, waves, setWaves, isReadOnly }) => {
                       }}
                       disabled={isReadOnly}
                       data-testid={`ams-bucket-rate-${b.id}`}
-                      title="Billing rate to customer. Supports formulas like 20+5, 20*10%"
+                      title="Billing price to customer. Supports formulas like 20+5, 20*10%"
                     />
                   </TableCell>
                   <TableCell>
@@ -157,7 +211,7 @@ export const AmsSharedPanel = ({ wave, waves, setWaves, isReadOnly }) => {
       )}
 
       <p className="text-[11px] text-gray-500 mt-2">
-        <strong>Billing:</strong> Hours/Month × Hourly Rate. <strong>Cost:</strong> Hours/Month × Cost Rate (flows to Cashflow cash-out). Yearly = Monthly × {contractMonths}.
+        <strong>Billing:</strong> Hours/Month × Hourly Price. <strong>Cost:</strong> Hours/Month × Cost Rate (flows to Cashflow cash-out). Yearly = Monthly × {contractMonths}.
       </p>
     </div>
   );

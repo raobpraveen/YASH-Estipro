@@ -264,6 +264,8 @@ class ProjectWave(BaseModel):
     engagement_type: str = "Implementation"  # "Implementation" | "AMS_Shared" | "AMS_Dedicated" | "AMS_Mix"
     ams_shared_buckets: List[AmsSharedBucket] = []
     ams_contract_months: int = 12  # Used when engagement_type starts with "AMS_"
+    ams_billing_frequency: str = "Monthly"  # "Monthly" | "Quarterly"
+    ams_billing_advance: bool = False  # True = bill in advance (no payment-terms shift), False = in arrears
 
 class Project(BaseModel):
     model_config = ConfigDict(extra="ignore")

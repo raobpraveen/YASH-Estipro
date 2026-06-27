@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Save, ArrowLeft, DollarSign, Target, ChevronDown, ChevronRight, Search, FileDown, ExternalLink, Copy, Clock } from "lucide-react";
+import { Plus, Trash2, Save, ArrowLeft, DollarSign, Target, ChevronDown, ChevronRight, Search, FileDown, ExternalLink, Copy, Clock, Zap } from "lucide-react";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
 import { calculateWaveSummary } from "@/utils/estimatorCalcs";
@@ -544,12 +544,39 @@ const PaymentMilestones = () => {
                     const contractMonths = parseInt(wave.ams_contract_months) || 12;
                     const monthly = buckets.reduce((s, b) => s + (parseFloat(b.hours_per_month) || 0) * (parseFloat(b.hourly_rate) || 0), 0);
                     const annual = monthly * contractMonths;
+                    const billingFreq = wave.ams_billing_frequency || "Monthly";
+                    const isQuarterly = billingFreq.toLowerCase().startsWith("quarter");
+                    const periodLen = isQuarterly ? 3 : 1;
+                    const billingAdv = !!wave.ams_billing_advance;
+                    const periods = [];
+                    let cursor = 0;
+                    let idx = 1;
+                    while (cursor < contractMonths) {
+                      const actualMonths = Math.min(periodLen, contractMonths - cursor);
+                      periods.push({
+                        label: isQuarterly ? `Q${idx}` : `M${idx}`,
+                        startMonth: cursor + 1,
+                        endMonth: cursor + actualMonths,
+                        amount: monthly * actualMonths,
+                      });
+                      cursor += actualMonths;
+                      idx += 1;
+                    }
+                    const totalScheduled = periods.reduce((s, p) => s + p.amount, 0);
                     return (
                       <div className="mb-4 border border-purple-200 rounded-lg p-3 bg-purple-50/40" data-testid={`ams-recurring-card-${waveName}`}>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[10px] font-bold bg-[#8B5CF6] text-white px-2 py-0.5 rounded uppercase tracking-wide">AMS Recurring Billing</span>
                             <span className="text-xs text-gray-500">read-only · auto-flows to Cashflow</span>
+                            <span className="text-[10px] font-bold bg-[#0EA5E9]/10 text-[#0EA5E9] border border-[#0EA5E9]/30 px-1.5 py-0.5 rounded uppercase tracking-wide" data-testid={`ams-billing-freq-badge-${waveName}`}>
+                              {billingFreq}
+                            </span>
+                            {billingAdv && (
+                              <span className="text-[10px] font-bold bg-[#8B5CF6]/10 text-[#8B5CF6] px-1.5 py-0.5 rounded uppercase tracking-wide flex items-center gap-0.5" data-testid={`ams-billing-advance-badge-${waveName}`}>
+                                <Zap className="w-2.5 h-2.5" /> Advance
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs text-gray-600">{contractMonths} months contract</div>
                         </div>
@@ -559,7 +586,7 @@ const PaymentMilestones = () => {
                               <TableHead className="w-8">#</TableHead>
                               <TableHead>Service / Bucket</TableHead>
                               <TableHead className="text-right w-28">Hours / Month</TableHead>
-                              <TableHead className="text-right w-28">Hourly Rate</TableHead>
+                              <TableHead className="text-right w-28">Hourly Price</TableHead>
                               <TableHead className="text-right w-32">Billing / Month</TableHead>
                               <TableHead className="text-right w-32">Billing / Year</TableHead>
                             </TableRow>
@@ -585,7 +612,54 @@ const PaymentMilestones = () => {
                             </TableRow>
                           </TableBody>
                         </Table>
-                        <p className="text-[11px] text-gray-500 mt-2">Edit hours / rate from the wave grid (AMS Shared Support panel). This information is not part of the payment milestone schedule — it is billed automatically each month.</p>
+
+                        {/* Billing schedule — each billing period rendered as a milestone row */}
+                        <div className="mt-3" data-testid={`ams-billing-schedule-${waveName}`}>
+                          <p className="text-[11px] font-semibold text-[#8B5CF6] mb-1 uppercase tracking-wide">Billing Schedule ({isQuarterly ? "Quarterly" : "Monthly"})</p>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-16">Period</TableHead>
+                                <TableHead className="w-36">Months Covered</TableHead>
+                                <TableHead className="w-28">Cash-In Timing</TableHead>
+                                <TableHead className="text-right">Amount</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {periods.map((p, i) => {
+                                const cashInMonth = billingAdv
+                                  ? `M${p.startMonth}`
+                                  : `M${p.endMonth} + ${paymentTermsDays}d`;
+                                return (
+                                  <TableRow key={i} className="text-xs" data-testid={`ams-billing-period-${waveName}-${i}`}>
+                                    <TableCell className="font-mono text-[#8B5CF6] font-semibold">
+                                      <div className="flex items-center gap-1.5">
+                                        <span>{p.label}</span>
+                                        {billingAdv && (
+                                          <span className="text-[9px] font-bold bg-[#8B5CF6]/10 text-[#8B5CF6] px-1 py-0.5 rounded uppercase">Adv</span>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-gray-600">M{p.startMonth}{p.endMonth > p.startMonth ? ` – M${p.endMonth}` : ""}</TableCell>
+                                    <TableCell className="text-xs text-gray-600">{cashInMonth}</TableCell>
+                                    <TableCell className="text-right font-mono text-[#8B5CF6]">${p.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                              <TableRow className="bg-purple-100/50 font-semibold text-xs">
+                                <TableCell colSpan={3} className="text-right">Total Scheduled</TableCell>
+                                <TableCell className="text-right font-mono text-[#8B5CF6]" data-testid={`ams-billing-schedule-total-${waveName}`}>${totalScheduled.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        <p className="text-[11px] text-gray-500 mt-2">
+                          {billingAdv
+                            ? "Bill in Advance: each billing period is paid immediately on its first month. Payment-terms days do not apply."
+                            : "Billing in arrears: each period's amount lands as Cash-In after the period ends, shifted by the project payment-terms days."}
+                          {" "}Edit hours / price / frequency from the wave grid (AMS Shared Support panel).
+                        </p>
                       </div>
                     );
                   })()}
