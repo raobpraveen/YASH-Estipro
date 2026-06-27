@@ -80,11 +80,23 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 46. Cashflow API (`/api/projects/{id}/cashflow`) — new `summary.total_ams_shared`, per-wave `total_ams_shared`, per-month `ams_shared_revenue`. AMS shared waves bypass payment-terms offset and have no internal cost; AMS_Shared waves auto-extend `wave_monthly` to `ams_contract_months`.
 47. Add Wave dialog: new `Engagement Type` dropdown at top + conditional `Contract Length (Months)` input when engagement_type starts with `AMS_`.
 
+### Iteration 58-59: AMS Follow-ups (Completed Jun 2026)
+48. `cost_rate` added to `AmsSharedBucket` model; AMS cashflow integrates AMS cost (`hours × cost_rate`) as level monthly cash-out.
+49. Wave Final Price moved AFTER AMS Annual Billing in Excel Summary sheet for AMS_Mix waves.
+50. Gantt + Wave grid controls disabled for pure AMS_Shared waves.
+
+### Iteration 60: AMS Billing Frequency, Hourly Price rename, Excel import P0 fix (Completed Feb 2026)
+51. **'Hourly Rate' → 'Hourly Price'** rename across all AMS-applicable surfaces only (AMS panel header, Payment Milestones AMS card, Excel AMS sheet bucket column). T&M `$/Hr` labels unchanged.
+52. **AMS Billing Frequency**: new `ProjectWave.ams_billing_frequency` ("Monthly" | "Quarterly") and `ams_billing_advance` (bool) fields with backward-compatible defaults (Monthly/false). Editable from Add-Wave dialog AND inline from AmsSharedPanel controls.
+53. **Cashflow logic**: Advance ON → AMS revenue lands on the FIRST day of each billing period (ignoring `payment_terms_days`); the corresponding `advance_revenue` field is set. Advance OFF → AMS revenue lands `payment_terms_days` days after the END of each period. Quarterly bunches billing into 3-month periods. AMS cost remains level monthly regardless.
+54. **Payment Milestones AMS card**: auto-renders a `Billing Schedule` table with one read-only row per billing period (M1, M2, … or Q1, Q2, …), each tagged with the `Advance` badge when toggle is ON; total scheduled matches monthly × contract months.
+55. **Excel Export**: AMS sheet header now embeds the Billing clause (`— Billing: Monthly|Quarterly[ · Advance]`) so the import can round-trip the frequency + advance settings.
+56. **Excel Import P0 bug fix** (`excelImport.js`): rewrote section-terminator detection to scan the first 3 columns for markers (`TOTALS`, `LOGISTICS BREAKDOWN`, `AMS SHARED SUPPORT`, `WAVE SUMMARY`, `PHASE RANGES`, etc.) AND validate that allocation rows have a positive-integer `#` column and a non-numeric skill name. Eliminates phantom empty resource rows that appeared after the Technology column shift in iter54.
+
 ## Pending Implementation
 
-(Awaiting user-compiled list of UI/logic issues from Phases 1-4)
-
 ### Future Tasks (Roadmap)
+- HubSpot CRM Integration (opportunities → estimations) — deferred earlier, ready to resume
 - PDF Export with Branding
 - Client-Facing Shareable View
 - Proposal Auto-Generation (Word/PPT)
