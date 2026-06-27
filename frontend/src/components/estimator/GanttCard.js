@@ -40,8 +40,12 @@ const buildGanttRows = (waves) => {
     for (const pr of ranges) {
       const startVal = pr.start_month || 1;
       const endVal = pr.end_month || startVal;
-      const absStart = offset + startVal - 1;
-      const absEnd = offset + endVal;
+      // Sub-1 start (0.25/0.5/0.75) snaps to project start; legacy values >=1 use 1-indexed boundary.
+      // end is treated as elapsed-months boundary (1=end of M1, 0.5=mid M1, 3=end of M3).
+      const startElapsed = startVal < 1 ? 0 : startVal - 1;
+      const endElapsed = endVal;
+      const absStart = offset + startElapsed;
+      const absEnd = offset + endElapsed;
       rows.push({
         waveName: w.name,
         waveId: w.id,
@@ -77,8 +81,11 @@ const buildMilestoneMarkers = (milestones, waves) => {
 
     if (phase) {
       // Position based on phase start/mid/end or numeric percentage (0-100)
-      const phaseStart = offset + (phase.start_month || 1) - 1;
-      const phaseEnd = offset + (phase.end_month || phase.start_month || 1);
+      // Match Phase Range bar convention: sub-1 start snaps to 0; end is elapsed-months
+      const phaseStartElapsed = (phase.start_month || 1) < 1 ? 0 : (phase.start_month || 1) - 1;
+      const phaseEndElapsed = phase.end_month || phase.start_month || 1;
+      const phaseStart = offset + phaseStartElapsed;
+      const phaseEnd = offset + phaseEndElapsed;
       const numPos = parseFloat(ms.position);
       if (!isNaN(numPos) && ms.position !== "start" && ms.position !== "mid" && ms.position !== "end") {
         // Numeric percentage position (0-100)
@@ -138,8 +145,10 @@ export const GanttCard = ({
     const offset = (wave.wave_start_month || 1) - 1;
     const phase = (wave.phase_ranges || []).find(p => p.name === ms.phaseName);
     if (!phase) return;
-    const phaseStart = offset + (phase.start_month || 1) - 1;
-    const phaseEnd = offset + (phase.end_month || phase.start_month || 1);
+    const phaseStartElapsed = (phase.start_month || 1) < 1 ? 0 : (phase.start_month || 1) - 1;
+    const phaseEndElapsed = phase.end_month || phase.start_month || 1;
+    const phaseStart = offset + phaseStartElapsed;
+    const phaseEnd = offset + phaseEndElapsed;
 
     setDragState({
       msName: ms.name,

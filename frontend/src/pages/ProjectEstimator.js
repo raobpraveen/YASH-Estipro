@@ -1491,6 +1491,7 @@ const ProjectEstimator = () => {
           name: b.name,
           hours_per_month: b.hours_per_month,
           hourly_rate: b.hourly_rate,
+          cost_rate: b.cost_rate || 0,
           notes: b.notes || "",
         })),
         ams_contract_months: pw.amsContractMonths || 12,

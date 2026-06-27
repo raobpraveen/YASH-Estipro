@@ -178,7 +178,7 @@ export const OverallSummary = ({ overall, profitMarginPercentage, collapsedSecti
               <p className="text-2xl font-extrabold font-mono text-[#8B5CF6]" data-testid="ams-shared-monthly">
                 ${overall.totalAmsSharedMonthly.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </p>
-              <p className="text-xs text-gray-500 mt-1">sum across AMS waves, no margin/buffer</p>
+              <p className="text-xs text-gray-500 mt-1">sum across AMS waves</p>
             </CardContent>
           </Card>
           <Card className="border border-[#8B5CF6] shadow-sm bg-purple-50/50">

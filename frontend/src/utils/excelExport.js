@@ -230,7 +230,17 @@ export async function buildExportWorkbook({
     const resSPCell = addSumRow("Resources Selling Price", `${colL(C_SP)}${TR}`, {});
     const waveSPCell = addSumRow("Wave Selling Price (Resources + Logistics)", `${resSPCell}+${lgTotCell}`, { font: totalsFont });
     const negoCell = addSumRow(`Nego Buffer (${negoBufferPercentage}%)`, `${waveSPCell}*${NGO}`, {});
-    const finalCell = addSumRow("WAVE FINAL PRICE", `${waveSPCell}+${negoCell}`, { font: totalsFont, fill: greenFill });
+    // Determine engagement type first — for AMS waves, the WAVE FINAL PRICE row is deferred until after the AMS section
+    const engagementType = wave.engagement_type || "Implementation";
+    const isAmsWave = engagementType === "AMS_Shared" || engagementType === "AMS_Mix";
+    const amsBuckets = isAmsWave ? (wave.ams_shared_buckets || []) : [];
+    const hasAmsRows = isAmsWave && amsBuckets.length > 0;
+    // Implementation sub-total row (always rendered). For non-AMS waves, this IS the Wave Final Price.
+    const implFinalLabel = hasAmsRows ? "Implementation Sub-Total (Resources + Logistics + Buffer)" : "WAVE FINAL PRICE";
+    const implFinalCell = addSumRow(implFinalLabel, `${waveSPCell}+${negoCell}`, { font: totalsFont, fill: greenFill });
+    // For non-AMS waves, the wave final price IS the implementation sub-total cell.
+    // For AMS waves, we'll create a new Final Price row AFTER the AMS section below.
+    let finalCell = implFinalCell;
 
     const onsMMCell = addSumRow("Onsite MM", onsMMF, {});
     const offMMCell = addSumRow("Offshore MM", `${colL(C_TMM)}${TR}-${onsMMCell}`, {});
@@ -254,40 +264,56 @@ export async function buildExportWorkbook({
     // Phase dependencies section removed — milestones are now linked to phases directly
 
     // ---- AMS Shared Support Section ----
-    const engagementType = wave.engagement_type || "Implementation";
-    const isAms = engagementType === "AMS_Shared" || engagementType === "AMS_Mix";
-    const amsBuckets = isAms ? (wave.ams_shared_buckets || []) : [];
     let amsMonthlyCell = null;
     let amsAnnualCell = null;
-    if (isAms && amsBuckets.length > 0) {
+    if (hasAmsRows) {
       const contractMonths = parseInt(wave.ams_contract_months) || 12;
       dws.addRow([]);
       const amsHdr = dws.addRow([`AMS SHARED SUPPORT (${engagementType.replace("AMS_", "")} — ${contractMonths} months contract)`]);
       amsHdr.font = { bold: true, size: 11, color: { argb: "FF8B5CF6" } };
       amsHdr.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDE9FE" } };
-      const amsCol = dws.addRow(["#", "Service / Bucket", "Hours/Month", "Hourly Rate", "Billing/Month", "Billing/Year", "Notes"]);
+      const amsCol = dws.addRow(["#", "Service / Bucket", "Hours/Month", "Hourly Rate", "Cost Rate", "Billing/Month", "Cost/Month", "Billing/Year", "Notes"]);
       amsCol.eachCell(c => { c.fill = subHeaderFill; c.font = { bold: true }; c.border = thinBorder; });
       const amsStartRow = dws.lastRow.number + 1;
       amsBuckets.forEach((b, idx) => {
-        const r = dws.addRow([idx + 1, b.name || "", b.hours_per_month || 0, b.hourly_rate || 0, "", "", b.notes || ""]);
+        const hrs = b.hours_per_month || 0;
+        const rate = b.hourly_rate || 0;
+        const cost = b.cost_rate || 0;
+        const r = dws.addRow([idx + 1, b.name || "", hrs, rate, cost, "", "", "", b.notes || ""]);
         const rn = r.number;
-        r.getCell(5).value = { formula: `C${rn}*D${rn}`, result: (b.hours_per_month || 0) * (b.hourly_rate || 0) };
-        r.getCell(5).numFmt = moneyFmt;
-        r.getCell(6).value = { formula: `E${rn}*${contractMonths}`, result: (b.hours_per_month || 0) * (b.hourly_rate || 0) * contractMonths };
+        // Billing/Month = C*D
+        r.getCell(6).value = { formula: `C${rn}*D${rn}`, result: hrs * rate };
         r.getCell(6).numFmt = moneyFmt;
+        // Cost/Month = C*E
+        r.getCell(7).value = { formula: `C${rn}*E${rn}`, result: hrs * cost };
+        r.getCell(7).numFmt = moneyFmt;
+        // Billing/Year = F*N
+        r.getCell(8).value = { formula: `F${rn}*${contractMonths}`, result: hrs * rate * contractMonths };
+        r.getCell(8).numFmt = moneyFmt;
         r.getCell(4).numFmt = moneyFmt;
+        r.getCell(5).numFmt = moneyFmt;
         r.eachCell(c => { c.border = thinBorder; });
       });
       const amsEndRow = dws.lastRow.number;
-      const amsTot = dws.addRow(["", "Total", "", "", "", "", ""]);
+      const amsTot = dws.addRow(["", "Total", "", "", "", "", "", "", ""]);
       amsTot.font = totalsFont;
       amsTot.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDE9FE" } }; c.border = thinBorder; });
-      amsTot.getCell(5).value = { formula: `SUM(E${amsStartRow}:E${amsEndRow})`, result: amsBuckets.reduce((s, b) => s + (b.hours_per_month || 0) * (b.hourly_rate || 0), 0) };
-      amsTot.getCell(5).numFmt = moneyFmt;
-      amsTot.getCell(6).value = { formula: `SUM(F${amsStartRow}:F${amsEndRow})`, result: amsBuckets.reduce((s, b) => s + (b.hours_per_month || 0) * (b.hourly_rate || 0) * contractMonths, 0) };
+      amsTot.getCell(6).value = { formula: `SUM(F${amsStartRow}:F${amsEndRow})`, result: amsBuckets.reduce((s, b) => s + (b.hours_per_month || 0) * (b.hourly_rate || 0), 0) };
       amsTot.getCell(6).numFmt = moneyFmt;
-      amsMonthlyCell = `E${amsTot.number}`;
-      amsAnnualCell = `F${amsTot.number}`;
+      amsTot.getCell(7).value = { formula: `SUM(G${amsStartRow}:G${amsEndRow})`, result: amsBuckets.reduce((s, b) => s + (b.hours_per_month || 0) * (b.cost_rate || 0), 0) };
+      amsTot.getCell(7).numFmt = moneyFmt;
+      amsTot.getCell(8).value = { formula: `SUM(H${amsStartRow}:H${amsEndRow})`, result: amsBuckets.reduce((s, b) => s + (b.hours_per_month || 0) * (b.hourly_rate || 0) * contractMonths, 0) };
+      amsTot.getCell(8).numFmt = moneyFmt;
+      amsMonthlyCell = `F${amsTot.number}`;
+      amsAnnualCell = `H${amsTot.number}`;
+
+      // Add Wave Final Price (incl. AMS) row AFTER the AMS section
+      dws.addRow([]);
+      const finalRow = dws.addRow(["WAVE FINAL PRICE (incl. AMS Annual)", "", { formula: `${implFinalCell}+${amsAnnualCell}`, result: 0 }]);
+      finalRow.getCell(3).numFmt = moneyFmt;
+      finalRow.font = totalsFont;
+      finalRow.eachCell(c => { c.fill = greenFill; c.border = thinBorder; });
+      finalCell = `C${finalRow.number}`;
     }
 
     waveRefs.push({
@@ -304,7 +330,7 @@ export async function buildExportWorkbook({
       finalPrice: `${sRef}!${finalCell}`,
       amsMonthly: amsMonthlyCell ? `${sRef}!${amsMonthlyCell}` : null,
       amsAnnual: amsAnnualCell ? `${sRef}!${amsAnnualCell}` : null,
-      contractMonths: isAms ? (parseInt(wave.ams_contract_months) || 12) : null,
+      contractMonths: isAmsWave ? (parseInt(wave.ams_contract_months) || 12) : null,
     });
   });
 

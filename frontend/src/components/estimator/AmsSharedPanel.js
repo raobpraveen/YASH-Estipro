@@ -23,6 +23,7 @@ export const AmsSharedPanel = ({ wave, waves, setWaves, isReadOnly }) => {
       name: `Service ${buckets.length + 1}`,
       hours_per_month: 0,
       hourly_rate: 0,
+      cost_rate: 0,
       notes: "",
     };
     updateBuckets([...buckets, newBucket]);
@@ -36,12 +37,14 @@ export const AmsSharedPanel = ({ wave, waves, setWaves, isReadOnly }) => {
   const totals = buckets.reduce((acc, b) => {
     const hrs = parseFloat(b.hours_per_month) || 0;
     const rate = parseFloat(b.hourly_rate) || 0;
-    const monthly = hrs * rate;
+    const cost = parseFloat(b.cost_rate) || 0;
     acc.hours += hrs;
-    acc.monthly += monthly;
+    acc.monthly += hrs * rate;
+    acc.monthlyCost += hrs * cost;
     return acc;
-  }, { hours: 0, monthly: 0 });
+  }, { hours: 0, monthly: 0, monthlyCost: 0 });
   const totalYearly = totals.monthly * contractMonths;
+  const totalYearlyCost = totals.monthlyCost * contractMonths;
 
   return (
     <div className="border border-purple-200 rounded-lg p-4 bg-purple-50/30" data-testid={`ams-shared-panel-${wave.id}`}>
@@ -49,7 +52,6 @@ export const AmsSharedPanel = ({ wave, waves, setWaves, isReadOnly }) => {
         <div className="flex items-center gap-2">
           <Zap className="w-4 h-4 text-[#8B5CF6]" />
           <h4 className="font-semibold text-[#8B5CF6]">AMS Shared Support</h4>
-          <span className="text-[10px] uppercase tracking-wide bg-[#8B5CF6]/10 text-[#8B5CF6] px-2 py-0.5 rounded-full">No margin / No buffer</span>
         </div>
         {!isReadOnly && (
           <Button size="sm" variant="outline" onClick={addBucket} className="text-[#8B5CF6] border-[#8B5CF6]/40 hover:bg-[#8B5CF6]/10" data-testid={`ams-add-bucket-${wave.id}`}>
@@ -67,11 +69,13 @@ export const AmsSharedPanel = ({ wave, waves, setWaves, isReadOnly }) => {
           <TableHeader>
             <TableRow>
               <TableHead className="w-8">#</TableHead>
-              <TableHead className="min-w-[160px]">Service / Bucket</TableHead>
-              <TableHead className="w-32 text-right">Hours / Month</TableHead>
-              <TableHead className="w-32 text-right">Hourly Rate (USD)</TableHead>
-              <TableHead className="w-36 text-right">Billing / Month</TableHead>
-              <TableHead className="w-36 text-right">Billing / Year</TableHead>
+              <TableHead className="min-w-[150px]">Service / Bucket</TableHead>
+              <TableHead className="w-24 text-right">Hours / Month</TableHead>
+              <TableHead className="w-24 text-right">Hourly Rate</TableHead>
+              <TableHead className="w-24 text-right">Cost Rate</TableHead>
+              <TableHead className="w-28 text-right">Billing / Month</TableHead>
+              <TableHead className="w-28 text-right">Cost / Month</TableHead>
+              <TableHead className="w-28 text-right">Billing / Year</TableHead>
               <TableHead>Notes</TableHead>
               <TableHead className="w-10"></TableHead>
             </TableRow>
@@ -80,7 +84,9 @@ export const AmsSharedPanel = ({ wave, waves, setWaves, isReadOnly }) => {
             {buckets.map((b, idx) => {
               const hrs = parseFloat(b.hours_per_month) || 0;
               const rate = parseFloat(b.hourly_rate) || 0;
+              const cost = parseFloat(b.cost_rate) || 0;
               const monthly = hrs * rate;
+              const monthlyCost = hrs * cost;
               return (
                 <TableRow key={b.id} data-testid={`ams-bucket-row-${b.id}`}>
                   <TableCell className="text-gray-400 font-mono text-xs">{idx + 1}</TableCell>
@@ -102,10 +108,26 @@ export const AmsSharedPanel = ({ wave, waves, setWaves, isReadOnly }) => {
                       }}
                       disabled={isReadOnly}
                       data-testid={`ams-bucket-rate-${b.id}`}
-                      title="Supports formulas like 20+5, 20*10%"
+                      title="Billing rate to customer. Supports formulas like 20+5, 20*10%"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="text"
+                      className="text-right font-mono"
+                      defaultValue={b.cost_rate}
+                      onBlur={(e) => {
+                        const evald = evaluateSalaryExpression(e.target.value);
+                        if (evald !== null) updateBucket(b.id, "cost_rate", evald);
+                        else e.target.value = b.cost_rate;
+                      }}
+                      disabled={isReadOnly}
+                      data-testid={`ams-bucket-cost-rate-${b.id}`}
+                      title="Internal cost rate (USD/hour). Drives cash-out in Cashflow."
                     />
                   </TableCell>
                   <TableCell className="text-right font-mono text-[#8B5CF6] font-semibold">{fmt(monthly)}</TableCell>
+                  <TableCell className="text-right font-mono text-red-600">{fmt(monthlyCost)}</TableCell>
                   <TableCell className="text-right font-mono text-[#8B5CF6]">{fmt(monthly * contractMonths)}</TableCell>
                   <TableCell>
                     <Input value={b.notes || ""} placeholder="Optional…" onChange={(e) => updateBucket(b.id, "notes", e.target.value)} disabled={isReadOnly} className="text-xs" />
@@ -124,17 +146,18 @@ export const AmsSharedPanel = ({ wave, waves, setWaves, isReadOnly }) => {
               <TableCell colSpan={2} className="text-right">Total</TableCell>
               <TableCell className="text-right font-mono">{totals.hours.toLocaleString()}</TableCell>
               <TableCell className="text-right text-xs text-gray-500">—</TableCell>
+              <TableCell className="text-right text-xs text-gray-500">—</TableCell>
               <TableCell className="text-right font-mono text-[#8B5CF6]">{fmt(totals.monthly)}</TableCell>
+              <TableCell className="text-right font-mono text-red-600">{fmt(totals.monthlyCost)}</TableCell>
               <TableCell className="text-right font-mono text-[#8B5CF6]" data-testid={`ams-shared-total-yearly-${wave.id}`}>{fmt(totalYearly)}</TableCell>
-              <TableCell colSpan={2} className="text-right text-xs text-gray-500">{contractMonths} months contract</TableCell>
+              <TableCell colSpan={2} className="text-right text-xs text-gray-500">{contractMonths} mo contract · Cost/Yr: {fmt(totalYearlyCost)}</TableCell>
             </TableRow>
           </TableBody>
         </Table>
       )}
 
       <p className="text-[11px] text-gray-500 mt-2">
-        <strong>Formula:</strong> Hours/Month × Hourly Rate = Billing/Month. Yearly = Monthly × {contractMonths}.{" "}
-        No internal cost is computed for shared support — these are the billed prices to the customer.
+        <strong>Billing:</strong> Hours/Month × Hourly Rate. <strong>Cost:</strong> Hours/Month × Cost Rate (flows to Cashflow cash-out). Yearly = Monthly × {contractMonths}.
       </p>
     </div>
   );

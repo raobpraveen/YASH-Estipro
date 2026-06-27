@@ -1,0 +1,41 @@
+{
+  "summary": "Iteration 59 (5 AMS follow-ups) tested end-to-end. Backend: 3/3 pytest tests PASS — cost_rate persists on AmsSharedBucket; /api/projects/{id}/cashflow returns summary.total_ams_cost=60000 (250×20×12), wave_data[].total_ams_cost=60000, monthly_data[].ams_shared_cost=5000 per month; non-AMS projects return zero AMS cost. Excel parser round-trip: 14/14 Node assertions PASS — new 9-col header (with Cost Rate) and legacy 7-col header both parse correctly; cost_rate captured (=20/25) from new format, defaults to 0 for legacy; notes column resolved at col 9 (new) vs col 7 (legacy). Frontend live on PRJ-0031 'AMS1 (12m)' tab (engagement_type=AMS_Shared): add-resource-button NOT rendered; add-row-*, add-row-after-grid-* NOT rendered; edit-logistics-{wid}, add-month-{wid}, remove-month-{wid} all disabled=true; ams-bucket-cost-rate-{bucketId} input present with value 20; column headers Cost Rate, Cost / Month, Cost/Yr all visible; Service 1 row shows hrs=100 × cost_rate=20 → Cost/Month=$2,000, totals strip shows 12 mo contract · Cost/Yr: $24,000; 'No margin / No buffer' text returns 0 matches anywhere (Shared panel, wave summary card 'AMS1 Summary', Overall Summary card 'AMS Shared Support — Monthly/Annual Billing'); Implementation tab still shows enabled buttons (verified). GanttCard.js sub-1 phase fix verified via source (startElapsed = startVal<1?0:startVal-1 at line 45; phaseStartElapsed at 85 & 148). Excel export ordering verified via source: implFinalLabel switches to 'Implementation Sub-Total (Resources + Logistics + Buffer)' when hasAmsRows, AMS section rendered next with 9-col header (#, Service/Bucket, Hours/Month, Hourly Rate, Cost Rate, Billing/Month, Cost/Month, Billing/Year, Notes), then a new 'WAVE FINAL PRICE (incl. AMS Annual)' row = implFinal + amsAnnual; for non-AMS waves the single row stays labeled 'WAVE FINAL PRICE'.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Estimator/Dashboard", "issues": ["Pre-existing React hydration warnings on <span data-ve-dynamic> wrapping <tr>/<th>/<td>/<option>/<select> — carry-over from iter_55/56/57/58. Not introduced this iteration; main agent should consider visual-editor span sanitiser for table cells."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter59_cost_rate_cashflow.py",
+    "/app/backend/tests/iter59_excel_roundtrip.js",
+    "/app/test_reports/pytest/pytest_iter59.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "models.py L247: AmsSharedBucket.cost_rate=0 default — safely backward compatible with existing buckets that lack the field.",
+    "financials.py L112-115,131-132: shared_monthly_cost = Σ hours_per_month × cost_rate; added to month['cost'] and month['ams_shared_cost']. wave_data[].total_ams_cost and summary.total_ams_cost sum correctly. Verified numerically (250×20×12=60000).",
+    "AmsSharedPanel.js L75-77: new column order Hours/Month → Hourly Rate → Cost Rate → Billing/Month → Cost/Month → Billing/Year → Notes matches spec. Totals row (L153) shows 'Cost/Yr: ${totalYearlyCost}' alongside contract length.",
+    "WaveContent.js L206 disabled prop on edit-logistics; L209/212 add-resource hidden; L267-268 add-row hidden; L272 add-month disabled; L275 remove-month disabled; L1002/1009 add-row-after-grid hidden — all gated on wave.engagement_type === 'AMS_Shared'. AMS_Mix correctly NOT disabled (only !== 'AMS_Shared' checks).",
+    "excelExport.js L233-243,310-316: implFinalLabel switches based on hasAmsRows; for AMS waves the deferred WAVE FINAL PRICE (incl. AMS Annual) row uses formula =implFinalCell+amsAnnualCell. For non-AMS waves, the green WAVE FINAL PRICE row is emitted before the (absent) AMS section, exactly as required.",
+    "excelImport.js L256-282: header layout auto-detection via colHdrText.some(t=>t.includes('cost rate')) → notesCol switches 9↔7. Backward compat preserved.",
+    "GanttCard.js L45/85/148: identical sub-1 snap fix (startElapsed = startVal<1?0:startVal-1) consistently applied at three call sites — wave ranges loop, milestone position calc, and phase-from-elapsed math. Matches Phase Range Preview behaviour."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter59_cost_rate_cashflow.py",
+    "/app/backend/tests/iter59_excel_roundtrip.js",
+    "/app/test_reports/iteration_59.json"
+  ],
+  "success_rate": {
+    "backend": "100% (3/3 pytest tests + 14/14 Node round-trip)",
+    "frontend": "100% — all 5 disabled/hidden buttons verified on AMS_Shared wave; cost_rate input + Cost/Month + Cost/Yr labels visible; 'No margin / No buffer' nowhere present; Implementation wave still has enabled buttons"
+  },
+  "test_credentials": "admin@yash.com / password",
+  "seed_data_creation": "TEST_Iter59_CostRate_Cashflow + TEST_Iter59_Impl (both cleaned up via pytest fixture teardown). Re-used PRJ-0031 'AMS1 (12m)' for live UI inspection — no mutations made.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iter59 wraps the AMS follow-ups #1-#5 on top of iter_58: (1) GanttCard sub-1 phase snap at three call sites — source-confirmed. (2) 'No margin / No buffer' label removed everywhere (Shared panel, wave summary, Overall summary). (3) cost_rate added to AmsSharedBucket (backend + UI). New Cost Rate input data-testid='ams-bucket-cost-rate-{bucketId}', Cost/Month column next to Billing/Month, and Cost/Yr in totals strip. Cashflow exposes summary.total_ams_cost + wave_data[].total_ams_cost + monthly_data[].ams_shared_cost. (4) For engagement_type='AMS_Shared' only: add-resource-button, add-row-*, add-row-after-grid-* are NOT rendered; edit-logistics-*, add-month-*, remove-month-* are disabled. AMS_Mix waves are NOT affected by these gates (they keep the buttons). (5) Excel export — for AMS waves, the Implementation Sub-Total row appears before the AMS section, then 9-col AMS table (# / Service / Hours/Month / Hourly Rate / Cost Rate / Billing/Month / Cost/Month / Billing/Year / Notes) with a Total row, then a final WAVE FINAL PRICE (incl. AMS Annual) row; for non-AMS waves the single WAVE FINAL PRICE row is emitted before the (non-existent) AMS section. Excel import auto-detects 9-col vs legacy 7-col header by scanning for 'cost rate' substring and picks notesCol=9 vs 7 — verified via Node round-trip with two fixtures. PRJ-0031 has 'AMS1 (12m)' = AMS_Shared wave with bucket cost_rate=20 already configured for ad-hoc retest.",
+  "rca of the issue": "N/A — all 5 follow-ups verified passing."
+}

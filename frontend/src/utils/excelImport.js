@@ -253,12 +253,22 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
             engagementType = headerMatch[1].toLowerCase().includes("mix") ? "AMS_Mix" : "AMS_Shared";
             amsContractMonths = parseInt(headerMatch[2]) || 12;
           }
+          // Read the header row (r+1) to detect column layout (legacy 7-col vs new 9-col with Cost Rate)
+          const colHdr = ws.getRow(r + 1);
+          const colHdrText = [];
+          for (let c = 1; c <= 9; c++) {
+            colHdrText.push(((getCellVal(colHdr.getCell(c)) || "") + "").toString().toLowerCase());
+          }
+          const hasCostRate = colHdrText.some(t => t.includes("cost rate"));
+          // Resolve column indices
+          const notesCol = hasCostRate ? 9 : 7;
           for (let ar = r + 2; ar <= ws.rowCount; ar++) {
             const aRow = ws.getRow(ar);
             const numCell = (getCellVal(aRow.getCell(1)) || "").toString().trim();
             const nameCell = (getCellVal(aRow.getCell(2)) || "").toString().trim();
             const hoursCell = parseFloat(getCellVal(aRow.getCell(3)));
             const rateCell = parseFloat(getCellVal(aRow.getCell(4)));
+            const costRateCell = hasCostRate ? parseFloat(getCellVal(aRow.getCell(5))) : 0;
             // Stop on Total row or blank
             if (!nameCell || nameCell.toUpperCase() === "TOTAL" || numCell.toUpperCase() === "TOTAL") break;
             if (!Number.isFinite(hoursCell) || !Number.isFinite(rateCell)) continue;
@@ -266,7 +276,8 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
               name: nameCell,
               hours_per_month: hoursCell,
               hourly_rate: rateCell,
-              notes: (getCellVal(aRow.getCell(7)) || "").toString().trim(),
+              cost_rate: Number.isFinite(costRateCell) ? costRateCell : 0,
+              notes: (getCellVal(aRow.getCell(notesCol)) || "").toString().trim(),
             });
           }
         }

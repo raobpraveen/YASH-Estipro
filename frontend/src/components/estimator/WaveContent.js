@@ -203,10 +203,10 @@ export const WaveContent = ({
       {/* Wave Toolbar */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => onOpenLogisticsEditor(wave.id)} data-testid={`edit-logistics-${wave.id}`} disabled={isReadOnly}>
+          <Button size="sm" variant="outline" onClick={() => onOpenLogisticsEditor(wave.id)} data-testid={`edit-logistics-${wave.id}`} disabled={isReadOnly || wave.engagement_type === "AMS_Shared"}>
             <Settings className="w-4 h-4 mr-2" /> Logistics Config
           </Button>
-          {!isReadOnly && (
+          {!isReadOnly && wave.engagement_type !== "AMS_Shared" && (
           <Dialog open={addResourceDialogOpen && activeWaveId === wave.id} onOpenChange={setAddResourceDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="bg-[#0EA5E9] hover:bg-[#0EA5E9]/90 text-white" data-testid="add-resource-button">
@@ -264,15 +264,15 @@ export const WaveContent = ({
             </DialogContent>
           </Dialog>
           )}
-          {!isReadOnly && (
+          {!isReadOnly && wave.engagement_type !== "AMS_Shared" && (
           <Button size="sm" variant="outline" className="border-gray-400 text-gray-600 hover:bg-gray-50" onClick={() => onAddEmptyRow(wave.id)} data-testid={`add-row-${wave.id}`}>
             <Plus className="w-4 h-4 mr-1" /> Add Row
           </Button>
           )}
-          <Button size="sm" variant="outline" onClick={() => onAddPhaseColumn(wave.id)} className="border-teal-600 text-teal-600 hover:bg-teal-50" data-testid={`add-month-${wave.id}`} disabled={isReadOnly}>
+          <Button size="sm" variant="outline" onClick={() => onAddPhaseColumn(wave.id)} className="border-teal-600 text-teal-600 hover:bg-teal-50" data-testid={`add-month-${wave.id}`} disabled={isReadOnly || wave.engagement_type === "AMS_Shared"}>
             <Plus className="w-4 h-4 mr-1" /> Add Month
           </Button>
-          <Button size="sm" variant="outline" onClick={() => onRemovePhaseColumn(wave.id)} className="border-orange-600 text-orange-600 hover:bg-orange-50" data-testid={`remove-month-${wave.id}`} disabled={isReadOnly}>
+          <Button size="sm" variant="outline" onClick={() => onRemovePhaseColumn(wave.id)} className="border-orange-600 text-orange-600 hover:bg-orange-50" data-testid={`remove-month-${wave.id}`} disabled={isReadOnly || wave.engagement_type === "AMS_Shared"}>
             <Minus className="w-4 h-4 mr-1" /> Remove Month
           </Button>
           {!isReadOnly && (
@@ -999,7 +999,7 @@ export const WaveContent = ({
       )}
 
       {/* Add Row button — placed immediately after grid, before logistics */}
-      {!isReadOnly && (
+      {!isReadOnly && wave.engagement_type !== "AMS_Shared" && (
         <div className="flex justify-center -mt-2">
           <Button
             variant="outline"
@@ -1177,7 +1177,7 @@ export const WaveContent = ({
                   <p className="font-mono font-bold text-xl text-[#8B5CF6] mt-1" data-testid={`wave-ams-annual-${wave.id}`}>
                     ${waveSummary.amsSharedAnnual.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">no margin / no buffer</p>
+                  <p className="text-xs text-gray-500 mt-0.5">annual recurring</p>
                 </div>
                 <div className="bg-gradient-to-br from-emerald-50 to-purple-50 p-3 rounded-lg border-2 border-[#0F172A]">
                   <p className="text-xs text-[#0F172A] uppercase tracking-wide font-semibold">Wave Grand Total</p>
@@ -1261,7 +1261,7 @@ export const WaveContent = ({
                 <p className="font-mono font-bold text-xl text-[#8B5CF6] mt-1" data-testid={`wave-ams-annual-${wave.id}`}>
                   ${waveSummary.amsSharedAnnual.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">no margin / no buffer</p>
+                <p className="text-xs text-gray-500 mt-0.5">annual recurring</p>
               </div>
               <div className="bg-gradient-to-br from-emerald-50 to-purple-50 p-3 rounded-lg border-2 border-[#0F172A]">
                 <p className="text-xs text-[#0F172A] uppercase tracking-wide font-semibold">Wave Grand Total</p>

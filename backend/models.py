@@ -243,7 +243,8 @@ class AmsSharedBucket(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str  # free-text label (e.g. "L1 Tickets", "L2 Tickets", "On-call")
     hours_per_month: float = 0
-    hourly_rate: float = 0  # USD per hour
+    hourly_rate: float = 0  # USD per hour (billing rate to customer)
+    cost_rate: float = 0    # USD per hour (internal cost rate; drives cash-out)
     notes: str = ""
 
 class ProjectWave(BaseModel):
