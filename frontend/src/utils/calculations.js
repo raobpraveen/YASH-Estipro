@@ -113,8 +113,17 @@ export const calculateWaveSummary = (wave, profitMarginPercentage) => {
 
   const logistics = calculateWaveLogistics(wave);
   const waveSellingPrice = totalRowsSellingPrice + logistics.totalLogistics;
-  const totalCost = totalBaseSalaryCost + totalOverheadCost + logistics.totalLogistics;
-  const costToCompany = totalBaseSalaryCost + totalOverheadCost;
+  // AMS Shared Support cost: hours_per_month × cost_rate × contract_months (added to CTC)
+  const isAmsWave = wave.engagement_type === "AMS_Shared" || wave.engagement_type === "AMS_Mix";
+  let amsTotalCost = 0;
+  if (isAmsWave) {
+    const contractMonths = parseInt(wave.ams_contract_months) || 12;
+    (wave.ams_shared_buckets || []).forEach(b => {
+      amsTotalCost += (parseFloat(b.hours_per_month) || 0) * (parseFloat(b.cost_rate) || 0) * contractMonths;
+    });
+  }
+  const totalCost = totalBaseSalaryCost + totalOverheadCost + logistics.totalLogistics + amsTotalCost;
+  const costToCompany = totalBaseSalaryCost + totalOverheadCost + amsTotalCost;
   const negoBufferPercentage = wave.nego_buffer_percentage || 0;
   const negoBufferAmount = waveSellingPrice * (negoBufferPercentage / 100);
   const finalPrice = waveSellingPrice + negoBufferAmount;
@@ -127,6 +136,7 @@ export const calculateWaveSummary = (wave, profitMarginPercentage) => {
     totalLogisticsCost: logistics.totalLogistics,
     totalCost,
     totalCostToCompany: costToCompany,
+    amsTotalCost,
     sellingPrice: waveSellingPrice,
     negoBufferPercentage, negoBufferAmount, finalPrice,
     onsiteResourceCount: logistics.onsiteResourceCount,
@@ -146,6 +156,7 @@ export const calculateOverallSummary = (waves, profitMarginPercentage) => {
   let totalSellingPrice = 0, totalNegoBuffer = 0, totalFinalPrice = 0;
   let onsiteSellingPrice = 0, offshoreSellingPrice = 0;
   let totalCostToCompany = 0;
+  let totalAmsCost = 0;
 
   (waves || []).forEach(wave => {
     const summary = calculateWaveSummary(wave, profitMarginPercentage);
@@ -157,6 +168,7 @@ export const calculateOverallSummary = (waves, profitMarginPercentage) => {
     totalLogisticsCost += summary.totalLogisticsCost;
     totalCost += summary.totalCost;
     totalCostToCompany += summary.totalCostToCompany;
+    totalAmsCost += summary.amsTotalCost || 0;
     totalRowsSellingPrice += summary.totalRowsSellingPrice;
     totalSellingPrice += summary.sellingPrice;
     totalNegoBuffer += summary.negoBufferAmount;
@@ -171,7 +183,7 @@ export const calculateOverallSummary = (waves, profitMarginPercentage) => {
   return {
     totalMM, onsiteMM, offshoreMM,
     onsiteSalaryCost, offshoreSalaryCost,
-    totalLogisticsCost, totalCost, totalCostToCompany,
+    totalLogisticsCost, totalCost, totalCostToCompany, totalAmsCost,
     totalRowsSellingPrice,
     sellingPrice: totalSellingPrice,
     negoBuffer: totalNegoBuffer,

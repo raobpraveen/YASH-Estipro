@@ -134,7 +134,9 @@ export const OverallSummary = ({ overall, profitMarginPercentage, collapsedSecti
             <p className="text-2xl font-extrabold font-mono text-gray-700" data-testid="total-ctc">
               ${overall.totalCostToCompany.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </p>
-            <p className="text-xs text-gray-500 mt-1">all resources</p>
+            <p className="text-xs text-gray-500 mt-1">
+              all resources{(overall.totalAmsCost || 0) > 0 ? ` + AMS cost ($${overall.totalAmsCost.toLocaleString(undefined, { maximumFractionDigits: 0 })})` : ""}
+            </p>
           </CardContent>
         </Card>
       </div>
