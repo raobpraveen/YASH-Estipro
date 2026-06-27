@@ -85,13 +85,18 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 49. Wave Final Price moved AFTER AMS Annual Billing in Excel Summary sheet for AMS_Mix waves.
 50. Gantt + Wave grid controls disabled for pure AMS_Shared waves.
 
-### Iteration 60: AMS Billing Frequency, Hourly Price rename, Excel import P0 fix (Completed Feb 2026)
+### Iteration 60-61: AMS Billing Frequency, Hourly Price rename, Excel import P0 fix, Add-Wave dialog overflow (Completed Feb 2026)
 51. **'Hourly Rate' → 'Hourly Price'** rename across all AMS-applicable surfaces only (AMS panel header, Payment Milestones AMS card, Excel AMS sheet bucket column). T&M `$/Hr` labels unchanged.
 52. **AMS Billing Frequency**: new `ProjectWave.ams_billing_frequency` ("Monthly" | "Quarterly") and `ams_billing_advance` (bool) fields with backward-compatible defaults (Monthly/false). Editable from Add-Wave dialog AND inline from AmsSharedPanel controls.
 53. **Cashflow logic**: Advance ON → AMS revenue lands on the FIRST day of each billing period (ignoring `payment_terms_days`); the corresponding `advance_revenue` field is set. Advance OFF → AMS revenue lands `payment_terms_days` days after the END of each period. Quarterly bunches billing into 3-month periods. AMS cost remains level monthly regardless.
 54. **Payment Milestones AMS card**: auto-renders a `Billing Schedule` table with one read-only row per billing period (M1, M2, … or Q1, Q2, …), each tagged with the `Advance` badge when toggle is ON; total scheduled matches monthly × contract months.
 55. **Excel Export**: AMS sheet header now embeds the Billing clause (`— Billing: Monthly|Quarterly[ · Advance]`) so the import can round-trip the frequency + advance settings.
-56. **Excel Import P0 bug fix** (`excelImport.js`): rewrote section-terminator detection to scan the first 3 columns for markers (`TOTALS`, `LOGISTICS BREAKDOWN`, `AMS SHARED SUPPORT`, `WAVE SUMMARY`, `PHASE RANGES`, etc.) AND validate that allocation rows have a positive-integer `#` column and a non-numeric skill name. Eliminates phantom empty resource rows that appeared after the Technology column shift in iter54.
+56. **Excel Import phantom-row fix** (`excelImport.js`): rewrote section-terminator detection to scan the first 3 columns for markers (`TOTALS`, `LOGISTICS BREAKDOWN`, `AMS SHARED SUPPORT`, `WAVE SUMMARY`, `PHASE RANGES`, etc.) AND validate that allocation rows have a positive-integer `#` column and a non-numeric skill name. Eliminates phantom empty resource rows.
+57. **Add-Wave dialog overflow fix**: dialog now scrolls internally (`max-h-[90vh] overflow-y-auto`) for AMS engagement types.
+
+### Iteration 62-63: AMS Cost in CTC + Excel Import AMS_Shared sheet fix (Completed Feb 2026)
+58. **Total CTC now includes AMS Shared Support cost**. Added `amsTotalCost = sum(hours_per_month × cost_rate) × ams_contract_months` for every AMS_Shared / AMS_Mix wave in `estimatorCalcs.js::calculateWaveSummary`. The aggregate flows into `costToCompany` (wave-level) and `totalAmsCost` (overall). Overall Summary card subtitle now displays `'all resources + AMS cost ($X)'` whenever any wave has AMS cost. Same change ported to `calculations.js` for `ProjectSummary.js` consumers. Live verified: $90k AMS cost rolled into CTC card.
+59. **P0 Excel Import bug fix**: pure AMS_Shared sheets with zero implementation resources were silently dropped because the AMS-section parse + `parsedWaves.push` were gated by `if (allocations.length > 0)`. Added a pre-scan that detects an `AMS SHARED SUPPORT` marker anywhere on the sheet and widened the gate to `allocations.length > 0 || hasAmsSection`. Live verified with user file `PRJ-0031_v2.xlsx`: Smart Import Preview now correctly shows 4 Waves Detected (was 3), and the AMS tab renders with Service 1 / 150h × $35 / $25, 12 months, Monthly + Advance ON.
 
 ## Pending Implementation
 
