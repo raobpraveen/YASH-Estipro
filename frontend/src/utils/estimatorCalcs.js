@@ -164,8 +164,8 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
     totalLogisticsCost: logistics.totalLogistics,
     totalCost,
     totalCostToCompany: costToCompany,
-    effectiveProfitMargin: totalRowsSellingPrice > 0
-      ? ((totalRowsSellingPrice - costToCompany) / totalRowsSellingPrice * 100)
+    effectiveProfitMargin: grandTotalFinalPrice > 0
+      ? ((grandTotalFinalPrice - costToCompany) / grandTotalFinalPrice * 100)
       : profitMarginPercentage,
     onsiteOverheadCost, offshoreOverheadCost,
     onsiteCTC: onsiteSalaryCost + onsiteOverheadCost,
@@ -232,8 +232,8 @@ export const calculateOverallSummary = (waves, profitMarginPercentage, negoBuffe
     totalMM, onsiteMM, offshoreMM,
     onsiteSalaryCost, offshoreSalaryCost,
     totalLogisticsCost, totalCost, totalCostToCompany,
-    effectiveProfitMargin: totalRowsSellingPrice > 0
-      ? ((totalRowsSellingPrice - totalCostToCompany) / totalRowsSellingPrice * 100)
+    effectiveProfitMargin: grandTotalFinalPrice > 0
+      ? ((grandTotalFinalPrice - totalCostToCompany) / grandTotalFinalPrice * 100)
       : 0,
     onsiteOverheadCost, offshoreOverheadCost,
     onsiteCTC: onsiteSalaryCost + onsiteOverheadCost,

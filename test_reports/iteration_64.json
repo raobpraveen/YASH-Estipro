@@ -1,0 +1,31 @@
+{
+  "summary": "Iter64 — Effective Margin denominator switch from totalRowsSellingPrice → grandTotalFinalPrice is VERIFIED FIXED live in browser. Both the mixed Implementation+AMS scenario (PRJ-0033) and the impl-only regression (PRJ-0030) produce the mathematically correct displayed value (within 0.1%).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/.screenshots/iter64_prj33_open.png",
+    "/app/.screenshots/iter64_impl_only_overall.png"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "estimatorCalcs.js L167-169 (per-wave effectiveProfitMargin) and L235-237 (overall effectiveProfitMargin) now correctly use grandTotalFinalPrice = finalPrice + amsSharedAnnual as the denominator. Implementation is clean and consistent at both wave and project levels.",
+    "Per-wave verification (PRJ-0033 Cost sheet wave, Impl only, no AMS in this wave): finalPrice=$126,963, costToCompany=$70,200 → (126963-70200)/126963 = 44.71% → displayed 44.7%. PASSES.",
+    "Per-wave AMS_Mix wave aggregation: AMS bucket (150h × $35) × 12 = $63,000 revenue, (150h × $25) × 12 = $45,000 cost. Total CTC card subtitle reads 'all resources + AMS cost ($45,000)' — confirms amsTotalCost ($45,000) is included in totalCostToCompany.",
+    "Overall Summary mixed-project verification (PRJ-0033): Total CTC=$271,200 (incl $45k AMS cost), Final Price (Implementation)=$426,750, AMS Annual=$63,000, Grand Total=$489,750. Displayed Effective Margin=44.6%. Mathematical check: (489750-271200)/489750 = 44.626% → 44.6%. PASSES within <0.1% tolerance. If old formula (using totalRowsSellingPrice $348,000) had been retained, the value would have read ~22.1% — confirming the fix is active.",
+    "Regression (PRJ-0030 'SAP S/4HANA Implementation', impl-only, no AMS): Total CTC=$341,575, Final Price (Implementation)=$580,447, no [data-testid=grand-total-final] card rendered (correct — no AMS), displayed Effective Margin=41.2%. Math: (580447-341575)/580447 = 41.15% → 41.2%. Behavior unchanged when grandTotalFinalPrice == totalFinalPrice, confirming no regression.",
+    "OverallSummary.js L208 guard `Math.abs(overall.effectiveProfitMargin - profitMarginPercentage) > 0.01` correctly renders the chip when the effective margin diverges from the set margin (35→44.6 and 30→41.2 both render). Logic OK.",
+    "Pre-existing observation (carried from iter63, not blocking): /app/frontend/src/utils/calculations.js still coexists with estimatorCalcs.js. Since ProjectEstimator.js only imports from estimatorCalcs.js, calculations.js is dead code and could be deleted to prevent future formula drift."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only change)", "frontend": "100% — both targeted scenarios verified"},
+  "test_credentials": "admin@yash.com / password",
+  "seed_data_creation": "No new data created. Re-used existing PRJ-0033 (cd917778-1879-40f0-8197-26ae98d7e47a — Implementation + AMS_Mix wave with 150h × $35/$25 × 12mo, matching the exact spec in the review request) and PRJ-0030 (e33fb19e-b739-412b-9eb5-e3a392d5986e — impl-only) for regression.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Effective Margin formula fix is confirmed live. To re-verify quickly: login → /estimator?edit=cd917778-1879-40f0-8197-26ae98d7e47a → click 'Overall Summary' header to expand → read [data-testid=effective-margin-value] and [data-testid=grand-total-final] and the Total CTC card; formula is (grandTotal-totalCTC)/grandTotal*100. For impl-only regression use /estimator?edit=e33fb19e-b739-412b-9eb5-e3a392d5986e — [data-testid=grand-total-final] should NOT exist (no AMS), and effective margin should match (finalPrice-totalCTC)/finalPrice*100.",
+  "rca of the issue": "Not applicable — the fix from main agent was correct and is verified. Prior behavior used totalRowsSellingPrice (sum of resource selling prices BEFORE logistics, nego buffer, and AMS revenue) as denominator; new behavior uses grandTotalFinalPrice (= finalPrice + amsSharedAnnual) which is the true total revenue. The math now reconciles with the displayed Grand Total card."
+}
