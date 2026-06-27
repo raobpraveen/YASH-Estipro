@@ -1,0 +1,31 @@
+{
+  "summary": "Iter61 — FRONTEND ONLY bug fix verification: Add-Wave dialog on ProjectEstimator scrolls internally when AMS engagement type is selected (max-h-[90vh] overflow-y-auto added to DialogContent at ProjectEstimator.js L1713). Verified live on PRJ-0031 'S/4H implementation' /estimator at BOTH viewport sizes (1920x1080 desktop AND 1366x768 laptop): (1) Classes max-h-[90vh] + overflow-y-auto present on [role=dialog]. (2) Desktop AMS: dialog top=54 bottom=1026 height=972 inside vp=1080; maxHeight computed=972px; overflowY=auto; scrollHeight=1074 vs clientHeight=970 → isScrollable=true. (3) Laptop AMS: dialog top=38 bottom=729 height=691 inside vp=768; maxHeight computed=691.2px; scrollHeight=1074 vs clientHeight=689 → isScrollable=true. (4) Header 'Add New Wave' visible in viewport on both sizes (desktop y=79, laptop y=63). (5) Bottom 'Add Wave' submit button reachable by scrolling inside the dialog — confirmed visible in screenshots wave_ams_bottom_desktop.png and wave_ams_bottom_laptop.png. (6) Switching engagement back to Implementation hides AMS fields cleanly (ams-billing-frequency-input no longer in DOM) and Save still reachable. (7) Regression: data-testid=ams-contract-months-input, ams-billing-frequency-input, ams-billing-advance-input all render correctly when AMS_Shared selected.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Add Wave dialog footer", "issues": ["Note: The modal submit button is labeled 'Add Wave' (not 'Save'), and the only close affordance is the 'X' icon at the top-right (no explicit 'Cancel' text button). The user-attached screenshot description in the bug report referenced 'Save/Cancel' generically — the actual control set is 'Add Wave' + 'X close'. This is pre-existing copy, not a regression — flagged for awareness only."]},
+      {"screen": "Dashboard/Projects table", "issues": ["Carry-over hydration warnings: <span data-ve-dynamic> wrapping <tr>/<tbody> from visual-editor instrumentation. Pre-existing from iter57-60, not introduced this round."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/.screenshots/wave_ams_bottom_desktop.png",
+    "/app/.screenshots/wave_ams_top_desktop.png",
+    "/app/.screenshots/wave_ams_bottom_laptop.png",
+    "/app/.screenshots/wave_ams_top_laptop.png"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "ProjectEstimator.js L1713: DialogContent className correctly changed to 'max-w-2xl max-h-[90vh] overflow-y-auto'. Runtime confirms computed maxHeight = 90% of viewport.innerHeight on both 1920x1080 (=972px) and 1366x768 (=691.2px), and the natural content height (~1074px when AMS expanded) exceeds clientHeight → internal scroll engaged as designed. Header + submit button both reachable on laptop-class viewports.",
+    "Minor copy nit: The DialogDescription says 'Save and Cancel' is the implied action set, but the submit button text is 'Add Wave' and close is via X icon. Not introduced this iter; consider adding an explicit 'Cancel' button at the bottom for parity with most modal patterns — improves discoverability on touch/keyboard."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only iter)", "frontend": "100% — both viewports verified, all assertions met"},
+  "test_credentials": "admin@yash.com / password",
+  "seed_data_creation": "None — read-only verification on existing PRJ-0031 (project_id=0ac52e6f-32c4-4586-b9c7-f5375202fc7e). Add-Wave dialog was opened, engagement toggled AMS↔Implementation, then dismissed with ESC without saving — no DB mutation.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iter61 was a tiny CSS-only change at ProjectEstimator.js L1713 (max-h-[90vh] overflow-y-auto added to Add-Wave DialogContent). Verified passing at 1920x1080 and 1366x768. Test approach: login admin@yash.com/password, navigate /estimator?edit={projectId}, click [data-testid=add-wave-button], switch [data-testid=wave-engagement-select] to 'AMS — Shared Support', then evaluate [role=dialog] bounding rect + scrollHeight vs clientHeight to confirm scrollable. Submit button label is 'Add Wave' (not 'Save') — adjust selectors accordingly in future iterations.",
+  "rca of the issue": "Root cause (iter60-reported by user): DialogContent had no max-height constraint, so when AMS engagement was selected (which conditionally renders 3 additional rows: Contract Length, Billing Frequency, Bill in Advance + 5 logistics rows), the dialog's natural height (~1074px) exceeded the laptop viewport (768px) AND was vertically centered via Radix Dialog's default top-50%/translate-y-(-50%) positioning, pushing both header (y≈-150) and footer (y≈924) outside the visible viewport. Fix at L1713: adding max-h-[90vh] caps the dialog at 90% of viewport innerHeight and overflow-y-auto enables internal scrolling. Verified empirically: computed maxHeight matches 0.9*vh on both viewports, dialog rect stays within [0, vh], and content beyond clientHeight is reachable via internal scroll. No regression to iter60 AMS billing frequency / bill-in-advance functionality."
+}
