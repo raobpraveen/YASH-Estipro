@@ -26,9 +26,21 @@ const TOC = [
   { id: "release-notes", title: "15. Release Notes (2026)", icon: RefreshCw },
 ];
 
-const Section = ({ id, title, children }) => (
+const Section = ({ id, title, updated, children }) => (
   <section id={id} className="mb-10 scroll-mt-20" data-testid={`guide-section-${id}`}>
-    <h2 className="text-2xl font-bold text-[#0F172A] border-b-2 border-[#10B981] pb-2 mb-4">{title}</h2>
+    <div className="flex items-baseline gap-3 flex-wrap border-b-2 border-[#10B981] pb-2 mb-4">
+      <h2 className="text-2xl font-bold text-[#0F172A]">{title}</h2>
+      {updated && (
+        <span
+          className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#059669] bg-[#10B981]/10 border border-[#10B981]/30 rounded-full px-2 py-0.5"
+          data-testid={`guide-updated-badge-${id}`}
+          title={`Last updated: ${updated}`}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+          Updated · {updated}
+        </span>
+      )}
+    </div>
     <div className="space-y-4 text-gray-700 leading-relaxed">{children}</div>
   </section>
 );
@@ -867,7 +879,7 @@ mongosh --eval "db.adminCommand('ping')"`}
           </Section>
 
           {/* Section 15: Release Notes */}
-          <Section id="release-notes" title="15. Release Notes (2026)">
+          <Section id="release-notes" title="15. Release Notes (2026)" updated="Feb 2026 · Iter 64">
             <p>This section summarises everything shipped in the recent rollouts. Use this as a reference when communicating changes to users.</p>
 
             <h3 className="text-lg font-semibold text-[#10B981] mt-4">15.1 Phase 4 — Status &amp; Workflow</h3>

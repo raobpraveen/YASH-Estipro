@@ -350,6 +350,7 @@ const TUTORIALS = [
     description: "Set up a recurring AMS service contract — pick an engagement type, define service buckets with Hours/Month, Hourly Price and Cost Rate, and configure Monthly or Quarterly billing with the Bill-in-Advance toggle.",
     duration: "5 min",
     category: "Core Features",
+    updated: "Feb 2026 · Iter 63",
     icon: Zap,
     color: "bg-purple-600",
     steps: [
@@ -369,6 +370,7 @@ const TUTORIALS = [
     description: "Understand the new Effective Margin formula (Grand Total denominator) and how AMS internal cost rolls into Total CTC in the Overall Summary.",
     duration: "3 min",
     category: "Core Features",
+    updated: "Feb 2026 · Iter 64",
     icon: Percent,
     color: "bg-indigo-600",
     steps: [
@@ -618,9 +620,19 @@ const Tutorials = () => {
                         <Icon className="w-5 h-5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <CardTitle className="text-lg font-bold text-[#0F172A]">{tutorial.title}</CardTitle>
                           <Badge variant="outline" className="text-xs shrink-0">{tutorial.category}</Badge>
+                          {tutorial.updated && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#1E40AF] bg-[#1E40AF]/10 border border-[#1E40AF]/30 rounded-full px-2 py-0.5"
+                              data-testid={`tutorial-updated-badge-${tutorial.id}`}
+                              title={`Last updated: ${tutorial.updated}`}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#1E40AF] animate-pulse" />
+                              Updated · {tutorial.updated}
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm text-gray-600">{tutorial.description}</p>
                       </div>

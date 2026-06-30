@@ -33,9 +33,21 @@ const TOC = [
   { id: "activity-templates", title: "21. Activity Templates & Deliverables", icon: Layers },
 ];
 
-const Section = ({ id, title, children }) => (
+const Section = ({ id, title, updated, children }) => (
   <section id={id} className="mb-10 scroll-mt-20" data-testid={`manual-section-${id}`}>
-    <h2 className="text-2xl font-bold text-[#0F172A] border-b-2 border-[#1E40AF] pb-2 mb-4">{title}</h2>
+    <div className="flex items-baseline gap-3 flex-wrap border-b-2 border-[#1E40AF] pb-2 mb-4">
+      <h2 className="text-2xl font-bold text-[#0F172A]">{title}</h2>
+      {updated && (
+        <span
+          className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#1E40AF] bg-[#1E40AF]/10 border border-[#1E40AF]/30 rounded-full px-2 py-0.5"
+          data-testid={`manual-updated-badge-${id}`}
+          title={`Last updated: ${updated}`}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-[#1E40AF] animate-pulse" />
+          Updated · {updated}
+        </span>
+      )}
+    </div>
     <div className="space-y-4 text-gray-700 leading-relaxed">{children}</div>
   </section>
 );
@@ -156,7 +168,7 @@ export default function UserManual() {
         {/* Content */}
         <div className="flex-1 min-w-0" ref={contentRef}>
           {/* Section 0: What's New */}
-          <Section id="whats-new" title="0. What's New (2026)">
+          <Section id="whats-new" title="0. What's New (2026)" updated="Feb 2026 · Iter 64">
             <p>Recent updates rolled out across Phase 4, Phase 5, Iteration 56, and the AMS Shared Support rollout (Iterations 57–64). The most impactful changes are highlighted here so you can spot the differences quickly.</p>
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.1 Status &amp; Workflow</h3>
@@ -519,7 +531,7 @@ export default function UserManual() {
           </Section>
 
           {/* Section 6: Cost Calculations */}
-          <Section id="cost-calc" title="6. Cost Calculations & CTC">
+          <Section id="cost-calc" title="6. Cost Calculations & CTC" updated="Feb 2026 · Iter 64">
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">6.1 Row-Level Calculation</h3>
             <div className="bg-gray-50 p-4 rounded-lg border font-mono text-sm space-y-2 my-3">
               <p><strong>Salary Cost</strong> = Avg Monthly Salary &times; Total Man-Months</p>
@@ -724,7 +736,7 @@ export default function UserManual() {
           </Section>
 
           {/* Section 13: Smart Import */}
-          <Section id="smart-import" title="13. Smart Import">
+          <Section id="smart-import" title="13. Smart Import" updated="Feb 2026 · Iter 63">
             <p>Re-import an EstiPro-exported Excel file to update or create project versions.</p>
             <Step num="1">Click <strong>Smart Import</strong> in the Estimator toolbar.</Step>
             <Step num="2">Upload an EstiPro-exported Excel file (.xlsx).</Step>
@@ -793,7 +805,7 @@ export default function UserManual() {
           </Section>
 
           {/* Section 15: Payment Milestones */}
-          <Section id="milestones" title="15. Payment Milestones &amp; Markers">
+          <Section id="milestones" title="15. Payment Milestones &amp; Markers" updated="Feb 2026 · Iter 60">
             <p>Define payment schedules and freehold markers per wave to track expected revenue and project checkpoints.</p>
             
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">15.1 Accessing Milestones</h3>
@@ -861,7 +873,7 @@ export default function UserManual() {
           </Section>
 
           {/* Section 16: Cashflow Statement */}
-          <Section id="cashflow" title="16. Cashflow Statement">
+          <Section id="cashflow" title="16. Cashflow Statement" updated="Feb 2026 · Iter 60">
             <p>View monthly cash outflows (costs) and cash inflows (milestone payments) for a project, broken down by wave.</p>
             
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">16.1 Accessing Cashflow</h3>
