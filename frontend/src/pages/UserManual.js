@@ -157,7 +157,7 @@ export default function UserManual() {
         <div className="flex-1 min-w-0" ref={contentRef}>
           {/* Section 0: What's New */}
           <Section id="whats-new" title="0. What's New (2026)">
-            <p>Recent updates rolled out across Phase 4, Phase 5, and Iteration 56. The most impactful changes are highlighted here so you can spot the differences quickly.</p>
+            <p>Recent updates rolled out across Phase 4, Phase 5, Iteration 56, and the AMS Shared Support rollout (Iterations 57–64). The most impactful changes are highlighted here so you can spot the differences quickly.</p>
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.1 Status &amp; Workflow</h3>
             <KeyValue label="Commercial Status">A separate post-approval field with options: Pending for Submission, Submitted to Customer, Won, Lost, Cancelled. Visible only on Approved / Suspended / In Review projects. Displayed as a badge in the Projects list.</KeyValue>
@@ -196,6 +196,35 @@ export default function UserManual() {
               <li><strong>Forecasted Closure From / To</strong> — date range filter that includes only projects whose Forecasted Closure Date falls within the window.</li>
               <li>The existing <strong>Status</strong> filter and <strong>Totals</strong> row still work alongside these new filters.</li>
             </ul>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.6 AMS Shared Support (Iter 57–63)</h3>
+            <KeyValue label="Engagement Type per Wave">When you add a wave, the new <strong>Engagement Type</strong> dropdown lets you mark it as <em>Implementation</em> (default, T&M), <em>AMS — Shared Support</em>, <em>AMS — Dedicated</em>, or <em>AMS — Mix</em> (T&M + shared support in one wave).</KeyValue>
+            <KeyValue label="Service Buckets">Pure AMS waves replace the resource grid with an <strong>AMS Shared Support panel</strong>. Add as many service buckets as you need (e.g. L1 Tickets, L2 Support, Patching) with <em>Hours/Month</em>, <em>Hourly Price</em> (customer-facing rate), and <em>Cost Rate</em> (internal cost per hour). Billing/Month and Billing/Year are auto-computed.</KeyValue>
+            <KeyValue label="Hourly Price (renamed)">The column previously labelled <em>Hourly Rate</em> is now <strong>Hourly Price</strong> everywhere in the AMS panel, Payment Milestones AMS card, and the Excel AMS sheet. (T&M <em>$/Hr</em> labels are unchanged.)</KeyValue>
+            <KeyValue label="Contract Length, Billing Frequency, Bill in Advance">Each AMS wave now exposes three fields, editable both at wave-creation time and inline from the AMS panel:
+              <ul className="list-disc pl-6 mt-1 text-xs">
+                <li><strong>Contract Length</strong> (months) — default 12. Used for the annual billing/cost rollup.</li>
+                <li><strong>Billing Frequency</strong> — <em>Monthly</em> or <em>Quarterly</em>. Quarterly groups three months into one billing period.</li>
+                <li><strong>Bill in Advance</strong> — checkbox. ON = customer pays at the start of each billing period and payment-terms days are ignored. OFF = each period's amount lands as cash-in after the period ends, shifted by the project's payment-terms days.</li>
+              </ul>
+            </KeyValue>
+            <KeyValue label="Payment Milestones — AMS Billing Schedule">For every AMS wave the Payment Milestones page now auto-renders a read-only <strong>Billing Schedule</strong> table showing every billing period (M1, M2, …, or Q1, Q2, …), the months it covers, the cash-in timing, and the amount. When <em>Bill in Advance</em> is ON, each row gets an <em>ADV</em> badge. The total scheduled = monthly billing × contract months.</KeyValue>
+            <KeyValue label="Cashflow Integration">AMS revenue flows into the Cashflow according to billing frequency + advance:
+              <ul className="list-disc pl-6 mt-1 text-xs">
+                <li>Monthly + Advance ON → revenue at the first day of every month.</li>
+                <li>Monthly + Advance OFF → revenue at <em>month + payment-terms days</em>.</li>
+                <li>Quarterly + Advance ON → revenue concentrated at M1, M4, M7, M10 (each three months of billing in one inflow).</li>
+                <li>Quarterly + Advance OFF → revenue lands at <em>quarter-end + payment-terms days</em>.</li>
+                <li>AMS cost (hours × cost_rate) stays as a level monthly outflow regardless of how the customer is billed.</li>
+              </ul>
+            </KeyValue>
+            <KeyValue label="Excel Round-trip">The AMS sheet of an exported workbook now embeds the engagement type, contract months, billing frequency, and the <em>Advance</em> flag in its header. Smart Import reads them back correctly even when the AMS wave has zero implementation resources (this previously dropped pure AMS sheets — fixed in Iter 63).</KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.7 Margin &amp; CTC Updates (Iter 62–64)</h3>
+            <KeyValue label="AMS Cost rolls into Total CTC">The Overall Summary's <strong>Total CTC</strong> card now includes AMS internal cost (<code className="bg-gray-100 px-1 rounded">hours/month × cost_rate × contract_months</code>) for every AMS_Shared / AMS_Mix wave. When AMS cost is present, the card subtitle reads <em>"all resources + AMS cost ($X)"</em>.</KeyValue>
+            <KeyValue label="Effective Margin (with overrides) uses Grand Total Revenue">The Effective Margin chip now divides by the project's <strong>Grand Total Final Price</strong> (= T&M Final Price + AMS Annual Billing) instead of resource selling price alone. Formula: <code className="bg-gray-100 px-1 rounded">(GrandTotal − Total CTC) ÷ GrandTotal × 100</code>. For implementation-only projects the value is unchanged; for AMS / Mix projects the chip now reflects the true blended margin.</KeyValue>
+            <KeyValue label="Salary Formula Cells">The <em>$/Month</em> column accepts arithmetic expressions: <code className="bg-gray-100 px-1 rounded">3200+500</code>, <code className="bg-gray-100 px-1 rounded">3200*25%</code>, <code className="bg-gray-100 px-1 rounded">3200-25%</code>. Press <em>Enter</em> or click away to evaluate; <em>Esc</em> reverts.</KeyValue>
+            <KeyValue label="Sub-month Phases">Phase Range inputs accept 0.25-month steps for precise short-phase modelling (e.g. a 2-week sprint = 0.5).</KeyValue>
 
             <Tip>If you see something in this section that's not yet visible in the UI, hard-refresh your browser (Ctrl+Shift+R / Cmd+Shift+R) to ensure you're on the latest build.</Tip>
           </Section>
@@ -506,17 +535,26 @@ export default function UserManual() {
             <KeyValue label="Onsite CTC">Total Salary + Overhead for all onsite resources.</KeyValue>
             <KeyValue label="Offshore CTC">Total Salary + Overhead for all offshore resources.</KeyValue>
             <KeyValue label="Avg CTC/MM">CTC divided by total man-months for that location type.</KeyValue>
-            <KeyValue label="Total CTC">Combined CTC for all resources across all locations.</KeyValue>
-            <Tip>CTC excludes logistics costs. It represents the internal cost of resources before adding travel/logistics expenses.</Tip>
+            <KeyValue label="Total CTC">Combined CTC for all resources <strong>plus AMS Shared Support cost</strong> (Iter 62) across all waves. AMS cost = <code className="bg-gray-100 px-1 rounded">Σ(hours/month × cost_rate) × contract_months</code>. When AMS cost is present, the card subtitle reads <em>"all resources + AMS cost ($X)"</em>.</KeyValue>
+            <Tip>CTC excludes T&amp;M logistics costs but includes AMS internal cost. It represents the total internal cost of the engagement before adding travel/logistics expenses.</Tip>
 
-            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">6.3 Wave & Overall Pricing</h3>
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">6.3 Wave &amp; Overall Pricing</h3>
             <div className="bg-gray-50 p-4 rounded-lg border font-mono text-sm space-y-2 my-3">
               <p><strong>Resources Price</strong> = Sum of all row Selling Prices</p>
               <p><strong>Logistics Cost</strong> = Per-diem + Accommodation + Conveyance + Airfare + Visa (for traveling resources)</p>
               <p><strong>Total Selling Price</strong> = Resources Price + Logistics Cost</p>
               <p><strong>Nego Buffer</strong> = Total Selling Price &times; Nego Buffer %</p>
               <p><strong>Final Price</strong> = Total Selling Price + Nego Buffer</p>
+              <p><strong>AMS Annual Billing</strong> = Σ(hours/month × hourly_price) × contract_months (no margin / no nego buffer)</p>
+              <p><strong>Grand Total Final Price</strong> = Final Price + AMS Annual Billing</p>
             </div>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">6.4 Effective Margin (with overrides)</h3>
+            <p>When any resource uses an <em>$/Hr Override</em> or an AMS wave is present, the realised margin will differ from the set Profit Margin %. The chip displayed under the Overall Summary uses the formula:</p>
+            <div className="bg-gray-50 p-4 rounded-lg border font-mono text-sm space-y-2 my-3">
+              <p><strong>Effective Margin %</strong> = (Grand Total Final Price &minus; Total CTC) / Grand Total Final Price &times; 100</p>
+            </div>
+            <p>From Iteration 64 onwards the denominator is the <strong>Grand Total Final Price</strong> (T&amp;M Final + AMS Annual). For implementation-only projects, this is identical to the old behavior. For AMS / Mix projects it now reflects the true blended margin.</p>
           </Section>
 
           {/* Section 7: Logistics */}

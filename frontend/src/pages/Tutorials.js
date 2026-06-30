@@ -11,7 +11,7 @@ import {
   Play, BookOpen, Search, ChevronRight, ChevronLeft, Clock, FileSpreadsheet,
   BarChart3, GitCompare, Upload, Shield, Settings, Users, Layers, DollarSign,
   Video, ExternalLink, Monitor, Pause, SkipForward, SkipBack, Maximize2,
-  X, CirclePlay, MapPin, ListChecks, ArrowUp
+  X, CirclePlay, MapPin, ListChecks, ArrowUp, Zap, Percent
 } from "lucide-react";
 
 // Tutorial slide images mapping
@@ -340,6 +340,43 @@ const TUTORIALS = [
       { target: "Use the Forecasted Closure date range.", action: "Set Forecasted Closure From / To to surface projects expected to close within a window." },
       { target: "Notice fields that stay editable on approved projects.", action: "Open an Approved/Suspended/In-Review project. Bid Category and Forecasted Closure Date are still editable since they legitimately change post-approval." },
       { target: "Set Commercial Status post-approval.", action: "On the same project, the Commercial Status field appears with options: Pending for Submission, Submitted to Customer, Won, Lost, Cancelled." },
+    ],
+    hasSlideshow: false,
+    hasTour: false,
+  },
+  {
+    id: "ams-shared-support",
+    title: "AMS Shared Support: Engagement Types, Billing Frequency & Advance",
+    description: "Set up a recurring AMS service contract — pick an engagement type, define service buckets with Hours/Month, Hourly Price and Cost Rate, and configure Monthly or Quarterly billing with the Bill-in-Advance toggle.",
+    duration: "5 min",
+    category: "Core Features",
+    icon: Zap,
+    color: "bg-purple-600",
+    steps: [
+      { target: "Add a new wave.", action: "From the Estimator, click 'Add Wave'. In the dialog, pick Engagement Type = 'AMS — Shared Support' (or 'AMS — Mix' to combine with a T&M resource grid)." },
+      { target: "Set the contract length and billing schedule.", action: "Enter Contract Length in months (default 12), Billing Frequency = Monthly or Quarterly, and tick 'Bill in Advance' if the customer pays at the start of each billing period." },
+      { target: "Add service buckets.", action: "Inside the wave, click 'Add Service' on the AMS panel. For each bucket fill Hours/Month, Hourly Price (customer-facing rate), Cost Rate (internal $/hour), and optional notes. Billing/Month and Billing/Year auto-compute." },
+      { target: "Open the Payment Milestones page.", action: "Use the navigation rail → Milestones. For the AMS wave, an automatic Billing Schedule appears — one row per period (M1, M2 … or Q1, Q2 …) with the cash-in month and amount. Rows are tagged with an ADV badge when Bill in Advance is on." },
+      { target: "Open the Cashflow page.", action: "AMS revenue flows in monthly or quarterly per your settings. With Advance ON, period revenue lands on the first day of the period (no payment-terms shift). With Advance OFF, it lands period_end + payment-terms days. AMS cost stays as a level monthly outflow." },
+      { target: "Export to Excel and reimport.", action: "Click Export Excel — the AMS sheet header records the frequency / advance / contract months. Smart Import will round-trip these settings exactly, including pure AMS waves with zero implementation resources." },
+    ],
+    hasSlideshow: false,
+    hasTour: false,
+  },
+  {
+    id: "effective-margin-ctc",
+    title: "Effective Margin & Blended CTC for AMS Projects",
+    description: "Understand the new Effective Margin formula (Grand Total denominator) and how AMS internal cost rolls into Total CTC in the Overall Summary.",
+    duration: "3 min",
+    category: "Core Features",
+    icon: Percent,
+    color: "bg-indigo-600",
+    steps: [
+      { target: "Open a project with at least one AMS_Shared or AMS_Mix wave.", action: "From Projects, pick a mixed engagement project (or use Quick Estimator → Add a T&M wave and an AMS wave)." },
+      { target: "Locate the Total CTC card in the Overall Summary.", action: "The card now reads the combined CTC across resources + AMS cost. When AMS cost is present, the subtitle '+ AMS cost ($X)' renders directly beneath the value." },
+      { target: "Read the Effective Margin chip.", action: "The chip uses Grand Total Final Price (T&M Final + AMS Annual Billing) as the denominator: (GrandTotal − Total CTC) / GrandTotal × 100. It turns green when above the set Profit Margin %, red when below." },
+      { target: "Sanity-check the math.", action: "On a simple test project (1 resource $9,900 CTC; 1 AMS bucket 150h × $25/h cost × 12mo = $45,000 cost; AMS revenue $63,000; T&M Final $11,250 → Grand Total $74,250 → Total CTC $54,900 → Effective Margin ≈ 26%) the chip reads exactly that value." },
+      { target: "Implementation-only projects are unchanged.", action: "If a project has no AMS waves, Grand Total = T&M Final and the chip value matches the legacy formula — the change is backward-safe." },
     ],
     hasSlideshow: false,
     hasTour: false,

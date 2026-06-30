@@ -900,8 +900,42 @@ mongosh --eval "db.adminCommand('ping')"`}
               <li><strong>Advance milestone bypasses payment terms</strong>: see 15.2 above.</li>
             </ol>
 
-            <h3 className="text-lg font-semibold text-[#10B981] mt-6">15.4 Test Coverage</h3>
-            <p>Iteration tests are stored in <code>/app/backend/tests/</code> and reports under <code>/app/test_reports/iteration_*.json</code>. Latest runs: <code>iteration_55.json</code> (Phase 5 — 4/4 backend, 100% frontend) and <code>iteration_56.json</code> (10-issue batch — 3/3 backend, 100% frontend).</p>
+            <h3 className="text-lg font-semibold text-[#10B981] mt-6">15.4 Iterations 57–61 — AMS Shared Support Model</h3>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>Wave Engagement Type</strong>: new <code>ProjectWave.engagement_type</code> field with values <code>Implementation</code> (default), <code>AMS_Shared</code>, <code>AMS_Dedicated</code>, <code>AMS_Mix</code>. Backwards-compatible default keeps legacy waves on Implementation.</li>
+              <li><strong>AMS Service Buckets</strong>: <code>ProjectWave.ams_shared_buckets: List[AmsSharedBucket]</code> with fields <code>name, hours_per_month, hourly_rate, cost_rate, notes</code>. Pure AMS waves replace the resource grid + logistics with the <code>AmsSharedPanel</code> component.</li>
+              <li><strong>Contract Length</strong>: <code>ProjectWave.ams_contract_months</code> (default 12). Drives the annual billing and CTC rollup for AMS waves; also extends the cashflow window for pure <code>AMS_Shared</code> waves.</li>
+              <li><strong>Billing Frequency &amp; Advance (Iter 60)</strong>: new fields <code>ams_billing_frequency: "Monthly"|"Quarterly"</code> and <code>ams_billing_advance: bool</code>. Editable from both the Add-Wave dialog and inline in <code>AmsSharedPanel</code>. Cashflow logic in <code>/api/projects/&#123;id&#125;/cashflow</code>:
+                <ul className="list-circle pl-6 mt-1 text-xs">
+                  <li>Quarterly = period_len 3, Monthly = period_len 1.</li>
+                  <li>Advance ON → revenue posts at the first month of each period (no payment-terms offset); <code>monthly_data[].advance_revenue</code> and <code>ams_advance_revenue</code> are set.</li>
+                  <li>Advance OFF → revenue posts at <code>period_end + payment_offset</code> (payment_terms_days // 30 months); wave_monthly is auto-extended when cash-in falls past the contract.</li>
+                  <li>AMS cost (<code>hours × cost_rate</code>) remains a level monthly outflow regardless of frequency / advance.</li>
+                </ul>
+              </li>
+              <li><strong>Hourly Rate → Hourly Price (Iter 60)</strong>: rename across AMS panel header, Payment Milestones AMS card, and Excel AMS sheet column. T&amp;M <em>$/Hr</em> labels unchanged.</li>
+              <li><strong>Payment Milestones AMS Billing Schedule (Iter 60)</strong>: <code>PaymentMilestones.js</code> auto-renders a read-only schedule table per AMS wave — one row per billing period (M1, M2 … or Q1, Q2 …) with the advance badge, cash-in month, and amount. data-testids: <code>ams-billing-schedule-&#123;waveName&#125;</code>, <code>ams-billing-period-&#123;waveName&#125;-&#123;i&#125;</code>, <code>ams-billing-schedule-total-&#123;waveName&#125;</code>.</li>
+              <li><strong>Excel round-trip (Iter 60)</strong>: AMS sheet header embeds the Billing clause <code>"AMS SHARED SUPPORT (Shared — 12 months contract — Billing: Monthly · Advance)"</code> so import restores frequency + advance correctly.</li>
+              <li><strong>Add-Wave dialog overflow fix (Iter 61)</strong>: <code>DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto"</code>. AMS engagement types add several rows; the dialog now scrolls internally on laptop viewports.</li>
+              <li><strong>Salary formula evaluator (Iter 57)</strong>: <code>/utils/salaryExpression.js</code> accepts <code>3200+500</code>, <code>3200*25%</code>, etc. Used inline in the wave grid <code>$/Month</code> cell.</li>
+              <li><strong>Sub-month phases (Iter 57)</strong>: Phase Range inputs accept 0.25-month steps. Timeline bar snap when <code>start_month &lt; 1</code>.</li>
+            </ul>
+
+            <h3 className="text-lg font-semibold text-[#10B981] mt-6">15.5 Iteration 62–63 — AMS Cost in CTC + Smart Import Fix</h3>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><strong>AMS cost in CTC</strong>: <code>estimatorCalcs.js::calculateWaveSummary</code> now computes <code>amsTotalCost = Σ(hours_per_month × cost_rate) × contract_months</code> for AMS_Shared / AMS_Mix waves. The aggregate flows into <code>costToCompany</code> (wave-level) and <code>totalAmsCost</code> (overall). <code>OverallSummary.js</code> renders the subtitle <em>"all resources + AMS cost ($X)"</em> when totalAmsCost &gt; 0.</li>
+              <li><strong>Smart Import dropped AMS_Shared sheets (P0)</strong>: <code>excelImport.js</code> previously gated all logistics / AMS parsing + <code>parsedWaves.push</code> behind <code>if (allocations.length &gt; 0)</code>. Pure AMS waves with zero implementation resources were silently skipped. Fix: pre-scan column A for the <code>AMS SHARED SUPPORT</code> marker; gate is now <code>allocations.length &gt; 0 || hasAmsSection</code>.</li>
+              <li><strong>Excel Import phantom-row fix (Iter 60, reaffirmed)</strong>: section-terminator detection now scans the first three columns for <em>TOTALS / LOGISTICS BREAKDOWN / WAVE SUMMARY / AMS SHARED SUPPORT / PHASE RANGES</em>; allocation rows must have a positive-integer <code>#</code> column and a non-numeric skill name. Eliminates phantom empty resource rows that appeared after the Technology column shift.</li>
+            </ul>
+
+            <h3 className="text-lg font-semibold text-[#10B981] mt-6">15.6 Iteration 64 — Effective Margin Denominator</h3>
+            <ul className="list-disc pl-6 space-y-1 text-sm">
+              <li><code>estimatorCalcs.js</code> L167 (per-wave) and L235 (overall): <code>effectiveProfitMargin</code> denominator switched from <code>totalRowsSellingPrice</code> to <code>grandTotalFinalPrice</code> (= T&amp;M finalPrice + amsSharedAnnual). Implementation-only projects are unchanged; AMS / Mix projects now reflect a blended margin against true total revenue.</li>
+              <li><strong>Housekeeping</strong>: <code>/app/frontend/src/utils/calculations.js</code> deleted. <code>ProjectSummary.js</code> migrated to import from <code>@/utils/estimatorCalcs</code>. Single source of truth for cost / margin formulas. Side benefit: ProjectSummary now respects per-wave <code>logistics_config</code> overrides (previously used hard-coded defaults).</li>
+            </ul>
+
+            <h3 className="text-lg font-semibold text-[#10B981] mt-6">15.7 Test Coverage</h3>
+            <p>Iteration tests are stored in <code>/app/backend/tests/</code> and reports under <code>/app/test_reports/iteration_*.json</code>. Recent runs include <code>iteration_60.json</code> (AMS Billing Freq + Advance), <code>iteration_63.json</code> (Smart Import AMS_Shared + CTC fix), and <code>iteration_64.json</code> (Effective Margin denominator). All passed 100% on backend + frontend.</p>
           </Section>
 
           {/* Footer */}
