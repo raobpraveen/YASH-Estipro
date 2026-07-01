@@ -741,11 +741,11 @@ const ProjectEstimator = () => {
       const idx = w.grid_allocations.findIndex(a => a.id === allocationId);
       if (idx < 0) return w;
       const src = w.grid_allocations[idx];
-      // Deep-copy phase_allocations to keep the new row's monthly values independent
+      // phase_allocations is a plain object keyed by phase index — deep-copy so the new row is independent
       const clone = {
         ...src,
         id: `alloc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        phase_allocations: Array.isArray(src.phase_allocations) ? [...src.phase_allocations] : [],
+        phase_allocations: { ...(src.phase_allocations || {}) },
       };
       const next = [...w.grid_allocations];
       next.splice(idx + 1, 0, clone);
