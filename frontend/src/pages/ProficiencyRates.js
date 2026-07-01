@@ -23,7 +23,7 @@ const ProficiencyRates = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ skill: "", location: "", proficiency: "" });
+  const [filters, setFilters] = useState({ technology: "", skill: "", location: "", proficiency: "" });
   const fileInputRef = useRef(null);
   const [newRate, setNewRate] = useState({
     skill_id: "",
@@ -46,6 +46,12 @@ const ProficiencyRates = () => {
 
   const applyFilters = () => {
     let result = [...rates];
+    if (filters.technology) {
+      const skillIdsForTech = new Set(
+        skills.filter(s => s.technology_id === filters.technology).map(s => s.id)
+      );
+      result = result.filter(r => skillIdsForTech.has(r.skill_id));
+    }
     if (filters.skill) {
       result = result.filter(r => r.skill_id === filters.skill);
     }
@@ -59,7 +65,7 @@ const ProficiencyRates = () => {
   };
 
   const clearFilters = () => {
-    setFilters({ skill: "", location: "", proficiency: "" });
+    setFilters({ technology: "", skill: "", location: "", proficiency: "" });
   };
 
   const fetchSkills = async () => {
@@ -386,10 +392,47 @@ const ProficiencyRates = () => {
       </div>
 
       {/* Filters Panel */}
-      {showFilters && (
+      {showFilters && (() => {
+        // Derive unique technologies from the loaded skills (id + name pairs)
+        const technologiesMap = new Map();
+        skills.forEach(s => {
+          if (s.technology_id && s.technology_name && !technologiesMap.has(s.technology_id)) {
+            technologiesMap.set(s.technology_id, s.technology_name);
+          }
+        });
+        const technologyOptions = Array.from(technologiesMap.entries())
+          .map(([id, name]) => ({ id, name }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        // When a technology is picked, restrict the Skill dropdown to matching skills
+        const skillOptionsForFilter = filters.technology
+          ? skills.filter(s => s.technology_id === filters.technology)
+          : skills;
+        return (
         <Card className="mb-6 border border-[#E2E8F0]">
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div>
+                <Label>Technology</Label>
+                <Select
+                  value={filters.technology || "all"}
+                  onValueChange={(v) => setFilters({
+                    ...filters,
+                    technology: v === "all" ? "" : v,
+                    // If the currently-selected skill doesn't belong to the new technology, clear it
+                    skill: v === "all" || skills.find(s => s.id === filters.skill)?.technology_id === v ? filters.skill : "",
+                  })}
+                >
+                  <SelectTrigger data-testid="filter-technology">
+                    <SelectValue placeholder="All Technologies" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Technologies</SelectItem>
+                    {technologyOptions.map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label>Skill</Label>
                 <Select 
@@ -401,7 +444,7 @@ const ProficiencyRates = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Skills</SelectItem>
-                    {skills.map(s => (
+                    {skillOptionsForFilter.map(s => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -450,7 +493,8 @@ const ProficiencyRates = () => {
             </div>
           </CardContent>
         </Card>
-      )}
+        );
+      })()}
 
       <Card className="border border-[#E2E8F0] shadow-sm">
         <CardHeader>
