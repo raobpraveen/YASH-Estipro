@@ -17,7 +17,7 @@ def _login():
     return r.json()["token"]
 
 
-def _create_project(token, billing_frequency, billing_advance, contract_months=12, payment_terms_days=0):
+def _create_project(token, billing_frequency, billing_advance, contract_months=12, payment_terms_days=0, wave_start_month=1):
     headers = {"Authorization": f"Bearer {token}"}
     body = {
         "name": f"AMS BillingFreq Test {billing_frequency}{'-Adv' if billing_advance else ''}",
@@ -37,6 +37,7 @@ def _create_project(token, billing_frequency, billing_advance, contract_months=1
             "ams_contract_months": contract_months,
             "ams_billing_frequency": billing_frequency,
             "ams_billing_advance": billing_advance,
+            "wave_start_month": wave_start_month,
         }],
     }
     r = requests.post(f"{API}/projects", json=body, headers=headers)
@@ -105,8 +106,9 @@ def test_quarterly_advance():
 
 def test_quarterly_arrears_with_30day_terms():
     """Quarterly + Arrears + 30-day terms: payment_offset=1.
-       Q1 covers M1-M3, cash-in lands at M3 + 1 = M4.
-       Q2 covers M4-M6, cash-in lands at M6 + 1 = M7. (extends the wave by 1)
+       New convention (Iter 65): invoice raised month AFTER period ends.
+       Q1 covers M1-M3, invoice raised M4, cash-in = M4 + 30d = M5.
+       Q2 covers M4-M6, invoice raised M7, cash-in = M7 + 30d = M8.
     """
     token = _login()
     pid = _create_project(token, "Quarterly", billing_advance=False, contract_months=6, payment_terms_days=30)
@@ -114,15 +116,15 @@ def test_quarterly_arrears_with_30day_terms():
         cf = _get_cashflow(token, pid)
         w = cf["wave_data"][0]
         months = w["monthly_data"]
-        # Sum revenue & verify positions
-        assert months[3]["revenue"] == 6000.0, f"M4 (Q1+30d): {months[3]['revenue']}"
-        # Q2 lands at M7 (auto-extended)
-        m7 = next((m for m in months if m["month"] == 7), None)
-        assert m7 is not None, "month 7 should have been created"
-        assert m7["revenue"] == 6000.0, f"M7 (Q2+30d): {m7['revenue']}"
+        # Q1 cash-in at M5 (index 4)
+        assert months[4]["revenue"] == 6000.0, f"M5 (Q1 invoice M4 + 30d): {months[4]['revenue']}"
+        # Q2 cash-in at M8 (index 7)
+        m8 = next((m for m in months if m["month"] == 8), None)
+        assert m8 is not None, "month 8 should have been created"
+        assert m8["revenue"] == 6000.0, f"M8 (Q2 invoice M7 + 30d): {m8['revenue']}"
         # No advance flags
         assert months[0]["advance_revenue"] == 0
-        assert m7["advance_revenue"] == 0
+        assert m8["advance_revenue"] == 0
         # Total ams_shared revenue = 12000
         assert w["total_ams_shared"] == 12000.0
         print("PASS: quarterly+arrears+30days")
@@ -132,7 +134,10 @@ def test_quarterly_arrears_with_30day_terms():
 
 def test_monthly_arrears_with_60day_terms():
     """Monthly + Arrears + 60-day terms: payment_offset=2.
-       M1 revenue lands at M1 + 2 = M3, M2 at M4, etc.
+       Iter 65 convention: invoice raised month AFTER period ends.
+       M1 delivered → invoice M2 → cash-in = M2 + 60d = M4.
+       M2 delivered → invoice M3 → cash-in = M5.
+       M3 delivered → invoice M4 → cash-in = M6.
     """
     token = _login()
     pid = _create_project(token, "Monthly", billing_advance=False, contract_months=3, payment_terms_days=60)
@@ -140,20 +145,107 @@ def test_monthly_arrears_with_60day_terms():
         cf = _get_cashflow(token, pid)
         w = cf["wave_data"][0]
         months = w["monthly_data"]
-        # Original 3 months + 2 extension = 5 months
-        assert len(months) >= 5, f"expected >=5 months, got {len(months)}"
-        # M1, M2: no revenue
+        assert len(months) >= 6, f"expected >=6 months, got {len(months)}"
+        # M1-M3 no revenue
         assert months[0]["revenue"] == 0
         assert months[1]["revenue"] == 0
-        # M3: M1's billing
-        assert months[2]["revenue"] == 2000.0, f"M3 revenue={months[2]['revenue']}"
-        # M4: M2's billing
-        assert months[3]["revenue"] == 2000.0
-        # M5: M3's billing
+        assert months[2]["revenue"] == 0
+        # M4: M1 delivered → invoice M2 + 60d = M4
+        assert months[3]["revenue"] == 2000.0, f"M4 revenue={months[3]['revenue']}"
+        # M5: M2 delivered → M5
         assert months[4]["revenue"] == 2000.0
-        # Total ams_shared = 6000
+        # M6: M3 delivered → M6
+        assert months[5]["revenue"] == 2000.0
         assert w["total_ams_shared"] == 6000.0
         print("PASS: monthly+arrears+60days")
+    finally:
+        _delete(token, pid)
+
+
+def test_ams_start_month_arrears_user_scenario():
+    """User Iter 65 scenario:
+       AMS wave starts at project M6, Monthly billing, NOT advance, payment terms 60 days.
+       M6 delivered → invoice raised M7 → +60d → cash-in M9.
+       Contract 3 months (M6, M7, M8) → cash-in at M9, M10, M11.
+       Cost: level monthly at M6, M7, M8 (nothing before M6).
+    """
+    token = _login()
+    pid = _create_project(token, "Monthly", billing_advance=False, contract_months=3, payment_terms_days=60, wave_start_month=6)
+    try:
+        cf = _get_cashflow(token, pid)
+        w = cf["wave_data"][0]
+        months = w["monthly_data"]
+        # M1-M5 must be all-zero (nothing before wave_start_month)
+        for i in range(5):
+            assert months[i]["cost"] == 0 and months[i]["revenue"] == 0, \
+                f"M{i+1} must be zero, got cost={months[i]['cost']} rev={months[i]['revenue']}"
+        # M6, M7, M8: level cost = 100 * 15 = 1500
+        for i in [5, 6, 7]:
+            assert months[i]["cost"] == 1500.0, f"M{i+1} cost={months[i]['cost']} (want 1500)"
+            assert months[i]["revenue"] == 0.0, f"M{i+1} revenue={months[i]['revenue']} (arrears — no rev here)"
+        # M9 = cash-in for M6 delivered (M7 invoice + 60d = M9)
+        m9 = next((m for m in months if m["month"] == 9), None)
+        assert m9 is not None, "M9 should exist"
+        assert m9["revenue"] == 2000.0, f"M9 revenue={m9['revenue']} (want 2000 — M6 billing)"
+        assert m9["advance_revenue"] == 0.0
+        # M10, M11 = cash-in for M7, M8 delivered
+        m10 = next((m for m in months if m["month"] == 10), None)
+        assert m10 and m10["revenue"] == 2000.0, f"M10 revenue={m10['revenue'] if m10 else None}"
+        m11 = next((m for m in months if m["month"] == 11), None)
+        assert m11 and m11["revenue"] == 2000.0, f"M11 revenue={m11['revenue'] if m11 else None}"
+        assert w["total_ams_shared"] == 6000.0
+        print("PASS: user scenario — start M6, arrears, 60d → cash-in M9/M10/M11")
+    finally:
+        _delete(token, pid)
+
+
+def test_ams_start_month_advance():
+    """Advance ON with wave_start_month=6:
+       cash-in at first day of each period, absolute project month = wave_start + period_start_local.
+       Monthly, 3 months → cash-in at M6, M7, M8 (each = 2000, advance_revenue set).
+       No M1-M5 revenue/cost.
+    """
+    token = _login()
+    pid = _create_project(token, "Monthly", billing_advance=True, contract_months=3, payment_terms_days=60, wave_start_month=6)
+    try:
+        cf = _get_cashflow(token, pid)
+        w = cf["wave_data"][0]
+        months = w["monthly_data"]
+        for i in range(5):
+            assert months[i]["cost"] == 0 and months[i]["revenue"] == 0, f"M{i+1} must be zero"
+        # M6, M7, M8: cost 1500 AND advance revenue 2000
+        for i in [5, 6, 7]:
+            assert months[i]["cost"] == 1500.0
+            assert months[i]["revenue"] == 2000.0, f"M{i+1} revenue={months[i]['revenue']}"
+            assert months[i]["advance_revenue"] == 2000.0
+        assert w["total_ams_shared"] == 6000.0
+        print("PASS: start M6 + advance → cash-in M6/M7/M8")
+    finally:
+        _delete(token, pid)
+
+
+def test_ams_start_month_quarterly_arrears():
+    """Quarterly + Arrears + wave_start_month=6 + 60d terms.
+       Contract 6 months. Q1 covers M6-M8 → invoice M9 → cash-in M11.
+       Q2 covers M9-M11 → invoice M12 → cash-in M14.
+    """
+    token = _login()
+    pid = _create_project(token, "Quarterly", billing_advance=False, contract_months=6, payment_terms_days=60, wave_start_month=6)
+    try:
+        cf = _get_cashflow(token, pid)
+        w = cf["wave_data"][0]
+        months = w["monthly_data"]
+        # Cost span M6..M11 = 6 months × 1500
+        for i in range(5):
+            assert months[i]["cost"] == 0
+        for i in range(5, 11):
+            assert months[i]["cost"] == 1500.0, f"M{i+1} cost={months[i]['cost']}"
+        m11 = next((m for m in months if m["month"] == 11), None)
+        assert m11 and m11["revenue"] == 6000.0, f"M11 (Q1) revenue={m11['revenue'] if m11 else None}"
+        m14 = next((m for m in months if m["month"] == 14), None)
+        assert m14 and m14["revenue"] == 6000.0, f"M14 (Q2) revenue={m14['revenue'] if m14 else None}"
+        assert w["total_ams_shared"] == 12000.0
+        print("PASS: start M6 + quarterly arrears + 60d → M11/M14")
     finally:
         _delete(token, pid)
 
@@ -163,4 +255,7 @@ if __name__ == "__main__":
     test_quarterly_advance()
     test_quarterly_arrears_with_30day_terms()
     test_monthly_arrears_with_60day_terms()
-    print("\nAll AMS billing frequency tests PASSED ✓")
+    test_ams_start_month_arrears_user_scenario()
+    test_ams_start_month_advance()
+    test_ams_start_month_quarterly_arrears()
+    print("\nAll AMS billing frequency + start-month tests PASSED ✓")

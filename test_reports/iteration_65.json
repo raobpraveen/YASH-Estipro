@@ -1,0 +1,40 @@
+{
+  "summary": "Iter 65 AMS cashflow — wave_start_month honored + arrears +1-month invoice convention. Verified via 9 pytest cases (all pass) + direct API check on deployed backend + FE smoke on Cashflow page.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard", "issues": ["Pre-existing hydration warnings: <tr> as child of <span> and <span> as child of <tbody> in Dashboard.jsx around line 496-498 (unrelated to Iter 65 change)"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_ams_billing_frequency.py",
+    "/app/backend/tests/test_iter65_regression.py",
+    "/app/test_reports/pytest/iter65_ams_billing.xml",
+    "/app/test_reports/pytest/iter65_regression.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "financials.py Step 1b AMS block: change is guarded on engagement_type in ('AMS_Shared','AMS_Mix'). Non-AMS T&M paths remain untouched — verified via regression test.",
+    "New convention documented in code + tests: invoice_month = period_end_month + 1, then cash_in_month = invoice_month + ceil(payment_terms_days/30). Advance ON short-circuits at period_start (wave_start + period_start_local).",
+    "Two pre-Iter60 tests (monthly+arrears+60d, quarterly+arrears+30d) were correctly updated to reflect the new +1 invoice month convention.",
+    "Pre-existing hydration errors in Dashboard.jsx (<span> wrapping <tr> inside <tbody>) — should be fixed for React 18 hydration safety, but out of scope for this iteration."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter65_regression.py (new)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@yash.com / password (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created ephemeral test projects in each test via POST /api/projects and cleaned up via DELETE. FE smoke created project id 4df8c8bd-... (already deleted at end of run).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter 65 acceptance test executed end-to-end on deployed URL: wave_start_month=6, Monthly, arrears, 60d → M6-M8 cost=1500 rev=0, M9-M11 rev=2000 (ams_shared_revenue=2000 each), total_ams_shared=6000, total_ams_cost=4500. All 7 AMS billing tests + 2 regression tests pass. Non-AMS/implementation-only projects unaffected (verified by test_tm_implementation_only_project_unaffected). Cashflow UI at /cashflow lists projects and renders per-wave breakdown correctly; AMS-only projects with no grid_allocations may still appear in list if they have AMS buckets — confirmed the calculation output matches spec.",
+  "acceptance_test_results": {
+    "primary_user_scenario_M6_arrears_60d": "PASS — M1-M5 zero, M6-M8 cost=1500 rev=0, M9-M11 rev=2000, total_ams_shared=6000, total_ams_cost=4500",
+    "advance_M6_60d": "PASS — M6-M8 cost=1500 rev=2000 advance_revenue=2000, total=6000",
+    "quarterly_M6_arrears_60d_contract6": "PASS — M6-M11 cost=1500 each, M11 rev=6000 (Q1), M14 rev=6000 (Q2), total=12000",
+    "regression_impl_only_project": "PASS — total_ams_shared=0, monthly_data unaffected",
+    "regression_ams_start1_new_convention": "PASS — M4/M5/M6 rev=2000 each"
+  }
+}
