@@ -84,6 +84,7 @@ export const WaveContent = ({
   onOpenLogisticsEditor,
   onAddAllocation,
   onDeleteAllocation,
+  onCopyAllocation,
   onToggleOnsite,
   onToggleTravelRequired,
   onPhaseAllocationChange,
@@ -972,6 +973,16 @@ export const WaveContent = ({
                                 <Calculator className="w-3.5 h-3.5" />
                               </Button>
                             </TooltipTrigger><TooltipContent><p>Apply value to months (supports split ranges)</p></TooltipContent></Tooltip>
+                            <Tooltip><TooltipTrigger asChild>
+                              <Button
+                                variant="ghost" size="icon"
+                                className="h-7 w-7 text-[#0EA5E9] hover:text-[#0EA5E9] hover:bg-[#0EA5E9]/10"
+                                onClick={() => onCopyAllocation && onCopyAllocation(wave.id, allocation.id)}
+                                data-testid={`copy-allocation-${allocation.id}`}
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </Button>
+                            </TooltipTrigger><TooltipContent><p>Copy this row as a new row below</p></TooltipContent></Tooltip>
                             <Button
                               variant="ghost" size="icon"
                               className="h-7 w-7 text-[#EF4444] hover:text-[#EF4444] hover:bg-[#EF4444]/10"

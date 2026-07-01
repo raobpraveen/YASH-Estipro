@@ -56,9 +56,23 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
         phase_names = wave.get("phase_names", [])
         lc = wave.get("logistics_config") or {}
         n_months = len(phase_names)
+        # Iter 66: honor wave_start_month for T&M too — pre-pad wave_monthly with zero months
+        # so wave-local M1 maps to project M(wave_start_month).
+        wave_start_month = int(wave.get("wave_start_month", 1) or 1)
+        if wave_start_month < 1:
+            wave_start_month = 1
+        wave_offset = wave_start_month - 1  # 0-indexed padding
 
-        # Step 1: Calculate costs per month
+        # Step 1: Calculate costs per month (T&M)
         wave_monthly = []
+        for _ in range(wave_offset):
+            wave_monthly.append({
+                "month": len(wave_monthly) + 1,
+                "phase": "",
+                "cost": 0,
+                "revenue": 0,
+                "advance_revenue": 0,
+            })
         for month_idx in range(n_months):
             phase_label = phase_names[month_idx] if month_idx < len(phase_names) else ""
             month_cost = 0
@@ -94,7 +108,7 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
             month_cost += contingency_abs
 
             wave_monthly.append({
-                "month": month_idx + 1,
+                "month": len(wave_monthly) + 1,
                 "phase": phase_label,
                 "cost": round(month_cost, 2),
                 "revenue": 0,
@@ -180,9 +194,11 @@ async def get_cashflow(project_id: str, user: dict = Depends(require_auth)):
                 continue
             target_month_str = ms.get("target_month", "M1") or "M1"
             try:
-                t_idx = int(target_month_str.replace("M", "")) - 1
+                t_local_idx = int(str(target_month_str).replace("M", "")) - 1
             except (ValueError, AttributeError):
-                t_idx = 0
+                t_local_idx = 0
+            # Iter 66: shift by wave_offset so target month M-N maps to project M(wave_start + N - 1)
+            t_idx = t_local_idx + wave_offset
             # Advance payments are paid in the same month as target_month (no payment terms shift)
             cash_in_idx = t_idx if ms.get("is_advance") else t_idx + payment_offset
 

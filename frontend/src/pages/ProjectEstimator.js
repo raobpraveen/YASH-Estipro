@@ -735,6 +735,25 @@ const ProjectEstimator = () => {
     ));
   };
 
+  const handleCopyAllocation = (waveId, allocationId) => {
+    setWaves(waves.map(w => {
+      if (w.id !== waveId) return w;
+      const idx = w.grid_allocations.findIndex(a => a.id === allocationId);
+      if (idx < 0) return w;
+      const src = w.grid_allocations[idx];
+      // Deep-copy phase_allocations to keep the new row's monthly values independent
+      const clone = {
+        ...src,
+        id: `alloc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        phase_allocations: Array.isArray(src.phase_allocations) ? [...src.phase_allocations] : [],
+      };
+      const next = [...w.grid_allocations];
+      next.splice(idx + 1, 0, clone);
+      return { ...w, grid_allocations: next };
+    }));
+    toast.success("Row copied");
+  };
+
   const handleToggleOnsite = (waveId, allocationId) => {
     setWaves(waves.map(w => 
       w.id === waveId
@@ -1931,7 +1950,7 @@ const ProjectEstimator = () => {
                     onAddPhaseColumn={handleAddPhaseColumn} onRemovePhaseColumn={handleRemovePhaseColumn}
                     onUpdatePhaseName={handleUpdatePhaseName}
                     onOpenLogisticsEditor={handleOpenLogisticsEditor} onAddAllocation={handleAddAllocation}
-                    onDeleteAllocation={handleDeleteAllocation} onToggleOnsite={handleToggleOnsite}
+                    onDeleteAllocation={handleDeleteAllocation} onCopyAllocation={handleCopyAllocation} onToggleOnsite={handleToggleOnsite}
                     onToggleTravelRequired={handleToggleTravelRequired} onPhaseAllocationChange={handlePhaseAllocationChange}
                     onSalaryChange={handleSalaryChange} onDragEnd={handleDragEnd}
                     onAllocationCommentChange={handleAllocationCommentChange} onApplyToAllMonths={handleApplyToAllMonths}

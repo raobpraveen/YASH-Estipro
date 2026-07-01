@@ -1,0 +1,41 @@
+{
+  "summary": "Iter 66 testing: Backend (T&M wave_start_month + AMS regression) 10/10 pytest PASS. Frontend Copy Row button works partially — inserts a new row below with correct skill/level/location/salary + shows 'Row copied' toast + fresh unique id — BUT phase_allocations (monthly MMs) are LOST due to incorrect Array.isArray check when the value is actually an object.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "ProjectEstimator.handleCopyAllocation",
+        "issue": "Copied row has EMPTY phase_allocations. Original row {0:1,1:1,2:1,3:1,4:1,5:1} was cloned as {} — Total MM went from 6.00 → 0.00 and Total Cost $58,558 → $0 on the new row. Root cause line 748: `Array.isArray(src.phase_allocations) ? [...src.phase_allocations] : []` — but phase_allocations is stored as a plain object (see line 504 `{ ...a.phase_allocations }`), so Array.isArray returns false and the clone gets an empty [].",
+        "selector": "[data-testid^=\"copy-allocation-\"]",
+        "priority": "HIGH",
+        "fix": "Change line 748 to: `phase_allocations: { ...(src.phase_allocations || {}) }`"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Estimator/WaveContent grid", "issues": ["Pre-existing React hydration warnings (span/tr/tbody/th nesting) still present — unchanged from Iter 65, out of scope."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter66_tm_wave_start.py",
+    "/app/backend/tests/test_ams_billing_frequency.py",
+    "/app/test_reports/pytest/iter66_full.xml"
+  ],
+  "action_items": [
+    "FIX HIGH: /app/frontend/src/pages/ProjectEstimator.js line 748 — replace `Array.isArray(src.phase_allocations) ? [...src.phase_allocations] : []` with `{ ...(src.phase_allocations || {}) }`. phase_allocations is a dict, not an array, so the current code loses all monthly MM values on every Copy.",
+    "OPTIONAL: address pre-existing React hydration warnings in WaveContent.js (span wrapping tr/tbody/th/option) — out of Iter 66 scope."
+  ],
+  "critical_code_review_comments": [
+    "Backend: T&M wave_offset applied consistently to both cost (Step 1 pre-pad wave_monthly) and milestone revenue (Step 2 t_local_idx shift). Advance milestones correctly bypass payment_terms but still honor wave_offset. All 7 AMS tests + 3 new T&M tests + regression baseline pass.",
+    "Frontend BUG: handleCopyAllocation uses Array.isArray check for what is actually an object literal. Even a smoke test on the primary acceptance criterion (row copied with same values incl. phase_allocations) exposes this — Total MM and cost drop to 0. Trivial one-line fix.",
+    "The `id: alloc_${Date.now()}_${random}` id-generation approach is fine but inconsistent with existing rows using `imp_<ts>_<idx>` — minor cosmetic mismatch when serializing/exporting."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "60% (Copy toast + row-insert OK; phase_allocations broken)"},
+  "test_credentials": "admin@yash.com / password (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "3 ephemeral projects via /api/projects for pytest (auto-cleaned via DELETE). No persistent seed data.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest suite (test_iter66_tm_wave_start.py + test_ams_billing_frequency.py) is green and can be re-run to confirm no regression after any FE fix. Frontend Copy Row bug is confirmed on PRJ-0035 (82570c59-4376-4052-ba0b-50f329572342): first row had 6.00 MM, copy showed 0.00 MM. Once main agent patches line 748 with object spread, verify by re-running the same UI flow: open estimator, click copy on any row with non-zero MM values, and confirm the new row's Total MM matches the original.",
+  "rca_of_the_issue": "phase_allocations is created as an object (see ProjectEstimator.js:700 `phase_allocations: {}` and :790 `{ ...a.phase_allocations, [phaseIndex]: ... }`). The Copy handler at :748 tests `Array.isArray(src.phase_allocations)` which is always false for an object literal, so the fallback branch `[]` fires and the new row's phase_allocations is an empty array. Downstream WaveContent.js:899 reads `allocation.phase_allocations[phaseIndex] || ''` which yields empty for every phase, so all monthly inputs render blank and Total MM/Cost = 0. Fix: replace with object spread `{ ...(src.phase_allocations || {}) }`. Repro: any project with a T&M/Impl wave and non-zero phase_allocations, click copy-allocation-<id>, observe Total MM on the new row = 0.00."
+}
