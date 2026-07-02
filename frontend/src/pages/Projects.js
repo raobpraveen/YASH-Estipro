@@ -724,7 +724,7 @@ const Projects = () => {
       const headerRow = ws.addRow([
         "Project #", "Version", "Project Name", "Customer", "Status",
         "Technologies", "Sub Technologies", "Project Types", "Sales Manager",
-        "CRM ID", "Locations", "Profit Margin %", "Nego Buffer %",
+        "CRM ID", "Locations", "Profit Margin %", "Nego Buffer %", "Grand Total ($)",
         "Created By", "Created Date", "Updated Date", "Approver", "Description"
       ]);
       headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
@@ -732,6 +732,7 @@ const Projects = () => {
 
       Object.values(grouped).forEach(versions => {
         versions.forEach(p => {
+          const { grandTotal } = calculateProjectValue(p);
           ws.addRow([
             p.project_number || "", p.version || 1, p.name || "",
             p.customer_name || "", (p.status || "").toUpperCase(),
@@ -739,6 +740,7 @@ const Projects = () => {
             (p.project_type_names || []).join(", "), p.sales_manager_name || "",
             p.crm_id || "", (p.project_location_names || []).join(", "),
             p.profit_margin_percentage || 0, p.nego_buffer_percentage || 0,
+            Math.round(grandTotal || 0),
             p.created_by_name || "", p.created_at ? new Date(p.created_at).toLocaleDateString() : "",
             p.updated_at ? new Date(p.updated_at).toLocaleDateString() : "",
             p.approver_email || "", p.description || ""
