@@ -1,0 +1,54 @@
+{
+  "summary": "Iter 67 frontend feature test PASSED (5/5 scenarios). Gantt chart now correctly renders an AMS Contract row (purple, #8B5CF6) for AMS_Shared / AMS_Dedicated / AMS_Mix waves. Verified via 3 fresh projects created through /api/projects + one pre-existing impl-only regression project. Acceptance criteria (row testid, range labels, bar CSS position, purple border color, legend chip, no-regression on non-AMS projects) all satisfied.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "GanttCard.buildGanttRows: AMS branch is clean and additive — computes absStart=offset, absEnd=offset+contractMonths, startLabel/endLabel exposed as `wave_start_month` and `wave_start_month+contractMonths-1`. Bar CSS positions match the formula exactly for maxMonth=17 (S1), maxMonth=7 (S2 Mix), maxMonth=3 (S3).",
+    "AMS_COLOR border #8B5CF6 correctly rendered as rgb(139, 92, 246) — visually distinct from existing phase colors (no overlap with Prepare/Explore/Realize/Deploy/Go-live/Hypercare/Design/Build/Test/UAT/Support/PGLS).",
+    "AMS row participates in maxMonth calculation so the timeline auto-extends when AMS contract runs past all phase_ranges (verified: S1 maxMonth=17 driven by AMS end).",
+    "AMS_Mix correctly shows BOTH the AMS Contract row and the T&M phase rows (S2 produced 2 rows: AMS Contract (6mo) + Build).",
+    "Excel export path (`exportGanttExcel`) uses row.color.bg / row.color.border which are set from AMS_COLOR for AMS rows, so downstream Excel export will inherit purple styling automatically — no code change needed (not visually verified with actual file download in this run).",
+    "Minor cosmetic: AMS row shows range label as `<startLabel>–<endLabel>` (e.g. `6–17`) next to the phase name — consistent with existing phase-range labels. Good."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only per request)", "frontend": "100% (5/5 acceptance criteria)"},
+  "test_credentials": "admin@yash.com / password (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "3 ephemeral projects created and cleaned up: TEST_AMS_GANTT_S1 (Impl+AMS_Shared), TEST_AMS_GANTT_S2_Mix (AMS_Mix), TEST_AMS_GANTT_S3_Start1 (AMS_Shared start=1). All deleted via DELETE /api/projects/{id} → 200. No residual data.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "GanttCard AMS row feature is live and passing. Fresh projects can be created via POST /api/projects — remember `duration_months` is REQUIRED per ProjectWave (backend returned 500 without it during first attempt). Project loading in the estimator uses `/estimator?edit={project_id}` (NOT /estimator/{id}). buildGanttRows now emits AMS Contract (Nmo) row for engagement_type in {AMS_Shared, AMS_Dedicated, AMS_Mix}; regular Implementation waves are unaffected.",
+  "detailed_scenario_results": {
+    "S1_Impl_plus_AMS_Shared": {
+      "rows": ["gantt-row-Prepare","gantt-row-Explore","gantt-row-Realize","gantt-row-AMS Contract (12mo)"],
+      "waves": ["gantt-wave-Impl W1","gantt-wave-AMS Shared"],
+      "ams_bar": {"testid":"gantt-bar-AMS Contract (12mo)","left":"29.4118%","width":"70.5882%","borderColor":"rgb(139,92,246)","rangeLabel":"6–17"},
+      "expected_math": "maxMonth=17 (AMS end); absStart=5→5/17=29.41%; span=12/17=70.59%; startLabel=6 endLabel=17",
+      "legend_has_ams_chip": true,
+      "result": "PASS"
+    },
+    "S2_AMS_Mix": {
+      "rows": ["gantt-row-AMS Contract (6mo)","gantt-row-Build"],
+      "ams_bar": {"left":"14.2857%","width":"85.7143%","rangeLabel":"2–7"},
+      "build_bar": {"left":"14.2857%","width":"42.8571%","rangeLabel":"1–3","abs_span":"M2-M4 as spec"},
+      "result": "PASS"
+    },
+    "S3_AMS_start_1": {
+      "rows": ["gantt-row-AMS Contract (3mo)"],
+      "ams_bar": {"left":"0%","width":"100%","rangeLabel":"1–3","borderColor":"rgb(139,92,246)"},
+      "result": "PASS"
+    },
+    "REGRESSION_impl_only": {
+      "project": "Refactoring Regression Test (aba9b9a3-...)",
+      "row_count": 10,
+      "ams_rows": 0,
+      "legend": ["Prepare","Explore","Realize","Deploy","PGLS"],
+      "result": "PASS — no AMS rows leak into pure-Implementation projects"
+    }
+  }
+}

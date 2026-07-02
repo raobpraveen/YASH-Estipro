@@ -22,20 +22,49 @@ const PHASE_COLORS = {
   Support:   { bg: "#F1F5F9", text: "#334155", border: "#CBD5E1" },
 };
 const DEFAULT_COLOR = { bg: "#F1F5F9", text: "#334155", border: "#CBD5E1" };
+const AMS_COLOR = { bg: "#EDE9FE", text: "#5B21B6", border: "#8B5CF6" };
 const getPhaseColor = (name) => PHASE_COLORS[name] || DEFAULT_COLOR;
 
 /**
  * Build gantt rows from wave phase_ranges data.
  * Supports half-month precision.
  */
+/**
+ * Build Gantt rows from wave phase_ranges AND AMS contract spans.
+ * AMS waves (AMS_Shared / AMS_Dedicated / AMS_Mix) get an extra row that spans
+ * wave_start_month → wave_start_month + ams_contract_months - 1 (independent of phase_ranges).
+ */
 const buildGanttRows = (waves) => {
   const rows = [];
   let maxMonth = 0;
 
   for (const w of waves) {
-    const ranges = w.phase_ranges || [];
-    if (ranges.length === 0) continue;
     const offset = (w.wave_start_month || 1) - 1;
+    const ranges = w.phase_ranges || [];
+    const engagement = w.engagement_type || "Implementation";
+    const isAms = engagement === "AMS_Shared" || engagement === "AMS_Dedicated" || engagement === "AMS_Mix";
+
+    // AMS contract row (applies to all AMS_* engagement types)
+    if (isAms) {
+      const contractMonths = parseInt(w.ams_contract_months) || 12;
+      const absStart = offset;
+      const absEnd = offset + contractMonths;
+      rows.push({
+        waveName: w.name,
+        waveId: w.id,
+        phase: `AMS Contract (${contractMonths}mo)`,
+        absStart,
+        absEnd,
+        startLabel: (w.wave_start_month || 1),
+        endLabel: (w.wave_start_month || 1) + contractMonths - 1,
+        color: AMS_COLOR,
+        isAms: true,
+      });
+      if (absEnd > maxMonth) maxMonth = absEnd;
+    }
+
+    // T&M phase rows (still rendered for AMS_Mix and standard Implementation waves)
+    if (ranges.length === 0) continue;
 
     for (const pr of ranges) {
       const startVal = pr.start_month || 1;
