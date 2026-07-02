@@ -433,7 +433,8 @@ const Projects = () => {
       withOverhead: summary.totalRowsSellingPrice, 
       sellingPrice: summary.sellingPrice, 
       negoBuffer: summary.negoBuffer, 
-      finalPrice: summary.finalPrice, 
+      finalPrice: summary.finalPrice,
+      grandTotal: summary.grandTotalFinalPrice ?? summary.finalPrice,
       totalMM: summary.totalMM, 
       resourceCount 
     };
@@ -457,7 +458,7 @@ const Projects = () => {
   };
 
   const renderProjectRow = (project, isSubVersion = false) => {
-    const { sellingPrice, negoBuffer, finalPrice, totalMM, resourceCount } = calculateProjectValue(project);
+    const { grandTotal, totalMM, resourceCount } = calculateProjectValue(project);
     const hasVersions = project.version > 1 || (allVersions[project.project_number]?.length > 1);
     const isExpanded = expandedProjects[project.project_number];
     const isLoading = loadingVersions[project.project_number];
@@ -524,14 +525,8 @@ const Projects = () => {
         </TableCell>
         <TableCell className="text-center">{resourceCount}</TableCell>
         <TableCell className="text-right font-mono tabular-nums">{totalMM.toFixed(2)}</TableCell>
-        <TableCell className="text-right font-mono tabular-nums font-semibold text-[#10B981]">
-          ${sellingPrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-        </TableCell>
-        <TableCell className="text-right font-mono tabular-nums text-blue-600">
-          ${negoBuffer.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-        </TableCell>
-        <TableCell className="text-right font-mono tabular-nums font-bold text-emerald-700">
-          ${finalPrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        <TableCell className="text-right font-mono tabular-nums font-bold text-emerald-700" data-testid={`grand-total-${project.id}`}>
+          ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         </TableCell>
         <TableCell className="text-xs text-gray-500">
           <div className="flex flex-col">
@@ -655,7 +650,7 @@ const Projects = () => {
 
   // Render archived project row
   const renderArchivedProjectRow = (project) => {
-    const { sellingPrice, negoBuffer, finalPrice, totalMM, resourceCount } = calculateProjectValue(project);
+    const { grandTotal, totalMM, resourceCount } = calculateProjectValue(project);
     
     return (
       <TableRow key={project.id} className="bg-gray-50" data-testid={`archived-row-${project.id}`}>
@@ -665,14 +660,8 @@ const Projects = () => {
         <TableCell className="text-center">{getStatusBadge(project.status)}</TableCell>
         <TableCell className="text-center">{resourceCount}</TableCell>
         <TableCell className="text-right font-mono tabular-nums">{totalMM.toFixed(2)}</TableCell>
-        <TableCell className="text-right font-mono tabular-nums font-semibold text-gray-500">
-          ${sellingPrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-        </TableCell>
-        <TableCell className="text-right font-mono tabular-nums text-blue-600">
-          ${negoBuffer.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-        </TableCell>
-        <TableCell className="text-right font-mono tabular-nums font-bold text-emerald-700">
-          ${finalPrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        <TableCell className="text-right font-mono tabular-nums font-bold text-emerald-700" data-testid={`archived-grand-total-${project.id}`}>
+          ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         </TableCell>
         <TableCell className="text-xs text-gray-500">{formatDate(project.archived_at)}</TableCell>
         <TableCell className="text-right">
@@ -1089,9 +1078,7 @@ const Projects = () => {
                       <TableHead className="text-center">Status</TableHead>
                       <TableHead className="text-center">Resources</TableHead>
                       <TableHead className="text-right">Man-Months</TableHead>
-                      <TableHead className="text-right">Selling Price</TableHead>
-                      <TableHead className="text-right">Nego Buffer</TableHead>
-                      <TableHead className="text-right">Final Price</TableHead>
+                      <TableHead className="text-right">Grand Total</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -1117,19 +1104,15 @@ const Projects = () => {
                     {filteredProjects.length > 0 && (() => {
                       const totals = filteredProjects.reduce((acc, p) => {
                         const vals = calculateProjectValue(p);
-                        acc.sellingPrice += vals.sellingPrice;
-                        acc.negoBuffer += vals.negoBuffer;
-                        acc.finalPrice += vals.finalPrice;
+                        acc.grandTotal += vals.grandTotal;
                         acc.totalMM += vals.totalMM;
                         return acc;
-                      }, { sellingPrice: 0, negoBuffer: 0, finalPrice: 0, totalMM: 0 });
+                      }, { grandTotal: 0, totalMM: 0 });
                       return (
                         <TableRow className="bg-[#0F172A]/5 font-bold border-t-2 border-[#0F172A]">
                           <TableCell colSpan={5} className="text-right text-[#0F172A]" data-testid="totals-label">Totals ({filteredProjects.length} projects)</TableCell>
                           <TableCell className="text-right font-mono tabular-nums" data-testid="totals-mm">{totals.totalMM.toFixed(2)}</TableCell>
-                          <TableCell className="text-right font-mono tabular-nums text-[#0F172A]" data-testid="totals-selling">{totals.sellingPrice.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</TableCell>
-                          <TableCell className="text-right font-mono tabular-nums text-blue-700" data-testid="totals-nego">{totals.negoBuffer.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</TableCell>
-                          <TableCell className="text-right font-mono tabular-nums text-emerald-700" data-testid="totals-final">{totals.finalPrice.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</TableCell>
+                          <TableCell className="text-right font-mono tabular-nums text-emerald-700" data-testid="totals-grand-total">{totals.grandTotal.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</TableCell>
                           <TableCell colSpan={2}></TableCell>
                         </TableRow>
                       );
@@ -1167,9 +1150,7 @@ const Projects = () => {
                       <TableHead className="text-center">Status</TableHead>
                       <TableHead className="text-center">Resources</TableHead>
                       <TableHead className="text-right">Man-Months</TableHead>
-                      <TableHead className="text-right">Selling Price</TableHead>
-                      <TableHead className="text-right">Nego Buffer</TableHead>
-                      <TableHead className="text-right">Final Price</TableHead>
+                      <TableHead className="text-right">Grand Total</TableHead>
                       <TableHead>Archived</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
