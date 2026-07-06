@@ -426,26 +426,23 @@ export async function buildExportWorkbook({
   grandRow.getCell(2).numFmt = moneyFmt;
   grandRow.eachCell(c => { c.fill = finalFill; c.font = finalFont; c.border = thinBorder; });
 
-  // AMS roll-up across waves (only if any AMS wave exists)
+  // AMS roll-up across waves — INFORMATIONAL only; these values are ALREADY included in
+  // the GRAND TOTAL (Final Price) above. Retained as an at-a-glance breakdown so users
+  // can see the AMS portion without re-computing it manually.
   const amsRefs = waveRefs.filter(r => r.amsAnnual);
   if (amsRefs.length > 0) {
     summaryWs.addRow([]);
-    const amsHdr = summaryWs.addRow(["AMS SHARED SUPPORT ROLL-UP"]);
+    const amsHdr = summaryWs.addRow(["AMS SHARED SUPPORT — Breakdown (already included in Grand Total above)"]);
     amsHdr.font = { bold: true, size: 12, color: { argb: "FF8B5CF6" } };
     amsHdr.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDE9FE" } }; c.border = thinBorder; });
     const amsMon = summaryWs.addRow(["AMS Monthly Billing (sum)"]);
     amsMon.getCell(2).value = { formula: amsRefs.map(r => r.amsMonthly).join("+"), result: 0 };
     amsMon.getCell(2).numFmt = moneyFmt;
-    const amsAnn = summaryWs.addRow(["AMS Annual Billing (sum)"]);
+    const amsAnn = summaryWs.addRow(["AMS Annual Billing (sum, included above)"]);
     amsAnn.getCell(2).value = { formula: amsRefs.map(r => r.amsAnnual).join("+"), result: 0 };
     amsAnn.getCell(2).numFmt = moneyFmt;
-    amsAnn.font = { bold: true };
-    amsAnn.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDE9FE" } }; c.border = thinBorder; });
-
-    const gtRow = summaryWs.addRow(["GRAND TOTAL (Impl + AMS Y1)"]);
-    gtRow.getCell(2).value = { formula: `(${waveRefs.map(r => r.finalPrice).join("+")})+(${amsRefs.map(r => r.amsAnnual).join("+")})`, result: 0 };
-    gtRow.getCell(2).numFmt = moneyFmt;
-    gtRow.eachCell(c => { c.fill = finalFill; c.font = finalFont; c.border = thinBorder; });
+    amsAnn.font = { italic: true, color: { argb: "FF6B7280" } };
+    amsAnn.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9FAFB" } }; c.border = thinBorder; });
   }
 
   const overallSummary = calculateOverallSummary(waves, profitMarginPercentage, negoBufferPercentage);
