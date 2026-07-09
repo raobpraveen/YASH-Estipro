@@ -76,3 +76,7 @@ select:focus-within {
     page-break-inside: avoid;
   }
 }
+
+/* Utility: hide scrollbar visually while keeping scroll behaviour (used by split-pane left pane) */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }

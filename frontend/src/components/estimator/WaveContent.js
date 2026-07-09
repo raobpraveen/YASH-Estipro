@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Plus, Trash2, Plane, Settings, Copy, FileSpreadsheet, Minus, Upload, Download, GripVertical, Calculator, X, ChevronDown, ChevronRight } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { calculateResourceBaseCost as calcResourceBaseCostUtil } from "@/utils/estimatorCalcs";
 import { evaluateSalaryExpression } from "@/utils/salaryExpression";
@@ -105,6 +105,55 @@ export const WaveContent = ({
   const [splitRangeAllocationId, setSplitRangeAllocationId] = useState(null);
   const [splitRangeInput, setSplitRangeInput] = useState("");
   const phaseCount = (wave.phase_ranges || []).length;
+
+  // Split-pane refs + scroll/row-height sync (freeze pane at Grp column)
+  const leftPaneRef = useRef(null);
+  const rightPaneRef = useRef(null);
+  const scrollSyncingRef = useRef(false);
+  const [hoveredRowId, setHoveredRowId] = useState(null);
+
+  const handleLeftScroll = (e) => {
+    if (scrollSyncingRef.current) return;
+    scrollSyncingRef.current = true;
+    if (rightPaneRef.current) rightPaneRef.current.scrollTop = e.target.scrollTop;
+    requestAnimationFrame(() => { scrollSyncingRef.current = false; });
+  };
+  const handleRightScroll = (e) => {
+    if (scrollSyncingRef.current) return;
+    scrollSyncingRef.current = true;
+    if (leftPaneRef.current) leftPaneRef.current.scrollTop = e.target.scrollTop;
+    requestAnimationFrame(() => { scrollSyncingRef.current = false; });
+  };
+
+  // Sync row + header heights between left and right panes so rows visually align
+  useLayoutEffect(() => {
+    const left = leftPaneRef.current;
+    const right = rightPaneRef.current;
+    if (!left || !right) return;
+    const leftRows = Array.from(left.querySelectorAll('tr[data-row-id]'));
+    const rightRows = Array.from(right.querySelectorAll('tr[data-row-id]'));
+    // Reset heights first
+    leftRows.forEach(r => { r.style.height = ''; });
+    rightRows.forEach(r => { r.style.height = ''; });
+    const lHead = left.querySelector('thead tr');
+    const rHead = right.querySelector('thead tr');
+    if (lHead) lHead.style.height = '';
+    if (rHead) rHead.style.height = '';
+
+    const raf = requestAnimationFrame(() => {
+      for (let i = 0; i < Math.min(leftRows.length, rightRows.length); i++) {
+        const h = Math.max(leftRows[i].offsetHeight, rightRows[i].offsetHeight);
+        leftRows[i].style.height = `${h}px`;
+        rightRows[i].style.height = `${h}px`;
+      }
+      if (lHead && rHead) {
+        const h = Math.max(lHead.offsetHeight, rHead.offsetHeight);
+        lHead.style.height = `${h}px`;
+        rHead.style.height = `${h}px`;
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [wave.grid_allocations, wave.phase_names, wave.phase_ranges]);
 
   // Filter rates by project's selected technologies
   const filteredRates = (technologyIds && technologyIds.length > 0)
@@ -672,339 +721,397 @@ export const WaveContent = ({
         </div>
       ) : (
         <DragDropContext onDragEnd={(result) => onDragEnd(result, wave.id)}>
-        <div className="overflow-auto border border-[#E2E8F0] rounded max-h-[70vh]" id="grid-split-container">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b-2 border-[#E2E8F0] bg-[#F8FAFC]">
-                <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 0, top: 0, zIndex: 30, background: '#F8FAFC' }}></th>
-                <th className="text-center p-2 font-semibold text-xs w-8" style={{ position: 'sticky', left: 32, top: 0, zIndex: 30, background: '#F8FAFC' }}>#</th>
-                <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 64, top: 0, zIndex: 30, background: '#F8FAFC', minWidth: 120, maxWidth: 120 }}>Skill</th>
-                <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 184, top: 0, zIndex: 30, background: '#F8FAFC', minWidth: 106, maxWidth: 106 }}>Level</th>
-                <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', left: 290, top: 0, zIndex: 30, background: '#F8FAFC', minWidth: 106, maxWidth: 106 }}>Location</th>
-                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', left: 396, top: 0, zIndex: 30, background: '#F8FAFC', minWidth: 86, maxWidth: 86 }}>$/Month</th>
-                <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 482, top: 0, zIndex: 30, background: '#F8FAFC', minWidth: 50, maxWidth: 50 }}>Onsite</th>
-                <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 532, top: 0, zIndex: 30, background: '#F8FAFC', minWidth: 50, maxWidth: 50 }}>Travel</th>
-                <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', left: 582, top: 0, zIndex: 30, background: '#F8FAFC', minWidth: 40, maxWidth: 40, boxShadow: '3px 0 6px rgba(0,0,0,0.1)' }}>Grp</th>
-                {wave.phase_names.map((phaseName, index) => (
-                  <th key={index} className="text-center p-2 bg-[#E0F2FE]" style={{ position: 'sticky', top: 0, zIndex: 20 }}>
-                    <Input
-                      value={phaseName}
-                      onChange={(e) => onUpdatePhaseName(wave.id, index, e.target.value)}
-                      className="w-20 text-center font-semibold text-xs border-0 bg-transparent focus:bg-white"
-                      data-testid={`phase-name-${index}`}
-                      disabled={isReadOnly}
-                    />
-                  </th>
-                ))}
-                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#F8FAFC' }}>Total MM</th>
-                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#F8FAFC' }}>Salary Cost</th>
-                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#F8FAFC' }}>Overhead</th>
-                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#f3f4f6' }}>Total Cost</th>
-                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#f0fdf4' }}>Selling Price</th>
-                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#eff6ff' }}>SP/MM</th>
-                <th className="text-right p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#eff6ff' }}>Hourly</th>
-                <th className="text-right p-2 font-semibold text-xs w-16" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#faf5ff' }}>Ovr $/Hr</th>
-                <th className="text-left p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#F8FAFC' }}>Comments</th>
-                <th className="text-center p-2 font-semibold text-xs" style={{ position: 'sticky', top: 0, zIndex: 20, background: '#F8FAFC' }}>Actions</th>
-              </tr>
-            </thead>
-            <Droppable droppableId={`wave-${wave.id}`}>
-              {(provided) => (
-            <tbody ref={provided.innerRef} {...provided.droppableProps}>
-              {wave.grid_allocations.map((allocation, rowIdx) => {
-                const { totalManMonths, baseSalaryCost } = calcResourceBaseCostUtil(allocation);
-                const overheadCost = baseSalaryCost * (allocation.overhead_percentage / 100);
-                const totalCost = baseSalaryCost + overheadCost;
-                const calcSellingPrice = totalCost / (1 - profitMarginPercentage / 100);
-                const hasOverride = allocation.override_hourly_rate > 0;
-                const sellingPrice = hasOverride ? allocation.override_hourly_rate * 176 * totalManMonths : calcSellingPrice;
-                const spPerMM = totalManMonths > 0 ? sellingPrice / totalManMonths : 0;
-                const hourlyPrice = hasOverride ? allocation.override_hourly_rate : (spPerMM / 176);
-                const rowBg = allocation.is_onsite && allocation.travel_required
-                  ? "bg-amber-100/60"
-                  : allocation.is_onsite
-                  ? "bg-amber-50/40"
-                  : "bg-white";
-                const stickyBg = allocation.is_onsite && allocation.travel_required
-                  ? '#FEF3C7'
-                  : allocation.is_onsite
-                  ? '#FFFBEB'
-                  : '#FFFFFF';
-                const groupColor = getGroupColor(allocation.resource_group_id);
-                return (
-                  <Draggable key={allocation.id} draggableId={allocation.id} index={rowIdx} isDragDisabled={isReadOnly}>
-                    {(dragProvided, snapshot) => (
-                  <tr
-                    ref={dragProvided.innerRef}
-                    {...dragProvided.draggableProps}
-                    className={`border-b border-[#E2E8F0] ${rowBg} ${snapshot.isDragging ? "shadow-lg opacity-90 bg-blue-50" : ""}`}
-                    style={{ ...dragProvided.draggableProps.style, borderLeft: groupColor ? `4px solid ${groupColor}` : undefined }}
-                    data-testid={`allocation-row-${allocation.id}`}
-                  >
-                    {/* Drag handle */}
-                    <td className="p-1 text-center" style={{ position: 'sticky', left: 0, zIndex: 2, background: stickyBg }} {...dragProvided.dragHandleProps}>
-                      {!isReadOnly && <GripVertical className="w-4 h-4 text-gray-300 hover:text-gray-500 cursor-grab mx-auto" />}
-                    </td>
-                    {/* Row number */}
-                    <td className="p-1 text-center text-xs text-gray-400 font-mono" style={{ position: 'sticky', left: 32, zIndex: 2, background: stickyBg }}>{rowIdx + 1}</td>
-                    {/* Skill */}
-                    <td className="p-1" style={{ position: 'sticky', left: 64, zIndex: 2, background: stickyBg, minWidth: 120, maxWidth: 120 }}>
-                      {isReadOnly ? (
-                        <Tooltip><TooltipTrigger asChild>
-                          <span className="font-medium text-xs cursor-help truncate block">{allocation.skill_name}</span>
-                        </TooltipTrigger><TooltipContent side="bottom" className="max-w-xs p-2">
-                          <p className="font-semibold">{allocation.skill_name}</p>
-                          <p className="text-xs text-gray-500">{allocation.proficiency_level} &middot; {allocation.base_location_name}</p>
-                        </TooltipContent></Tooltip>
-                      ) : (
+        <div className="flex border border-[#E2E8F0] rounded overflow-hidden bg-white" style={{ maxHeight: '70vh' }} id="grid-split-container" data-testid={`grid-split-container-${wave.id}`}>
+          {/* ============ LEFT PANE (up to Grp) ============ */}
+          <div
+            ref={leftPaneRef}
+            onScroll={handleLeftScroll}
+            className="flex-shrink-0 overflow-y-auto overflow-x-hidden bg-white no-scrollbar"
+            style={{ width: 622 }}
+            data-testid={`grid-left-pane-${wave.id}`}
+          >
+            <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: 32 }} />
+                <col style={{ width: 32 }} />
+                <col style={{ width: 120 }} />
+                <col style={{ width: 106 }} />
+                <col style={{ width: 106 }} />
+                <col style={{ width: 86 }} />
+                <col style={{ width: 50 }} />
+                <col style={{ width: 50 }} />
+                <col style={{ width: 40 }} />
+              </colgroup>
+              <thead className="sticky top-0 z-20 bg-[#F8FAFC]">
+                <tr className="border-b-2 border-[#E2E8F0] bg-[#F8FAFC]">
+                  <th className="text-center p-2 font-semibold text-xs"></th>
+                  <th className="text-center p-2 font-semibold text-xs">#</th>
+                  <th className="text-left p-2 font-semibold text-xs">Skill</th>
+                  <th className="text-left p-2 font-semibold text-xs">Level</th>
+                  <th className="text-left p-2 font-semibold text-xs">Location</th>
+                  <th className="text-right p-2 font-semibold text-xs">$/Month</th>
+                  <th className="text-center p-2 font-semibold text-xs">Onsite</th>
+                  <th className="text-center p-2 font-semibold text-xs">Travel</th>
+                  <th className="text-center p-2 font-semibold text-xs">Grp</th>
+                </tr>
+              </thead>
+              <Droppable droppableId={`wave-${wave.id}`}>
+                {(provided) => (
+              <tbody ref={provided.innerRef} {...provided.droppableProps}>
+                {wave.grid_allocations.map((allocation, rowIdx) => {
+                  const rowBg = allocation.is_onsite && allocation.travel_required
+                    ? "bg-amber-100/60"
+                    : allocation.is_onsite
+                    ? "bg-amber-50/40"
+                    : "bg-white";
+                  const groupColor = getGroupColor(allocation.resource_group_id);
+                  const isHovered = hoveredRowId === allocation.id;
+                  return (
+                    <Draggable key={allocation.id} draggableId={allocation.id} index={rowIdx} isDragDisabled={isReadOnly}>
+                      {(dragProvided, snapshot) => (
+                    <tr
+                      ref={dragProvided.innerRef}
+                      {...dragProvided.draggableProps}
+                      data-row-id={allocation.id}
+                      onMouseEnter={() => setHoveredRowId(allocation.id)}
+                      onMouseLeave={() => setHoveredRowId(null)}
+                      className={`border-b border-[#E2E8F0] ${rowBg} ${isHovered ? 'ring-1 ring-inset ring-[#3B82F6]/30 bg-[#E0F2FE]/40' : ''} ${snapshot.isDragging ? "shadow-lg opacity-90 bg-blue-50" : ""}`}
+                      style={{ ...dragProvided.draggableProps.style, borderLeft: groupColor ? `4px solid ${groupColor}` : undefined }}
+                      data-testid={`allocation-row-${allocation.id}`}
+                    >
+                      {/* Drag handle */}
+                      <td className="p-1 text-center align-middle" {...dragProvided.dragHandleProps}>
+                        {!isReadOnly && <GripVertical className="w-4 h-4 text-gray-300 hover:text-gray-500 cursor-grab mx-auto" />}
+                      </td>
+                      {/* Row number */}
+                      <td className="p-1 text-center text-xs text-gray-400 font-mono align-middle">{rowIdx + 1}</td>
+                      {/* Skill */}
+                      <td className="p-1 align-middle">
+                        {isReadOnly ? (
+                          <Tooltip><TooltipTrigger asChild>
+                            <span className="font-medium text-xs cursor-help truncate block">{allocation.skill_name}</span>
+                          </TooltipTrigger><TooltipContent side="bottom" className="max-w-xs p-2">
+                            <p className="font-semibold">{allocation.skill_name}</p>
+                            <p className="text-xs text-gray-500">{allocation.proficiency_level} &middot; {allocation.base_location_name}</p>
+                          </TooltipContent></Tooltip>
+                        ) : (
+                          <Tooltip><TooltipTrigger asChild><div>
+                            <SearchableSelect
+                              value={allocation.skill_id}
+                              onValueChange={(value) => onGridFieldChange(wave.id, allocation.id, 'skill_id', value)}
+                              options={filteredSkills.map(s => ({ value: s.id, label: s.name }))}
+                              placeholder="Skill..."
+                              searchPlaceholder="Search skills..."
+                              triggerClassName="w-[110px] text-xs"
+                            />
+                          </div></TooltipTrigger><TooltipContent side="bottom" className="max-w-xs p-2">
+                            <p className="font-semibold">{allocation.skill_name}</p>
+                            <p className="text-xs text-gray-500">{allocation.proficiency_level} &middot; {allocation.base_location_name}</p>
+                          </TooltipContent></Tooltip>
+                        )}
+                      </td>
+                      {/* Level */}
+                      <td className="p-1 align-middle">
+                        {isReadOnly ? (
+                          <Tooltip><TooltipTrigger asChild>
+                            <span className="text-xs cursor-default truncate block">{allocation.proficiency_level}</span>
+                          </TooltipTrigger><TooltipContent side="bottom"><p className="text-xs font-medium">{allocation.proficiency_level}</p></TooltipContent></Tooltip>
+                        ) : (
+                          <Tooltip><TooltipTrigger asChild><div>
+                            <SearchableSelect
+                              value={allocation.proficiency_level}
+                              onValueChange={(value) => onGridFieldChange(wave.id, allocation.id, 'proficiency_level', value)}
+                              options={PROFICIENCY_LEVELS.map(l => ({ value: l, label: l }))}
+                              placeholder="Level..."
+                              searchPlaceholder="Search levels..."
+                              triggerClassName="w-[96px] text-xs"
+                            />
+                          </div></TooltipTrigger><TooltipContent side="bottom"><p className="text-xs font-medium">{allocation.proficiency_level || 'Select level'}</p></TooltipContent></Tooltip>
+                        )}
+                      </td>
+                      {/* Location */}
+                      <td className="p-1 align-middle">
+                        {isReadOnly ? (
+                          <Tooltip><TooltipTrigger asChild>
+                            <span className="text-xs cursor-default truncate block">{allocation.base_location_name}</span>
+                          </TooltipTrigger><TooltipContent side="bottom"><p className="text-xs font-medium">{allocation.base_location_name}</p></TooltipContent></Tooltip>
+                        ) : (
+                          <Tooltip><TooltipTrigger asChild><div>
+                            <SearchableSelect
+                              value={allocation.base_location_id}
+                              onValueChange={(value) => onGridFieldChange(wave.id, allocation.id, 'base_location_id', value)}
+                              options={locations.map(l => ({ value: l.id, label: l.name }))}
+                              placeholder="Location..."
+                              searchPlaceholder="Search locations..."
+                              triggerClassName="w-[96px] text-xs"
+                            />
+                          </div></TooltipTrigger><TooltipContent side="bottom">
+                            <p className="text-xs font-medium">{allocation.base_location_name || 'Select location'}</p>
+                            {allocation.overhead_percentage > 0 && <p className="text-[10px] text-gray-400">OH: {allocation.overhead_percentage}%</p>}
+                          </TooltipContent></Tooltip>
+                        )}
+                      </td>
+                      {/* $/Month */}
+                      <td className="p-1 text-right align-middle">
                         <Tooltip><TooltipTrigger asChild><div>
-                          <SearchableSelect
-                            value={allocation.skill_id}
-                            onValueChange={(value) => onGridFieldChange(wave.id, allocation.id, 'skill_id', value)}
-                            options={filteredSkills.map(s => ({ value: s.id, label: s.name }))}
-                            placeholder="Skill..."
-                            searchPlaceholder="Search skills..."
-                            triggerClassName="w-[110px] text-xs"
-                          />
-                        </div></TooltipTrigger><TooltipContent side="bottom" className="max-w-xs p-2">
-                          <p className="font-semibold">{allocation.skill_name}</p>
-                          <p className="text-xs text-gray-500">{allocation.proficiency_level} &middot; {allocation.base_location_name}</p>
-                        </TooltipContent></Tooltip>
-                      )}
-                    </td>
-                    {/* Level */}
-                    <td className="p-1" style={{ position: 'sticky', left: 184, zIndex: 2, background: stickyBg, minWidth: 106, maxWidth: 106 }}>
-                      {isReadOnly ? (
-                        <Tooltip><TooltipTrigger asChild>
-                          <span className="text-xs cursor-default truncate block">{allocation.proficiency_level}</span>
-                        </TooltipTrigger><TooltipContent side="bottom"><p className="text-xs font-medium">{allocation.proficiency_level}</p></TooltipContent></Tooltip>
-                      ) : (
-                        <Tooltip><TooltipTrigger asChild><div>
-                          <SearchableSelect
-                            value={allocation.proficiency_level}
-                            onValueChange={(value) => onGridFieldChange(wave.id, allocation.id, 'proficiency_level', value)}
-                            options={PROFICIENCY_LEVELS.map(l => ({ value: l, label: l }))}
-                            placeholder="Level..."
-                            searchPlaceholder="Search levels..."
-                            triggerClassName="w-[96px] text-xs"
-                          />
-                        </div></TooltipTrigger><TooltipContent side="bottom"><p className="text-xs font-medium">{allocation.proficiency_level || 'Select level'}</p></TooltipContent></Tooltip>
-                      )}
-                    </td>
-                    {/* Location */}
-                    <td className="p-1" style={{ position: 'sticky', left: 290, zIndex: 2, background: stickyBg, minWidth: 106, maxWidth: 106 }}>
-                      {isReadOnly ? (
-                        <Tooltip><TooltipTrigger asChild>
-                          <span className="text-xs cursor-default truncate block">{allocation.base_location_name}</span>
-                        </TooltipTrigger><TooltipContent side="bottom"><p className="text-xs font-medium">{allocation.base_location_name}</p></TooltipContent></Tooltip>
-                      ) : (
-                        <Tooltip><TooltipTrigger asChild><div>
-                          <SearchableSelect
-                            value={allocation.base_location_id}
-                            onValueChange={(value) => onGridFieldChange(wave.id, allocation.id, 'base_location_id', value)}
-                            options={locations.map(l => ({ value: l.id, label: l.name }))}
-                            placeholder="Location..."
-                            searchPlaceholder="Search locations..."
-                            triggerClassName="w-[96px] text-xs"
+                          <SalaryExpressionInput
+                            value={allocation.avg_monthly_salary}
+                            onCommit={(newVal) => onSalaryChange(wave.id, allocation.id, newVal)}
+                            disabled={isReadOnly}
+                            testId={`salary-${allocation.id}`}
                           />
                         </div></TooltipTrigger><TooltipContent side="bottom">
-                          <p className="text-xs font-medium">{allocation.base_location_name || 'Select location'}</p>
-                          {allocation.overhead_percentage > 0 && <p className="text-[10px] text-gray-400">OH: {allocation.overhead_percentage}%</p>}
+                          <p className="text-xs font-medium">${Number(allocation.avg_monthly_salary || 0).toLocaleString()}/month</p>
+                          <p className="text-[10px] text-gray-500">Tip: enter formulas like <code>3200+500</code>, <code>3200*25%</code>, <code>3200/2</code></p>
+                          {allocation.original_monthly_salary > 0 && allocation.avg_monthly_salary !== allocation.original_monthly_salary && (
+                            <p className="text-[10px] text-gray-400">Master rate: ${Number(allocation.original_monthly_salary).toLocaleString()}</p>
+                          )}
                         </TooltipContent></Tooltip>
-                      )}
-                    </td>
-                    {/* $/Month */}
-                    <td className="p-1 text-right" style={{ position: 'sticky', left: 396, zIndex: 2, background: stickyBg, minWidth: 86, maxWidth: 86 }}>
-                      <Tooltip><TooltipTrigger asChild><div>
-                        <SalaryExpressionInput
-                          value={allocation.avg_monthly_salary}
-                          onCommit={(newVal) => onSalaryChange(wave.id, allocation.id, newVal)}
-                          disabled={isReadOnly}
-                          testId={`salary-${allocation.id}`}
-                        />
-                      </div></TooltipTrigger><TooltipContent side="bottom">
-                        <p className="text-xs font-medium">${Number(allocation.avg_monthly_salary || 0).toLocaleString()}/month</p>
-                        <p className="text-[10px] text-gray-500">Tip: enter formulas like <code>3200+500</code>, <code>3200*25%</code>, <code>3200/2</code></p>
-                        {allocation.original_monthly_salary > 0 && allocation.avg_monthly_salary !== allocation.original_monthly_salary && (
-                          <p className="text-[10px] text-gray-400">Master rate: ${Number(allocation.original_monthly_salary).toLocaleString()}</p>
-                        )}
-                      </TooltipContent></Tooltip>
-                    </td>
-                    {/* Onsite */}
-                    <td className="p-1 text-center" style={{ position: 'sticky', left: 482, zIndex: 2, background: stickyBg, minWidth: 50, maxWidth: 50 }}>
-                      <button
-                        onClick={() => !isReadOnly && onToggleOnsite(wave.id, allocation.id)}
-                        disabled={isReadOnly}
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${allocation.is_onsite ? "bg-amber-500 text-white" : "bg-gray-200 text-gray-600"} ${isReadOnly ? "opacity-50 cursor-not-allowed" : ""}`}
-                        data-testid={`onsite-toggle-${allocation.id}`}
-                      >
-                        {allocation.is_onsite ? "ON" : "OFF"}
-                      </button>
-                    </td>
-                    {/* Travel */}
-                    <td className="p-1 text-center" style={{ position: 'sticky', left: 532, zIndex: 2, background: stickyBg, minWidth: 50, maxWidth: 50 }}>
-                      <Tooltip><TooltipTrigger asChild>
+                      </td>
+                      {/* Onsite */}
+                      <td className="p-1 text-center align-middle">
                         <button
-                          onClick={() => !isReadOnly && onToggleTravelRequired(wave.id, allocation.id)}
+                          onClick={() => !isReadOnly && onToggleOnsite(wave.id, allocation.id)}
                           disabled={isReadOnly}
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${allocation.travel_required ? "bg-purple-500 text-white" : "bg-gray-200 text-gray-600"} ${isReadOnly ? "opacity-50 cursor-not-allowed" : ""}`}
-                          data-testid={`travel-toggle-${allocation.id}`}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${allocation.is_onsite ? "bg-amber-500 text-white" : "bg-gray-200 text-gray-600"} ${isReadOnly ? "opacity-50 cursor-not-allowed" : ""}`}
+                          data-testid={`onsite-toggle-${allocation.id}`}
                         >
-                          {allocation.travel_required ? "YES" : "NO"}
+                          {allocation.is_onsite ? "ON" : "OFF"}
                         </button>
-                      </TooltipTrigger><TooltipContent side="bottom" className="max-w-xs p-3 text-xs">
-                        {allocation.travel_required ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 font-semibold text-purple-600"><Calculator className="w-4 h-4" /> Logistics Formula Applied</div>
-                            <div className="space-y-1 text-gray-600">
-                              <p><span className="font-medium">Per-diem:</span> MM x ${waveSummary.logistics?.config?.per_diem_daily || 50} x {waveSummary.logistics?.config?.per_diem_days || 30} days</p>
-                              <p><span className="font-medium">Accommodation:</span> MM x ${waveSummary.logistics?.config?.accommodation_daily || 80} x {waveSummary.logistics?.config?.accommodation_days || 30} days</p>
-                              <p><span className="font-medium">Conveyance:</span> MM x ${waveSummary.logistics?.config?.local_conveyance_daily || 15} x {waveSummary.logistics?.config?.local_conveyance_days || 21} days</p>
-                              <p><span className="font-medium">Air Fare:</span> 1 resource x ${waveSummary.logistics?.config?.flight_cost_per_trip || 450} x {waveSummary.logistics?.config?.num_trips || 6} trips</p>
-                              <p><span className="font-medium">Visa/Medical:</span> 1 resource x ${waveSummary.logistics?.config?.visa_medical_per_trip || 400} x {waveSummary.logistics?.config?.num_trips || 6} trips</p>
+                      </td>
+                      {/* Travel */}
+                      <td className="p-1 text-center align-middle">
+                        <Tooltip><TooltipTrigger asChild>
+                          <button
+                            onClick={() => !isReadOnly && onToggleTravelRequired(wave.id, allocation.id)}
+                            disabled={isReadOnly}
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${allocation.travel_required ? "bg-purple-500 text-white" : "bg-gray-200 text-gray-600"} ${isReadOnly ? "opacity-50 cursor-not-allowed" : ""}`}
+                            data-testid={`travel-toggle-${allocation.id}`}
+                          >
+                            {allocation.travel_required ? "YES" : "NO"}
+                          </button>
+                        </TooltipTrigger><TooltipContent side="bottom" className="max-w-xs p-3 text-xs">
+                          {allocation.travel_required ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 font-semibold text-purple-600"><Calculator className="w-4 h-4" /> Logistics Formula Applied</div>
+                              <div className="space-y-1 text-gray-600">
+                                <p><span className="font-medium">Per-diem:</span> MM x ${waveSummary.logistics?.config?.per_diem_daily || 50} x {waveSummary.logistics?.config?.per_diem_days || 30} days</p>
+                                <p><span className="font-medium">Accommodation:</span> MM x ${waveSummary.logistics?.config?.accommodation_daily || 80} x {waveSummary.logistics?.config?.accommodation_days || 30} days</p>
+                                <p><span className="font-medium">Conveyance:</span> MM x ${waveSummary.logistics?.config?.local_conveyance_daily || 15} x {waveSummary.logistics?.config?.local_conveyance_days || 21} days</p>
+                                <p><span className="font-medium">Air Fare:</span> 1 resource x ${waveSummary.logistics?.config?.flight_cost_per_trip || 450} x {waveSummary.logistics?.config?.num_trips || 6} trips</p>
+                                <p><span className="font-medium">Visa/Medical:</span> 1 resource x ${waveSummary.logistics?.config?.visa_medical_per_trip || 400} x {waveSummary.logistics?.config?.num_trips || 6} trips</p>
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <p>No travel logistics. Click to enable travel costs for this resource.</p>
-                        )}
-                      </TooltipContent></Tooltip>
-                    </td>
-                    {/* Group */}
-                    <td className="p-1 text-center" style={{ position: 'sticky', left: 582, zIndex: 2, background: stickyBg, minWidth: 40, maxWidth: 40, boxShadow: '3px 0 6px rgba(0,0,0,0.1)' }}>
-                      <Input
-                        type="text"
-                        placeholder=""
-                        className="w-10 text-center font-mono text-xs p-1"
-                        value={allocation.resource_group_id || ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setWaves(waves.map(w =>
-                            w.id === wave.id
-                              ? { ...w, grid_allocations: w.grid_allocations.map(a => a.id === allocation.id ? { ...a, resource_group_id: val } : a) }
-                              : w
-                          ));
-                        }}
-                        disabled={isReadOnly}
-                        data-testid={`group-${allocation.id}`}
-                      />
-                    </td>
-                    {/* Phase columns */}
-                    {wave.phase_names.map((_, phaseIndex) => (
-                      <td key={phaseIndex} className="p-2">
+                          ) : (
+                            <p>No travel logistics. Click to enable travel costs for this resource.</p>
+                          )}
+                        </TooltipContent></Tooltip>
+                      </td>
+                      {/* Group */}
+                      <td className="p-1 text-center align-middle">
                         <Input
-                          type="number"
-                          step="0.1"
-                          placeholder="0"
-                          className="w-20 text-center font-mono text-sm"
-                          value={allocation.phase_allocations[phaseIndex] || ""}
-                          onChange={(e) => onPhaseAllocationChange(wave.id, allocation.id, phaseIndex, e.target.value)}
-                          data-testid={`phase-${phaseIndex}-${allocation.id}`}
+                          type="text"
+                          placeholder=""
+                          className="w-10 text-center font-mono text-xs p-1"
+                          value={allocation.resource_group_id || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setWaves(waves.map(w =>
+                              w.id === wave.id
+                                ? { ...w, grid_allocations: w.grid_allocations.map(a => a.id === allocation.id ? { ...a, resource_group_id: val } : a) }
+                                : w
+                            ));
+                          }}
                           disabled={isReadOnly}
+                          data-testid={`group-${allocation.id}`}
                         />
                       </td>
-                    ))}
-                    {/* Calculated columns */}
-                    <td className="p-3 text-right font-mono tabular-nums font-semibold text-sm">{totalManMonths.toFixed(2)}</td>
-                    <td className="p-3 text-right font-mono tabular-nums text-sm text-gray-600">${baseSalaryCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                    <td className="p-3 text-right font-mono tabular-nums text-sm text-gray-500">
-                      ${overheadCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      <span className="text-xs ml-1">({allocation.overhead_percentage}%)</span>
-                    </td>
-                    <td className="p-3 text-right font-mono tabular-nums text-sm font-semibold bg-gray-50">${totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                    <td className="p-3 text-right font-mono tabular-nums text-sm font-semibold text-[#10B981] bg-green-50/50">
-                      ${sellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      {hasOverride && <div className="text-[10px] line-through text-gray-400">${calcSellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>}
-                    </td>
-                    <td className="p-3 text-right font-mono tabular-nums text-sm text-blue-600 bg-blue-50/30">
-                      ${spPerMM.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      {hasOverride && <div className="text-[10px] line-through text-gray-400">${(totalManMonths > 0 ? calcSellingPrice / totalManMonths : 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>}
-                    </td>
-                    <td className="p-3 text-right font-mono tabular-nums text-sm text-blue-600 bg-blue-50/30">
-                      ${hourlyPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      {hasOverride && <div className="text-[10px] line-through text-gray-400">${(totalManMonths > 0 ? calcSellingPrice / totalManMonths / 176 : 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>}
-                    </td>
-                    {/* Override hourly rate */}
-                    <td className="p-1 text-right bg-purple-50/30">
+                    </tr>
+                      )}
+                    </Draggable>
+                  );
+                })}
+                {provided.placeholder}
+              </tbody>
+                )}
+              </Droppable>
+            </table>
+          </div>
+
+          {/* ============ DIVIDER ============ */}
+          <div className="flex-shrink-0 w-[3px] bg-gradient-to-b from-[#0EA5E9]/40 via-[#3B82F6]/60 to-[#0EA5E9]/40" title="Freeze pane divider" />
+
+          {/* ============ RIGHT PANE (Phase months + calcs + actions) ============ */}
+          <div
+            ref={rightPaneRef}
+            onScroll={handleRightScroll}
+            className="flex-1 overflow-auto bg-white"
+            data-testid={`grid-right-pane-${wave.id}`}
+          >
+            <table className="border-collapse" style={{ minWidth: '100%' }}>
+              <thead className="sticky top-0 z-20 bg-[#F8FAFC]">
+                <tr className="border-b-2 border-[#E2E8F0] bg-[#F8FAFC]">
+                  {wave.phase_names.map((phaseName, index) => (
+                    <th key={index} className="text-center p-2 bg-[#E0F2FE]">
                       <Input
-                        type="number"
-                        step="1"
-                        placeholder=""
-                        className="w-16 text-right font-mono text-xs p-1"
-                        value={allocation.override_hourly_rate || ""}
-                        onChange={(e) => {
-                          const val = e.target.value ? parseFloat(e.target.value) : null;
-                          setWaves(waves.map(w =>
-                            w.id === wave.id
-                              ? { ...w, grid_allocations: w.grid_allocations.map(a => a.id === allocation.id ? { ...a, override_hourly_rate: val } : a) }
-                              : w
-                          ));
-                        }}
+                        value={phaseName}
+                        onChange={(e) => onUpdatePhaseName(wave.id, index, e.target.value)}
+                        className="w-20 text-center font-semibold text-xs border-0 bg-transparent focus:bg-white"
+                        data-testid={`phase-name-${index}`}
                         disabled={isReadOnly}
-                        data-testid={`override-hr-${allocation.id}`}
                       />
-                    </td>
-                    {/* Comments */}
-                    <td className="p-2">
-                      <Textarea
-                        placeholder="Comments..."
-                        className="w-32 h-8 text-xs resize-none min-h-[32px]"
-                        value={allocation.comments || ""}
-                        onChange={(e) => onAllocationCommentChange(wave.id, allocation.id, e.target.value)}
-                        disabled={isReadOnly}
-                        data-testid={`comment-${allocation.id}`}
-                      />
-                    </td>
-                    {/* Actions */}
-                    <td className="p-3 text-center">
-                      <div className="flex items-center justify-center gap-0.5">
-                        {!isReadOnly && (
-                          <>
-                            <Tooltip><TooltipTrigger asChild>
+                    </th>
+                  ))}
+                  <th className="text-right p-2 font-semibold text-xs">Total MM</th>
+                  <th className="text-right p-2 font-semibold text-xs">Salary Cost</th>
+                  <th className="text-right p-2 font-semibold text-xs">Overhead</th>
+                  <th className="text-right p-2 font-semibold text-xs bg-gray-50">Total Cost</th>
+                  <th className="text-right p-2 font-semibold text-xs bg-green-50">Selling Price</th>
+                  <th className="text-right p-2 font-semibold text-xs bg-blue-50">SP/MM</th>
+                  <th className="text-right p-2 font-semibold text-xs bg-blue-50">Hourly</th>
+                  <th className="text-right p-2 font-semibold text-xs w-16 bg-purple-50">Ovr $/Hr</th>
+                  <th className="text-left p-2 font-semibold text-xs">Comments</th>
+                  <th className="text-center p-2 font-semibold text-xs">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {wave.grid_allocations.map((allocation, rowIdx) => {
+                  const { totalManMonths, baseSalaryCost } = calcResourceBaseCostUtil(allocation);
+                  const overheadCost = baseSalaryCost * (allocation.overhead_percentage / 100);
+                  const totalCost = baseSalaryCost + overheadCost;
+                  const calcSellingPrice = totalCost / (1 - profitMarginPercentage / 100);
+                  const hasOverride = allocation.override_hourly_rate > 0;
+                  const sellingPrice = hasOverride ? allocation.override_hourly_rate * 176 * totalManMonths : calcSellingPrice;
+                  const spPerMM = totalManMonths > 0 ? sellingPrice / totalManMonths : 0;
+                  const hourlyPrice = hasOverride ? allocation.override_hourly_rate : (spPerMM / 176);
+                  const rowBg = allocation.is_onsite && allocation.travel_required
+                    ? "bg-amber-100/60"
+                    : allocation.is_onsite
+                    ? "bg-amber-50/40"
+                    : "bg-white";
+                  const isHovered = hoveredRowId === allocation.id;
+                  return (
+                    <tr
+                      key={allocation.id}
+                      data-row-id={allocation.id}
+                      onMouseEnter={() => setHoveredRowId(allocation.id)}
+                      onMouseLeave={() => setHoveredRowId(null)}
+                      className={`border-b border-[#E2E8F0] ${rowBg} ${isHovered ? 'ring-1 ring-inset ring-[#3B82F6]/30 bg-[#E0F2FE]/40' : ''}`}
+                      data-testid={`allocation-row-right-${allocation.id}`}
+                    >
+                      {/* Phase columns */}
+                      {wave.phase_names.map((_, phaseIndex) => (
+                        <td key={phaseIndex} className="p-2 align-middle">
+                          <Input
+                            type="number"
+                            step="0.1"
+                            placeholder="0"
+                            className="w-20 text-center font-mono text-sm"
+                            value={allocation.phase_allocations[phaseIndex] || ""}
+                            onChange={(e) => onPhaseAllocationChange(wave.id, allocation.id, phaseIndex, e.target.value)}
+                            data-testid={`phase-${phaseIndex}-${allocation.id}`}
+                            disabled={isReadOnly}
+                          />
+                        </td>
+                      ))}
+                      {/* Calculated columns */}
+                      <td className="p-3 text-right font-mono tabular-nums font-semibold text-sm align-middle">{totalManMonths.toFixed(2)}</td>
+                      <td className="p-3 text-right font-mono tabular-nums text-sm text-gray-600 align-middle">${baseSalaryCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                      <td className="p-3 text-right font-mono tabular-nums text-sm text-gray-500 align-middle">
+                        ${overheadCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        <span className="text-xs ml-1">({allocation.overhead_percentage}%)</span>
+                      </td>
+                      <td className="p-3 text-right font-mono tabular-nums text-sm font-semibold bg-gray-50 align-middle">${totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                      <td className="p-3 text-right font-mono tabular-nums text-sm font-semibold text-[#10B981] bg-green-50/50 align-middle">
+                        ${sellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        {hasOverride && <div className="text-[10px] line-through text-gray-400">${calcSellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>}
+                      </td>
+                      <td className="p-3 text-right font-mono tabular-nums text-sm text-blue-600 bg-blue-50/30 align-middle">
+                        ${spPerMM.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        {hasOverride && <div className="text-[10px] line-through text-gray-400">${(totalManMonths > 0 ? calcSellingPrice / totalManMonths : 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>}
+                      </td>
+                      <td className="p-3 text-right font-mono tabular-nums text-sm text-blue-600 bg-blue-50/30 align-middle">
+                        ${hourlyPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        {hasOverride && <div className="text-[10px] line-through text-gray-400">${(totalManMonths > 0 ? calcSellingPrice / totalManMonths / 176 : 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>}
+                      </td>
+                      {/* Override hourly rate */}
+                      <td className="p-1 text-right bg-purple-50/30 align-middle">
+                        <Input
+                          type="number"
+                          step="1"
+                          placeholder=""
+                          className="w-16 text-right font-mono text-xs p-1"
+                          value={allocation.override_hourly_rate || ""}
+                          onChange={(e) => {
+                            const val = e.target.value ? parseFloat(e.target.value) : null;
+                            setWaves(waves.map(w =>
+                              w.id === wave.id
+                                ? { ...w, grid_allocations: w.grid_allocations.map(a => a.id === allocation.id ? { ...a, override_hourly_rate: val } : a) }
+                                : w
+                            ));
+                          }}
+                          disabled={isReadOnly}
+                          data-testid={`override-hr-${allocation.id}`}
+                        />
+                      </td>
+                      {/* Comments */}
+                      <td className="p-2 align-middle">
+                        <Textarea
+                          placeholder="Comments..."
+                          className="w-32 h-8 text-xs resize-none min-h-[32px]"
+                          value={allocation.comments || ""}
+                          onChange={(e) => onAllocationCommentChange(wave.id, allocation.id, e.target.value)}
+                          disabled={isReadOnly}
+                          data-testid={`comment-${allocation.id}`}
+                        />
+                      </td>
+                      {/* Actions */}
+                      <td className="p-3 text-center align-middle">
+                        <div className="flex items-center justify-center gap-0.5">
+                          {!isReadOnly && (
+                            <>
+                              <Tooltip><TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost" size="icon"
+                                  className="h-7 w-7 text-[#8B5CF6] hover:text-[#8B5CF6] hover:bg-[#8B5CF6]/10"
+                                  onClick={() => {
+                                    setSplitRangeAllocationId(allocation.id);
+                                    setSplitRangeInput("");
+                                    setSplitRangeDialogOpen(true);
+                                  }}
+                                  data-testid={`apply-all-${allocation.id}`}
+                                >
+                                  <Calculator className="w-3.5 h-3.5" />
+                                </Button>
+                              </TooltipTrigger><TooltipContent><p>Apply value to months (supports split ranges)</p></TooltipContent></Tooltip>
+                              <Tooltip><TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost" size="icon"
+                                  className="h-7 w-7 text-[#0EA5E9] hover:text-[#0EA5E9] hover:bg-[#0EA5E9]/10"
+                                  onClick={() => onCopyAllocation && onCopyAllocation(wave.id, allocation.id)}
+                                  data-testid={`copy-allocation-${allocation.id}`}
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </Button>
+                              </TooltipTrigger><TooltipContent><p>Copy this row as a new row below</p></TooltipContent></Tooltip>
                               <Button
                                 variant="ghost" size="icon"
-                                className="h-7 w-7 text-[#8B5CF6] hover:text-[#8B5CF6] hover:bg-[#8B5CF6]/10"
-                                onClick={() => {
-                                  setSplitRangeAllocationId(allocation.id);
-                                  setSplitRangeInput("");
-                                  setSplitRangeDialogOpen(true);
-                                }}
-                                data-testid={`apply-all-${allocation.id}`}
+                                className="h-7 w-7 text-[#EF4444] hover:text-[#EF4444] hover:bg-[#EF4444]/10"
+                                onClick={() => onDeleteAllocation(wave.id, allocation.id)}
+                                data-testid={`delete-allocation-${allocation.id}`}
                               >
-                                <Calculator className="w-3.5 h-3.5" />
+                                <Trash2 className="w-3.5 h-3.5" />
                               </Button>
-                            </TooltipTrigger><TooltipContent><p>Apply value to months (supports split ranges)</p></TooltipContent></Tooltip>
-                            <Tooltip><TooltipTrigger asChild>
-                              <Button
-                                variant="ghost" size="icon"
-                                className="h-7 w-7 text-[#0EA5E9] hover:text-[#0EA5E9] hover:bg-[#0EA5E9]/10"
-                                onClick={() => onCopyAllocation && onCopyAllocation(wave.id, allocation.id)}
-                                data-testid={`copy-allocation-${allocation.id}`}
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                              </Button>
-                            </TooltipTrigger><TooltipContent><p>Copy this row as a new row below</p></TooltipContent></Tooltip>
-                            <Button
-                              variant="ghost" size="icon"
-                              className="h-7 w-7 text-[#EF4444] hover:text-[#EF4444] hover:bg-[#EF4444]/10"
-                              onClick={() => onDeleteAllocation(wave.id, allocation.id)}
-                              data-testid={`delete-allocation-${allocation.id}`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                    )}
-                  </Draggable>
-                );
-              })}
-              {provided.placeholder}
-            </tbody>
-              )}
-            </Droppable>
-          </table>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
         </DragDropContext>
       )}

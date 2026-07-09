@@ -105,6 +105,15 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 ### Iteration 68: Excel Export Duplicate AMS Roll-Up Fix (Completed Feb 2026)
 66. **P0 Excel export bug fix**: removed duplicate "AMS SHARED SUPPORT ROLL-UP" section that was rendering AFTER the Grand Total row on the Summary sheet in `excelExport.js`. AMS totals are still integrated into the Grand Total row exactly once. Testing agent + manual UI download verified.
 
+### Iteration 69: Wave Grid Split-Pane Layout (Completed Feb 2026)
+67. **Wave Grid split into two synchronized panes** at the Grp column for easier navigation on wide grids:
+    - **Left pane** (fixed 622px): drag-handle, #, Skill, Level, Location, $/Month, Onsite, Travel, Grp. Vertical scroll only (scrollbar hidden via `.no-scrollbar`).
+    - **Divider**: gradient blue 3px bar between panes.
+    - **Right pane** (flex-1): all Phase Month columns + Total MM, Salary Cost, Overhead, Total Cost, Selling Price, SP/MM, Hourly, Ovr $/Hr, Comments, Actions. Independent horizontal scroll.
+    - **Sync**: vertical scroll mirrored between panes; row hover (`hoveredRowId` state) highlights the row in both panes with a subtle ring + tint; `useLayoutEffect` measures row/header heights and syncs so rows line up perfectly.
+    - `DragDropContext` still wraps both panes; Droppable + Draggable live on the left pane so drag-reorder continues to work.
+    - CSS utility `.no-scrollbar` added to `App.css`.
+
 ### Iteration 62-63: AMS Cost in CTC + Excel Import AMS_Shared sheet fix (Completed Feb 2026)
 58. **Total CTC now includes AMS Shared Support cost**. Added `amsTotalCost = sum(hours_per_month × cost_rate) × ams_contract_months` for every AMS_Shared / AMS_Mix wave in `estimatorCalcs.js::calculateWaveSummary`. The aggregate flows into `costToCompany` (wave-level) and `totalAmsCost` (overall). Overall Summary card subtitle now displays `'all resources + AMS cost ($X)'` whenever any wave has AMS cost. Same change ported to `calculations.js` for `ProjectSummary.js` consumers. Live verified: $90k AMS cost rolled into CTC card.
 59. **P0 Excel Import bug fix**: pure AMS_Shared sheets with zero implementation resources were silently dropped because the AMS-section parse + `parsedWaves.push` were gated by `if (allocations.length > 0)`. Added a pre-scan that detects an `AMS SHARED SUPPORT` marker anywhere on the sheet and widened the gate to `allocations.length > 0 || hasAmsSection`. Live verified with user file `PRJ-0031_v2.xlsx`: Smart Import Preview now correctly shows 4 Waves Detected (was 3), and the AMS tab renders with Service 1 / 150h × $35 / $25, 12 months, Monthly + Advance ON.
