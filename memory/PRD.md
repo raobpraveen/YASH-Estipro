@@ -114,6 +114,13 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
     - `DragDropContext` still wraps both panes; Droppable + Draggable live on the left pane so drag-reorder continues to work.
     - CSS utility `.no-scrollbar` added to `App.css`.
 
+### Iteration 70: Excel Export Filename Enrichment (Completed Feb 2026)
+68. **Excel export filename** now includes customer name AND project description alongside project number + version.
+    - New format: `{PRJ-NNNN}_{Customer_Name}_{Description}_v{N}_Estimate.xlsx`
+    - Sanitizer strips filesystem-invalid chars (`\/:*?"<>|` + control chars), collapses whitespace to `_`, dedupes consecutive underscores, trims edges. Customer capped at 30 chars, description at 40 chars.
+    - Empty pieces auto-skipped so no dangling `__` separators.
+    - Project description was already surfaced in the Summary sheet's info block (line 371) — retained.
+
 ### Iteration 62-63: AMS Cost in CTC + Excel Import AMS_Shared sheet fix (Completed Feb 2026)
 58. **Total CTC now includes AMS Shared Support cost**. Added `amsTotalCost = sum(hours_per_month × cost_rate) × ams_contract_months` for every AMS_Shared / AMS_Mix wave in `estimatorCalcs.js::calculateWaveSummary`. The aggregate flows into `costToCompany` (wave-level) and `totalAmsCost` (overall). Overall Summary card subtitle now displays `'all resources + AMS cost ($X)'` whenever any wave has AMS cost. Same change ported to `calculations.js` for `ProjectSummary.js` consumers. Live verified: $90k AMS cost rolled into CTC card.
 59. **P0 Excel Import bug fix**: pure AMS_Shared sheets with zero implementation resources were silently dropped because the AMS-section parse + `parsedWaves.push` were gated by `if (allocations.length > 0)`. Added a pre-scan that detects an `AMS SHARED SUPPORT` marker anywhere on the sheet and widened the gate to `allocations.length > 0 || hasAmsSection`. Live verified with user file `PRJ-0031_v2.xlsx`: Smart Import Preview now correctly shows 4 Waves Detected (was 3), and the AMS tab renders with Service 1 / 150h × $35 / $25, 12 months, Monthly + Advance ON.
