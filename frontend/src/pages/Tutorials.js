@@ -350,7 +350,7 @@ const TUTORIALS = [
     description: "Set up a recurring AMS service contract — pick an engagement type, define service buckets with Hours/Month, Hourly Price and Cost Rate, and configure Monthly or Quarterly billing with the Bill-in-Advance toggle.",
     duration: "5 min",
     category: "Core Features",
-    updated: "Feb 2026 · Iter 63",
+    updated: "Jul 2025 · Iter 63",
     icon: Zap,
     color: "bg-purple-600",
     steps: [
@@ -370,7 +370,7 @@ const TUTORIALS = [
     description: "Understand the new Effective Margin formula (Grand Total denominator) and how AMS internal cost rolls into Total CTC in the Overall Summary.",
     duration: "3 min",
     category: "Core Features",
-    updated: "Feb 2026 · Iter 64",
+    updated: "Jul 2025 · Iter 64",
     icon: Percent,
     color: "bg-indigo-600",
     steps: [
@@ -389,7 +389,7 @@ const TUTORIALS = [
     description: "Master the two-pane Wave Grid (freeze at the Grp column) and drag wave tabs left or right to reorder the whole project — Gantt, exports and summaries follow in one shot.",
     duration: "3 min",
     category: "Core Features",
-    updated: "Feb 2026 · Iter 72",
+    updated: "Jul 2025 · Iter 72",
     icon: Layers,
     color: "bg-blue-600",
     steps: [
@@ -411,7 +411,7 @@ const TUTORIALS = [
     description: "See how every downloaded file — Estimate, Cashflow, Milestones, Gantt PNG and Gantt Excel — now uses the same {PRJ}_{Customer}_{ProjectName}_v{N}_{Suffix}.{ext} convention.",
     duration: "2 min",
     category: "Reports",
-    updated: "Feb 2026 · Iter 71",
+    updated: "Jul 2025 · Iter 71",
     icon: FileSpreadsheet,
     color: "bg-emerald-600",
     steps: [

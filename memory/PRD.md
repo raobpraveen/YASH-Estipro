@@ -85,7 +85,7 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 49. Wave Final Price moved AFTER AMS Annual Billing in Excel Summary sheet for AMS_Mix waves.
 50. Gantt + Wave grid controls disabled for pure AMS_Shared waves.
 
-### Iteration 60-61: AMS Billing Frequency, Hourly Price rename, Excel import P0 fix, Add-Wave dialog overflow (Completed Feb 2026)
+### Iteration 60-61: AMS Billing Frequency, Hourly Price rename, Excel import P0 fix, Add-Wave dialog overflow (Completed Jul 2025)
 51. **'Hourly Rate' → 'Hourly Price'** rename across all AMS-applicable surfaces only (AMS panel header, Payment Milestones AMS card, Excel AMS sheet bucket column). T&M `$/Hr` labels unchanged.
 52. **AMS Billing Frequency**: new `ProjectWave.ams_billing_frequency` ("Monthly" | "Quarterly") and `ams_billing_advance` (bool) fields with backward-compatible defaults (Monthly/false). Editable from Add-Wave dialog AND inline from AmsSharedPanel controls.
 53. **Cashflow logic**: Advance ON → AMS revenue lands on the FIRST day of each billing period (ignoring `payment_terms_days`); the corresponding `advance_revenue` field is set. Advance OFF → AMS revenue lands `payment_terms_days` days after the END of each period. Quarterly bunches billing into 3-month periods. AMS cost remains level monthly regardless.
@@ -94,7 +94,7 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 56. **Excel Import phantom-row fix** (`excelImport.js`): rewrote section-terminator detection to scan the first 3 columns for markers (`TOTALS`, `LOGISTICS BREAKDOWN`, `AMS SHARED SUPPORT`, `WAVE SUMMARY`, `PHASE RANGES`, etc.) AND validate that allocation rows have a positive-integer `#` column and a non-numeric skill name. Eliminates phantom empty resource rows.
 57. **Add-Wave dialog overflow fix**: dialog now scrolls internally (`max-h-[90vh] overflow-y-auto`) for AMS engagement types.
 
-### Iteration 64-68: AMS + Cashflow + Gantt + Projects List (Completed Feb 2026)
+### Iteration 64-68: AMS + Cashflow + Gantt + Projects List (Completed Jul 2025)
 60. **T&M cashflow honors `wave_start_month`**: revenue offset now applied from `wave_start_month + payment_terms_days` (not just M1). Same rule for AMS. Live-verified across multi-wave projects.
 61. **Copy Row in Resource Grid**: new "Copy" action per row duplicates the resource with all allocations, phase config, and logistics preserved. Toast + focus on new row.
 62. **AMS waves on Gantt Chart**: `GanttCard.js` now renders AMS_Shared / AMS_Mix waves with distinct color band spanning `wave_start_month → wave_start_month + ams_contract_months`. Milestones + phase ranges still work for AMS_Mix.
@@ -102,10 +102,10 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 64. **Help Docs "Last Updated" badges**: UserManual, SupportGuide, Tutorials pages now show dynamic badges for every section reflecting last iteration touched.
 65. **Master data seeding + PRJ-0043 replication**: Excel-parsing scripts to seed activities/deliverables/competencies and clone a reference project.
 
-### Iteration 68: Excel Export Duplicate AMS Roll-Up Fix (Completed Feb 2026)
+### Iteration 68: Excel Export Duplicate AMS Roll-Up Fix (Completed Jul 2025)
 66. **P0 Excel export bug fix**: removed duplicate "AMS SHARED SUPPORT ROLL-UP" section that was rendering AFTER the Grand Total row on the Summary sheet in `excelExport.js`. AMS totals are still integrated into the Grand Total row exactly once. Testing agent + manual UI download verified.
 
-### Iteration 69: Wave Grid Split-Pane Layout (Completed Feb 2026)
+### Iteration 69: Wave Grid Split-Pane Layout (Completed Jul 2025)
 67. **Wave Grid split into two synchronized panes** at the Grp column for easier navigation on wide grids:
     - **Left pane** (fixed 622px): drag-handle, #, Skill, Level, Location, $/Month, Onsite, Travel, Grp. Vertical scroll only (scrollbar hidden via `.no-scrollbar`).
     - **Divider**: gradient blue 3px bar between panes.
@@ -114,21 +114,21 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
     - `DragDropContext` still wraps both panes; Droppable + Draggable live on the left pane so drag-reorder continues to work.
     - CSS utility `.no-scrollbar` added to `App.css`.
 
-### Iteration 70: Excel Export Filename Enrichment (Completed Feb 2026)
+### Iteration 70: Excel Export Filename Enrichment (Completed Jul 2025)
 68. **Excel export filename** now includes customer name AND project description alongside project number + version.
     - New format: `{PRJ-NNNN}_{Customer_Name}_{Description}_v{N}_Estimate.xlsx`
     - Sanitizer strips filesystem-invalid chars (`\/:*?"<>|` + control chars), collapses whitespace to `_`, dedupes consecutive underscores, trims edges. Customer capped at 30 chars, description at 40 chars.
     - Empty pieces auto-skipped so no dangling `__` separators.
     - Project description was already surfaced in the Summary sheet's info block (line 371) — retained.
 
-### Iteration 71: Consistent Filename Naming Across All Exports (Completed Feb 2026)
+### Iteration 71: Consistent Filename Naming Across All Exports (Completed Jul 2025)
 69. **Shared filename builder** — `/utils/filename.js` with `sanitizeForFilename()` + `buildExportFilename()` producing `{PRJ}_{Customer}_{ProjectName}_v{N}_{Suffix}.{ext}` for every download. Middle slot now uses **project name** (not free-form description field, which often contained junk like `"22"`).
 70. **Cashflow export** (`CashflowStatement.js`) uses shared builder — `PRJ-0035_Abraj_Energy_SAP_S4_Transformation_v1_Cashflow.xlsx`.
 71. **Milestones export** (`PaymentMilestones.js`) uses shared builder — `..._v1_Milestones.xlsx`.
 72. **Gantt exports** (`GanttCard.js`) — PNG (`..._Gantt.png`) and Excel (`..._Gantt.xlsx`) now include customer + project name. Fixed follow-up bug where the PNG `saveAs` still hardcoded `gantt-chart.png`.
 73. **Backend cashflow API** (`/api/projects/{id}/cashflow`) response extended with `customer_name`, `description`, `version` so the frontend can build filenames without a second fetch.
 
-### Iteration 72: Draggable Wave Tab Reordering (Completed Feb 2026)
+### Iteration 72: Draggable Wave Tab Reordering (Completed Jul 2025)
 74. **Wave tabs are now drag-reorderable** on the estimator when a project has 2+ waves.
     - Uses `@hello-pangea/dnd` (already installed) — `DragDropContext` + horizontal `Droppable` + `Draggable` wrapping each `TabsTrigger`.
     - Small `GripVertical` icon on each tab (only shown when reorder is possible) plus `cursor: grab` and a tooltip "Drag to reorder waves".
@@ -138,14 +138,14 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
     - Click behaviour on tabs is preserved (hello-pangea/dnd only intercepts once the drag threshold is exceeded).
     - Handler: `handleWaveTabDragEnd` in `/pages/ProjectEstimator.js` splices the array and toasts "Moved '{waveName}' to position N".
 
-### Iteration 73: Help Docs Refresh for Iter 68–72 (Completed Feb 2026)
-75. **UserManual.js** — bumped "What's New" badge to `Feb 2026 · Iter 72`, added new subsection **0.8 UX & Export Polish (Iter 68–72)** covering wave grid split-pane, draggable wave tabs, standardised export filenames, and the AMS duplicate roll-up fix.
+### Iteration 73: Help Docs Refresh for Iter 68–72 (Completed Jul 2025)
+75. **UserManual.js** — bumped "What's New" badge to `Jul 2025 · Iter 72`, added new subsection **0.8 UX & Export Polish (Iter 68–72)** covering wave grid split-pane, draggable wave tabs, standardised export filenames, and the AMS duplicate roll-up fix.
 76. **SupportGuide.js** — added new subsection **15.7 Iteration 68–72 UX & Export Polish** with technical implementation notes (files touched, function names, edge cases). Renamed the old 15.7 Test Coverage to 15.8.
 77. **Tutorials.js** — added two new step-by-step tutorials:
-    - `wave-grid-split-pane` (Feb 2026 · Iter 72) — 8 steps covering the two-pane grid + wave tab drag reorder + downstream effects on Gantt / exports / summaries.
-    - `consistent-export-filenames` (Feb 2026 · Iter 71) — 7 steps covering the standardised `{PRJ}_{Customer}_{ProjectName}_v{N}_{Suffix}.{ext}` convention across Estimate / Cashflow / Milestones / Gantt.
+    - `wave-grid-split-pane` (Jul 2025 · Iter 72) — 8 steps covering the two-pane grid + wave tab drag reorder + downstream effects on Gantt / exports / summaries.
+    - `consistent-export-filenames` (Jul 2025 · Iter 71) — 7 steps covering the standardised `{PRJ}_{Customer}_{ProjectName}_v{N}_{Suffix}.{ext}` convention across Estimate / Cashflow / Milestones / Gantt.
 
-### Iteration 62-63: AMS Cost in CTC + Excel Import AMS_Shared sheet fix (Completed Feb 2026)
+### Iteration 62-63: AMS Cost in CTC + Excel Import AMS_Shared sheet fix (Completed Jul 2025)
 58. **Total CTC now includes AMS Shared Support cost**. Added `amsTotalCost = sum(hours_per_month × cost_rate) × ams_contract_months` for every AMS_Shared / AMS_Mix wave in `estimatorCalcs.js::calculateWaveSummary`. The aggregate flows into `costToCompany` (wave-level) and `totalAmsCost` (overall). Overall Summary card subtitle now displays `'all resources + AMS cost ($X)'` whenever any wave has AMS cost. Same change ported to `calculations.js` for `ProjectSummary.js` consumers. Live verified: $90k AMS cost rolled into CTC card.
 59. **P0 Excel Import bug fix**: pure AMS_Shared sheets with zero implementation resources were silently dropped because the AMS-section parse + `parsedWaves.push` were gated by `if (allocations.length > 0)`. Added a pre-scan that detects an `AMS SHARED SUPPORT` marker anywhere on the sheet and widened the gate to `allocations.length > 0 || hasAmsSection`. Live verified with user file `PRJ-0031_v2.xlsx`: Smart Import Preview now correctly shows 4 Waves Detected (was 3), and the AMS tab renders with Service 1 / 150h × $35 / $25, 12 months, Monthly + Advance ON.
 
