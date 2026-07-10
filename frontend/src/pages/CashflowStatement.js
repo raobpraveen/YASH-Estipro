@@ -169,9 +169,8 @@ const CashflowStatement = () => {
       const buffer = await wb.xlsx.writeBuffer();
       const fileName = buildExportFilename({
         projectNumber: cashflow.project_number,
-        projectName: cashflow.project_name,
         customerName: cashflow.customer_name,
-        description: cashflow.description,
+        projectName: cashflow.project_name,
         version: cashflow.version,
         suffix: "Cashflow",
       });

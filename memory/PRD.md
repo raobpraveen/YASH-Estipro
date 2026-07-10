@@ -122,10 +122,10 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
     - Project description was already surfaced in the Summary sheet's info block (line 371) — retained.
 
 ### Iteration 71: Consistent Filename Naming Across All Exports (Completed Feb 2026)
-69. **Shared filename builder** — new `/utils/filename.js` with `sanitizeForFilename()` + `buildExportFilename()` producing `{PRJ}_{Customer}_{Description}_v{N}_{Suffix}.{ext}` for every download.
-70. **Cashflow export** (`CashflowStatement.js`) now uses shared builder — `PRJ-0035_Abraj_Energy_..._v1_Cashflow.xlsx`.
+69. **Shared filename builder** — `/utils/filename.js` with `sanitizeForFilename()` + `buildExportFilename()` producing `{PRJ}_{Customer}_{ProjectName}_v{N}_{Suffix}.{ext}` for every download. Middle slot now uses **project name** (not free-form description field, which often contained junk like `"22"`).
+70. **Cashflow export** (`CashflowStatement.js`) uses shared builder — `PRJ-0035_Abraj_Energy_SAP_S4_Transformation_v1_Cashflow.xlsx`.
 71. **Milestones export** (`PaymentMilestones.js`) uses shared builder — `..._v1_Milestones.xlsx`.
-72. **Gantt exports** (`GanttCard.js`) — PNG (`..._Gantt.png`) and Excel (`..._Gantt.xlsx`) now include customer + description; `ProjectEstimator.js` now passes `projectNumber`, `projectName`, `customerName`, `projectDescription`, `projectVersion` props to `GanttCard`.
+72. **Gantt exports** (`GanttCard.js`) — PNG (`..._Gantt.png`) and Excel (`..._Gantt.xlsx`) now include customer + project name. Fixed follow-up bug where the PNG `saveAs` still hardcoded `gantt-chart.png`.
 73. **Backend cashflow API** (`/api/projects/{id}/cashflow`) response extended with `customer_name`, `description`, `version` so the frontend can build filenames without a second fetch.
 
 ### Iteration 62-63: AMS Cost in CTC + Excel Import AMS_Shared sheet fix (Completed Feb 2026)

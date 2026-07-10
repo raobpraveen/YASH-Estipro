@@ -247,7 +247,11 @@ export const GanttCard = ({
     if (!chartRef.current) return;
     try {
       const canvas = await html2canvas(chartRef.current, { scale: 2, backgroundColor: "#FFFFFF" });
-      canvas.toBlob(blob => { if (blob) saveAs(blob, "gantt-chart.png"); });
+      const pngName = buildExportFilename({
+        projectNumber, customerName, projectName,
+        version: projectVersion, suffix: "Gantt", ext: "png",
+      });
+      canvas.toBlob(blob => { if (blob) saveAs(blob, pngName); });
     } catch (e) { console.error("PNG export failed:", e); }
   };
 
@@ -311,7 +315,7 @@ export const GanttCard = ({
       ws.getColumn(1).width = 18; ws.getColumn(2).width = 16;
       const buffer = await wb.xlsx.writeBuffer();
       const xlsxName = buildExportFilename({
-        projectNumber, projectName, customerName, description: projectDescription,
+        projectNumber, customerName, projectName,
         version: projectVersion, suffix: "Gantt", ext: "xlsx",
       });
       saveAs(new Blob([buffer]), xlsxName);

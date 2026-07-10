@@ -292,9 +292,8 @@ const PaymentMilestones = () => {
       const buffer = await wb.xlsx.writeBuffer();
       const fileName = buildExportFilename({
         projectNumber: project.project_number,
-        projectName: project.name,
         customerName: project.customer_name,
-        description: project.description,
+        projectName: project.name,
         version: project.version,
         suffix: "Milestones",
       });

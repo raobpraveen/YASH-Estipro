@@ -807,9 +807,8 @@ export async function buildExportWorkbook({
   const buffer = await wb.xlsx.writeBuffer();
   const fileName = buildExportFilename({
     projectNumber,
-    projectName,
     customerName: selectedCustomer?.name,
-    description: projectDescription,
+    projectName,
     version: projectVersion,
     suffix: "Estimate",
   });
