@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 const TOC = [
-  { id: "whats-new", title: "0. What's New (2025)", icon: Info },
+  { id: "whats-new", title: "0. What's New (2026)", icon: Info },
   { id: "getting-started", title: "1. Getting Started", icon: BookOpen },
   { id: "dashboard", title: "2. Dashboard & Analytics", icon: LayoutDashboard },
   { id: "projects", title: "3. Project Management", icon: FolderKanban },
@@ -168,8 +168,8 @@ export default function UserManual() {
         {/* Content */}
         <div className="flex-1 min-w-0" ref={contentRef}>
           {/* Section 0: What's New */}
-          <Section id="whats-new" title="0. What's New (2025)" updated="Jul 2025 · Iter 72">
-            <p>Recent updates rolled out across Phase 4, Phase 5, Iteration 56, the AMS Shared Support rollout (Iterations 57–64), and the Jul 2025 UX + export polish batch (Iterations 68–72). The most impactful changes are highlighted here so you can spot the differences quickly.</p>
+          <Section id="whats-new" title="0. What's New (2026)" updated="Jul 2026 · Iter 72">
+            <p>Recent updates rolled out across Phase 4, Phase 5, Iteration 56, the AMS Shared Support rollout (Iterations 57–64), and the Jul 2026 UX + export polish batch (Iterations 68–72). The most impactful changes are highlighted here so you can spot the differences quickly.</p>
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.1 Status &amp; Workflow</h3>
             <KeyValue label="Commercial Status">A separate post-approval field with options: Pending for Submission, Submitted to Customer, Won, Lost, Cancelled. Visible only on Approved / Suspended / In Review projects. Displayed as a badge in the Projects list.</KeyValue>
@@ -544,7 +544,7 @@ export default function UserManual() {
           </Section>
 
           {/* Section 6: Cost Calculations */}
-          <Section id="cost-calc" title="6. Cost Calculations & CTC" updated="Jul 2025 · Iter 64">
+          <Section id="cost-calc" title="6. Cost Calculations & CTC" updated="Jul 2026 · Iter 64">
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">6.1 Row-Level Calculation</h3>
             <div className="bg-gray-50 p-4 rounded-lg border font-mono text-sm space-y-2 my-3">
               <p><strong>Salary Cost</strong> = Avg Monthly Salary &times; Total Man-Months</p>
@@ -749,7 +749,7 @@ export default function UserManual() {
           </Section>
 
           {/* Section 13: Smart Import */}
-          <Section id="smart-import" title="13. Smart Import" updated="Jul 2025 · Iter 63">
+          <Section id="smart-import" title="13. Smart Import" updated="Jul 2026 · Iter 63">
             <p>Re-import an EstiPro-exported Excel file to update or create project versions.</p>
             <Step num="1">Click <strong>Smart Import</strong> in the Estimator toolbar.</Step>
             <Step num="2">Upload an EstiPro-exported Excel file (.xlsx).</Step>
@@ -818,7 +818,7 @@ export default function UserManual() {
           </Section>
 
           {/* Section 15: Payment Milestones */}
-          <Section id="milestones" title="15. Payment Milestones &amp; Markers" updated="Jul 2025 · Iter 60">
+          <Section id="milestones" title="15. Payment Milestones &amp; Markers" updated="Jul 2026 · Iter 60">
             <p>Define payment schedules and freehold markers per wave to track expected revenue and project checkpoints.</p>
             
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">15.1 Accessing Milestones</h3>
@@ -886,7 +886,7 @@ export default function UserManual() {
           </Section>
 
           {/* Section 16: Cashflow Statement */}
-          <Section id="cashflow" title="16. Cashflow Statement" updated="Jul 2025 · Iter 60">
+          <Section id="cashflow" title="16. Cashflow Statement" updated="Jul 2026 · Iter 60">
             <p>View monthly cash outflows (costs) and cash inflows (milestone payments) for a project, broken down by wave.</p>
             
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-2">16.1 Accessing Cashflow</h3>
@@ -1043,7 +1043,7 @@ export default function UserManual() {
               <img src="/yash-logo-new.png" alt="YASH" className="h-6 object-contain" />
               <img src="/estipro-logo-new.png" alt="EstiPro" className="h-6 object-contain" />
             </div>
-            <p>YASH EstiPro User Manual &mdash; &copy; 2025 YASH Technologies. All rights reserved.</p>
+            <p>YASH EstiPro User Manual &mdash; &copy; 2026 YASH Technologies. All rights reserved.</p>
             <p className="text-xs text-gray-400 mt-1">Version 1.0 &mdash; Last updated: {new Date().toLocaleDateString()}</p>
           </div>
         </div>

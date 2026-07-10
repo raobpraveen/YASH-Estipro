@@ -879,7 +879,7 @@ mongosh --eval "db.adminCommand('ping')"`}
           </Section>
 
           {/* Section 15: Release Notes */}
-          <Section id="release-notes" title="15. Release Notes (2025)" updated="Jul 2025 · Iter 64">
+          <Section id="release-notes" title="15. Release Notes (2025)" updated="Jul 2026 · Iter 64">
             <p>This section summarises everything shipped in the recent rollouts. Use this as a reference when communicating changes to users.</p>
 
             <h3 className="text-lg font-semibold text-[#10B981] mt-4">15.1 Phase 4 — Status &amp; Workflow</h3>
@@ -973,7 +973,7 @@ mongosh --eval "db.adminCommand('ping')"`}
               <img src="/yash-logo-new.png" alt="YASH" className="h-6 object-contain" />
               <img src="/estipro-logo-new.png" alt="EstiPro" className="h-6 object-contain" />
             </div>
-            <p>YASH EstiPro Support Guide &mdash; &copy; 2025 YASH Technologies. All rights reserved.</p>
+            <p>YASH EstiPro Support Guide &mdash; &copy; 2026 YASH Technologies. All rights reserved.</p>
             <p className="text-xs text-gray-400 mt-1">Version 1.0 &mdash; Last updated: {new Date().toLocaleDateString()}</p>
           </div>
         </div>
