@@ -1711,7 +1711,7 @@ const ProjectEstimator = () => {
       />
 
       {/* Gantt Chart */}
-      <GanttCard projectId={projectId} waves={waves} setWaves={setWaves} milestones={ganttMilestones} ganttChart={ganttChart} ganttLoading={ganttLoading} ganttInputRef={ganttInputRef} handleGanttUpload={handleGanttUpload} handleGanttDelete={handleGanttDelete} isReadOnly={isReadOnly} collapsedSections={collapsedSections} toggleSection={toggleSection} onSaveMilestones={saveGanttMilestones} />
+      <GanttCard projectId={projectId} projectNumber={projectNumber} projectName={projectName} customerName={customers.find(c => c.id === customerId)?.name || ""} projectDescription={projectDescription} projectVersion={projectVersion} waves={waves} setWaves={setWaves} milestones={ganttMilestones} ganttChart={ganttChart} ganttLoading={ganttLoading} ganttInputRef={ganttInputRef} handleGanttUpload={handleGanttUpload} handleGanttDelete={handleGanttDelete} isReadOnly={isReadOnly} collapsedSections={collapsedSections} toggleSection={toggleSection} onSaveMilestones={saveGanttMilestones} />
 
       {/* Overall Summary Cards */}
       <OverallSummary overall={overall} profitMarginPercentage={profitMarginPercentage} collapsedSections={collapsedSections} toggleSection={toggleSection} />

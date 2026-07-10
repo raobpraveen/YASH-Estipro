@@ -9,6 +9,7 @@ import { ArrowLeft, FileDown, TrendingUp, TrendingDown, DollarSign, ChevronDown,
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
+import { buildExportFilename } from "@/utils/filename";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const fmt = (v) => `$${(v || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -166,7 +167,14 @@ const CashflowStatement = () => {
       stRow.eachCell((c) => { c.fill = waveFill; c.border = thinBorder; });
 
       const buffer = await wb.xlsx.writeBuffer();
-      const fileName = `${cashflow.project_number || "Project"}_Cashflow.xlsx`;
+      const fileName = buildExportFilename({
+        projectNumber: cashflow.project_number,
+        projectName: cashflow.project_name,
+        customerName: cashflow.customer_name,
+        description: cashflow.description,
+        version: cashflow.version,
+        suffix: "Cashflow",
+      });
       const uploadRes = await fetch(`${API}/download-file`, {
         method: "POST",
         headers: { "X-Filename": fileName, "X-Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },

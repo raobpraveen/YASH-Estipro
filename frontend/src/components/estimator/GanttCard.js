@@ -5,6 +5,7 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import html2canvas from "html2canvas";
 import { useRef, useState, useCallback } from "react";
+import { buildExportFilename } from "@/utils/filename";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -145,7 +146,8 @@ const buildMilestoneMarkers = (milestones, waves) => {
 };
 
 export const GanttCard = ({
-  projectId, waves, setWaves, milestones = [], ganttChart, ganttLoading,
+  projectId, projectNumber, projectName, customerName, projectDescription, projectVersion,
+  waves, setWaves, milestones = [], ganttChart, ganttLoading,
   ganttInputRef, handleGanttUpload, handleGanttDelete,
   isReadOnly, collapsedSections, toggleSection,
   onSaveMilestones,
@@ -308,7 +310,11 @@ export const GanttCard = ({
 
       ws.getColumn(1).width = 18; ws.getColumn(2).width = 16;
       const buffer = await wb.xlsx.writeBuffer();
-      saveAs(new Blob([buffer]), "gantt-chart.xlsx");
+      const xlsxName = buildExportFilename({
+        projectNumber, projectName, customerName, description: projectDescription,
+        version: projectVersion, suffix: "Gantt", ext: "xlsx",
+      });
+      saveAs(new Blob([buffer]), xlsxName);
     } catch (e) { console.error("Excel export failed:", e); }
   };
 

@@ -10,6 +10,7 @@ import { Plus, Trash2, Save, ArrowLeft, DollarSign, Target, ChevronDown, Chevron
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
 import { calculateWaveSummary } from "@/utils/estimatorCalcs";
+import { buildExportFilename } from "@/utils/filename";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -289,7 +290,14 @@ const PaymentMilestones = () => {
       }
 
       const buffer = await wb.xlsx.writeBuffer();
-      const fileName = `${project.project_number || "Project"}_Milestones.xlsx`;
+      const fileName = buildExportFilename({
+        projectNumber: project.project_number,
+        projectName: project.name,
+        customerName: project.customer_name,
+        description: project.description,
+        version: project.version,
+        suffix: "Milestones",
+      });
       const uploadRes = await fetch(`${API}/download-file`, {
         method: "POST",
         headers: { "X-Filename": fileName, "X-Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },

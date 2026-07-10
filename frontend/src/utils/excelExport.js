@@ -4,6 +4,7 @@
  */
 import ExcelJS from "exceljs";
 import { calculateResourceBaseCost, getLogisticsConfig, calculateOverallSummary } from "./estimatorCalcs";
+import { buildExportFilename } from "./filename";
 
 /**
  * Build and return the Excel buffer for export.
@@ -804,20 +805,13 @@ export async function buildExportWorkbook({
   }
 
   const buffer = await wb.xlsx.writeBuffer();
-  // Sanitize a string for safe filesystem use: strip invalid chars, collapse whitespace, cap length
-  const sanitize = (s, max = 40) => String(s || "")
-    .replace(/[\\/:*?"<>|\r\n\t]/g, "")
-    .replace(/\s+/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .substring(0, max);
-  const customerPart = sanitize(selectedCustomer?.name, 30);
-  const descPart = sanitize(projectDescription, 40);
-  const nameParts = [
-    projectNumber || projectName || "Project",
-    customerPart,
-    descPart,
-  ].filter(Boolean);
-  const fileName = `${nameParts.join("_")}_v${projectVersion}_Estimate.xlsx`;
+  const fileName = buildExportFilename({
+    projectNumber,
+    projectName,
+    customerName: selectedCustomer?.name,
+    description: projectDescription,
+    version: projectVersion,
+    suffix: "Estimate",
+  });
   return { buffer, fileName };
 }
