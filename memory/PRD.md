@@ -138,6 +138,13 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
     - Click behaviour on tabs is preserved (hello-pangea/dnd only intercepts once the drag threshold is exceeded).
     - Handler: `handleWaveTabDragEnd` in `/pages/ProjectEstimator.js` splices the array and toasts "Moved '{waveName}' to position N".
 
+### Iteration 73: Help Docs Refresh for Iter 68–72 (Completed Feb 2026)
+75. **UserManual.js** — bumped "What's New" badge to `Feb 2026 · Iter 72`, added new subsection **0.8 UX & Export Polish (Iter 68–72)** covering wave grid split-pane, draggable wave tabs, standardised export filenames, and the AMS duplicate roll-up fix.
+76. **SupportGuide.js** — added new subsection **15.7 Iteration 68–72 UX & Export Polish** with technical implementation notes (files touched, function names, edge cases). Renamed the old 15.7 Test Coverage to 15.8.
+77. **Tutorials.js** — added two new step-by-step tutorials:
+    - `wave-grid-split-pane` (Feb 2026 · Iter 72) — 8 steps covering the two-pane grid + wave tab drag reorder + downstream effects on Gantt / exports / summaries.
+    - `consistent-export-filenames` (Feb 2026 · Iter 71) — 7 steps covering the standardised `{PRJ}_{Customer}_{ProjectName}_v{N}_{Suffix}.{ext}` convention across Estimate / Cashflow / Milestones / Gantt.
+
 ### Iteration 62-63: AMS Cost in CTC + Excel Import AMS_Shared sheet fix (Completed Feb 2026)
 58. **Total CTC now includes AMS Shared Support cost**. Added `amsTotalCost = sum(hours_per_month × cost_rate) × ams_contract_months` for every AMS_Shared / AMS_Mix wave in `estimatorCalcs.js::calculateWaveSummary`. The aggregate flows into `costToCompany` (wave-level) and `totalAmsCost` (overall). Overall Summary card subtitle now displays `'all resources + AMS cost ($X)'` whenever any wave has AMS cost. Same change ported to `calculations.js` for `ProjectSummary.js` consumers. Live verified: $90k AMS cost rolled into CTC card.
 59. **P0 Excel Import bug fix**: pure AMS_Shared sheets with zero implementation resources were silently dropped because the AMS-section parse + `parsedWaves.push` were gated by `if (allocations.length > 0)`. Added a pre-scan that detects an `AMS SHARED SUPPORT` marker anywhere on the sheet and widened the gate to `allocations.length > 0 || hasAmsSection`. Live verified with user file `PRJ-0031_v2.xlsx`: Smart Import Preview now correctly shows 4 Waves Detected (was 3), and the AMS tab renders with Service 1 / 150h × $35 / $25, 12 months, Monthly + Advance ON.

@@ -168,8 +168,8 @@ export default function UserManual() {
         {/* Content */}
         <div className="flex-1 min-w-0" ref={contentRef}>
           {/* Section 0: What's New */}
-          <Section id="whats-new" title="0. What's New (2026)" updated="Feb 2026 · Iter 64">
-            <p>Recent updates rolled out across Phase 4, Phase 5, Iteration 56, and the AMS Shared Support rollout (Iterations 57–64). The most impactful changes are highlighted here so you can spot the differences quickly.</p>
+          <Section id="whats-new" title="0. What's New (2026)" updated="Feb 2026 · Iter 72">
+            <p>Recent updates rolled out across Phase 4, Phase 5, Iteration 56, the AMS Shared Support rollout (Iterations 57–64), and the Feb 2026 UX + export polish batch (Iterations 68–72). The most impactful changes are highlighted here so you can spot the differences quickly.</p>
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.1 Status &amp; Workflow</h3>
             <KeyValue label="Commercial Status">A separate post-approval field with options: Pending for Submission, Submitted to Customer, Won, Lost, Cancelled. Visible only on Approved / Suspended / In Review projects. Displayed as a badge in the Projects list.</KeyValue>
@@ -237,6 +237,19 @@ export default function UserManual() {
             <KeyValue label="Effective Margin (with overrides) uses Grand Total Revenue">The Effective Margin chip now divides by the project's <strong>Grand Total Final Price</strong> (= T&M Final Price + AMS Annual Billing) instead of resource selling price alone. Formula: <code className="bg-gray-100 px-1 rounded">(GrandTotal − Total CTC) ÷ GrandTotal × 100</code>. For implementation-only projects the value is unchanged; for AMS / Mix projects the chip now reflects the true blended margin.</KeyValue>
             <KeyValue label="Salary Formula Cells">The <em>$/Month</em> column accepts arithmetic expressions: <code className="bg-gray-100 px-1 rounded">3200+500</code>, <code className="bg-gray-100 px-1 rounded">3200*25%</code>, <code className="bg-gray-100 px-1 rounded">3200-25%</code>. Press <em>Enter</em> or click away to evaluate; <em>Esc</em> reverts.</KeyValue>
             <KeyValue label="Sub-month Phases">Phase Range inputs accept 0.25-month steps for precise short-phase modelling (e.g. a 2-week sprint = 0.5).</KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.8 UX &amp; Export Polish (Iter 68–72)</h3>
+            <KeyValue label="Wave Grid Split-Pane (Iter 69)">The Wave Grid is now split into two synchronised panes at the <strong>Grp</strong> column — a fixed-width left pane (drag-handle → Grp) that scrolls only vertically, and a flex-1 right pane (M1 → Actions) with its own horizontal scroll. Row hover highlights both panes together, and row heights are automatically kept in lock-step. Drag-reorder of resources is still active on the left pane.</KeyValue>
+            <KeyValue label="Draggable Wave Tabs (Iter 72)">When a project has 2 or more waves, each tab shows a small grip icon (<code className="bg-gray-100 px-1 rounded">⋮⋮</code>) — drag a tab left or right to reorder waves. The Gantt chart, Cashflow, Milestones, Overall Summary and every Excel export follow the new order in a single state update. Read-only view disables the drag.</KeyValue>
+            <KeyValue label="Standardised Export Filenames (Iter 70–71)">All downloads follow one convention:
+              <ul className="list-disc pl-6 mt-1 text-xs">
+                <li><strong>Estimate</strong>: <code>PRJ-0035_Abraj_Energy_SAP_S4_Transformation_v1_Estimate.xlsx</code></li>
+                <li><strong>Cashflow</strong>: <code>..._v1_Cashflow.xlsx</code></li>
+                <li><strong>Milestones</strong>: <code>..._v1_Milestones.xlsx</code></li>
+                <li><strong>Gantt Chart</strong>: <code>..._v1_Gantt.xlsx</code> and <code>..._v1_Gantt.png</code></li>
+              </ul>
+              Filenames use <em>project number + customer + project name + version</em>. Filesystem-invalid characters are automatically stripped; customer capped at 30 chars, project name at 50.</KeyValue>
+            <KeyValue label="Excel Summary Duplicate AMS Fix (Iter 68)">The exported Summary sheet no longer prints a second "AMS SHARED SUPPORT ROLL-UP" block after the Grand Total row. AMS totals continue to flow into the Grand Total exactly once.</KeyValue>
 
             <Tip>If you see something in this section that's not yet visible in the UI, hard-refresh your browser (Ctrl+Shift+R / Cmd+Shift+R) to ensure you're on the latest build.</Tip>
           </Section>
