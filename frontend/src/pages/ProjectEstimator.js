@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { GripVertical } from "lucide-react";
 import * as XLSX from "xlsx";
 import { COUNTRIES, LOGISTICS_DEFAULTS } from "@/utils/constants";
 import { getLogisticsConfig as getLogisticsConfigUtil, calculateResourceBaseCost as calcResourceBaseCostUtil, calculateResourceSellingPrice as calcResourceSPUtil, calculateWaveLogistics as calcWaveLogisticsUtil, calculateWaveSummary as calcWaveSummaryUtil, calculateOverallSummary as calcOverallSummaryUtil } from "@/utils/estimatorCalcs";
@@ -511,6 +513,17 @@ const ProjectEstimator = () => {
     setWaves([...waves, cloned]);
     setActiveWaveId(cloned.id);
     toast.success(`Cloned "${source.name}" → "${cloned.name}"`);
+  };
+
+  // Reorder wave tabs via drag-and-drop. Since Gantt/Excel/Summary iterate waves in-array order,
+  // this single state update reorders everything downstream (tabs, Gantt rows, exports).
+  const handleWaveTabDragEnd = (result) => {
+    if (!result.destination || result.source.index === result.destination.index) return;
+    const reordered = Array.from(waves);
+    const [moved] = reordered.splice(result.source.index, 1);
+    reordered.splice(result.destination.index, 0, moved);
+    setWaves(reordered);
+    toast.success(`Moved "${moved.name}" to position ${result.destination.index + 1}`);
   };
 
   const handleAddPhaseColumn = (waveId) => {
@@ -1927,13 +1940,48 @@ const ProjectEstimator = () => {
           ) : (
             <Tabs value={activeWaveId} onValueChange={setActiveWaveId}>
               <div className="overflow-x-auto pb-1 mb-3">
-                <TabsList className="inline-flex w-max">
-                  {waves.map((wave) => (
-                    <TabsTrigger key={wave.id} value={wave.id} data-testid={`wave-tab-${wave.id}`}>
-                      {wave.name} ({wave.duration_months}m)
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
+                <DragDropContext onDragEnd={handleWaveTabDragEnd}>
+                  <Droppable droppableId="wave-tabs-list" direction="horizontal">
+                    {(dropProvided) => (
+                      <TabsList
+                        ref={dropProvided.innerRef}
+                        {...dropProvided.droppableProps}
+                        className="inline-flex w-max"
+                      >
+                        {waves.map((wave, index) => (
+                          <Draggable
+                            key={wave.id}
+                            draggableId={`wave-tab-${wave.id}`}
+                            index={index}
+                            isDragDisabled={isReadOnly || waves.length < 2}
+                          >
+                            {(dragProvided, snapshot) => (
+                              <TabsTrigger
+                                ref={dragProvided.innerRef}
+                                {...dragProvided.draggableProps}
+                                {...dragProvided.dragHandleProps}
+                                value={wave.id}
+                                data-testid={`wave-tab-${wave.id}`}
+                                className={snapshot.isDragging ? "shadow-lg ring-2 ring-[#3B82F6]/60 bg-white z-50" : ""}
+                                style={{
+                                  ...dragProvided.draggableProps.style,
+                                  cursor: (waves.length > 1 && !isReadOnly) ? 'grab' : undefined,
+                                }}
+                                title={waves.length > 1 && !isReadOnly ? "Drag to reorder waves" : ""}
+                              >
+                                {waves.length > 1 && !isReadOnly && (
+                                  <GripVertical className="w-3 h-3 mr-1 opacity-40 shrink-0" />
+                                )}
+                                {wave.name} ({wave.duration_months}m)
+                              </TabsTrigger>
+                            )}
+                          </Draggable>
+                        ))}
+                        {dropProvided.placeholder}
+                      </TabsList>
+                    )}
+                  </Droppable>
+                </DragDropContext>
               </div>
               {waves.map((wave) => {
                 const waveSummary = calculateWaveSummary(wave);

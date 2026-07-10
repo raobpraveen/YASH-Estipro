@@ -128,6 +128,16 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 72. **Gantt exports** (`GanttCard.js`) — PNG (`..._Gantt.png`) and Excel (`..._Gantt.xlsx`) now include customer + project name. Fixed follow-up bug where the PNG `saveAs` still hardcoded `gantt-chart.png`.
 73. **Backend cashflow API** (`/api/projects/{id}/cashflow`) response extended with `customer_name`, `description`, `version` so the frontend can build filenames without a second fetch.
 
+### Iteration 72: Draggable Wave Tab Reordering (Completed Feb 2026)
+74. **Wave tabs are now drag-reorderable** on the estimator when a project has 2+ waves.
+    - Uses `@hello-pangea/dnd` (already installed) — `DragDropContext` + horizontal `Droppable` + `Draggable` wrapping each `TabsTrigger`.
+    - Small `GripVertical` icon on each tab (only shown when reorder is possible) plus `cursor: grab` and a tooltip "Drag to reorder waves".
+    - Drop shows a subtle blue ring + shadow on the dragged tab.
+    - Because the waves state array drives EVERYTHING downstream — Gantt rows (`buildGanttRows(waves)` iterates in-array order), Excel Summary/Waves sheets, Overall Summary card, Cashflow, Milestones — reordering the array reorders every visualization in a single state update.
+    - Also respects `isReadOnly` (view-only mode disables drag).
+    - Click behaviour on tabs is preserved (hello-pangea/dnd only intercepts once the drag threshold is exceeded).
+    - Handler: `handleWaveTabDragEnd` in `/pages/ProjectEstimator.js` splices the array and toasts "Moved '{waveName}' to position N".
+
 ### Iteration 62-63: AMS Cost in CTC + Excel Import AMS_Shared sheet fix (Completed Feb 2026)
 58. **Total CTC now includes AMS Shared Support cost**. Added `amsTotalCost = sum(hours_per_month × cost_rate) × ams_contract_months` for every AMS_Shared / AMS_Mix wave in `estimatorCalcs.js::calculateWaveSummary`. The aggregate flows into `costToCompany` (wave-level) and `totalAmsCost` (overall). Overall Summary card subtitle now displays `'all resources + AMS cost ($X)'` whenever any wave has AMS cost. Same change ported to `calculations.js` for `ProjectSummary.js` consumers. Live verified: $90k AMS cost rolled into CTC card.
 59. **P0 Excel Import bug fix**: pure AMS_Shared sheets with zero implementation resources were silently dropped because the AMS-section parse + `parsedWaves.push` were gated by `if (allocations.length > 0)`. Added a pre-scan that detects an `AMS SHARED SUPPORT` marker anywhere on the sheet and widened the gate to `allocations.length > 0 || hasAmsSection`. Live verified with user file `PRJ-0031_v2.xlsx`: Smart Import Preview now correctly shows 4 Waves Detected (was 3), and the AMS tab renders with Service 1 / 150h × $35 / $25, 12 months, Monthly + Advance ON.
