@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>YASH EstiPro — Weeks View Mockup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js" defer></script>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #F8FAFC; }
+    .grid-cell { min-width: 60px; }
+    .grid-cell-week { min-width: 46px; }
+    .callout {
+      position: absolute;
+      background: #FEF3C7;
+      border: 1px solid #F59E0B;
+      color: #78350F;
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      pointer-events: none;
+      max-width: 240px;
+      line-height: 1.35;
+    }
+    .callout::before {
+      content: '';
+      position: absolute;
+      width: 10px; height: 10px;
+      background: #FEF3C7;
+      border-left: 1px solid #F59E0B;
+      border-top: 1px solid #F59E0B;
+      transform: rotate(-45deg);
+    }
+    .callout-below::before { top: -6px; left: 20px; }
+    .segmented { border: 1px solid #CBD5E1; border-radius: 8px; overflow: hidden; display: inline-flex; }
+    .segmented button { padding: 4px 14px; font-size: 12px; font-weight: 600; }
+    .segmented button.active { background: #3B82F6; color: white; }
+    .segmented button:not(.active) { background: white; color: #334155; }
+    .segmented button:not(.active):hover { background: #F1F5F9; }
+    .fade-flash { animation: flash 0.6s ease; }
+    @keyframes flash {
+      0% { background: #DCFCE7; }
+      100% { background: transparent; }
+    }
+    .divider-pane { width: 3px; background: linear-gradient(to bottom, #93C5FD, #3B82F6, #93C5FD); }
+    .header-frozen { background: #F8FAFC; }
+    .row-hover:hover { background: #E0F2FE; }
+    .badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+  </style>
+</head>
+<body class="p-6 pb-24">
+
+  <!-- ============ HEADER BANNER ============ -->
+  <div class="max-w-[1400px] mx-auto mb-6">
+    <div class="flex items-center justify-between mb-2">
+      <h1 class="text-2xl font-bold text-slate-800">
+        Mockup Preview <span class="text-slate-400 font-normal">/</span>
+        <span class="text-[#3B82F6]">Wave Grid — Months vs Weeks</span>
+      </h1>
+      <span class="text-xs text-slate-500 italic">Read-only prototype · No backend calls · Data is fake</span>
+    </div>
+    <p class="text-sm text-slate-600 max-w-3xl">
+      Toggle the wave's <strong>time unit</strong> in the header below and watch the grid re-render.
+      Compare the same data shown in Months vs Weeks — notice that <strong>Total MM</strong> and every column
+      after it stays identical because the underlying values are always stored in months
+      (<code class="bg-slate-200 rounded px-1">1&nbsp;MM = 4&nbsp;weeks</code>).
+    </p>
+  </div>
+
+  <div x-data="waveMockup()" class="max-w-[1400px] mx-auto space-y-4">
+
+    <!-- ============ WAVE HEADER CARD ============ -->
+    <div class="bg-white rounded-lg border border-slate-200 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-3">
+          <svg class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4H15M9 4L4 9V20H20V9L15 4M9 4V9H15V4"/></svg>
+          <input type="text" value="Wave 1 — Implementation" class="text-lg font-semibold text-slate-800 border-0 focus:outline-none focus:ring-2 focus:ring-blue-200 rounded px-1" />
+        </div>
+        <div class="flex items-center gap-6 text-sm">
+          <span>Duration: <strong x-text="mode === 'months' ? '6 months' : '24 weeks'"></strong></span>
+          <span>Resources: <strong>3</strong></span>
+          <span class="text-amber-600">Onsite: <strong>1</strong></span>
+          <span class="text-purple-600">Traveling: <strong>1</strong></span>
+          <label class="flex items-center gap-2 text-xs text-slate-500"><input type="checkbox" class="rounded" /> Exclude</label>
+          <span>Starts at project M<strong>1</strong></span>
+        </div>
+      </div>
+
+      <!-- WAVE ATTRIBUTES ROW -->
+      <div class="flex items-center justify-between border-t pt-3">
+        <div class="flex items-center gap-4">
+          <div class="relative">
+            <label class="text-xs text-slate-500 mr-2 font-semibold">Grid Time Unit:</label>
+            <div class="segmented" role="tablist">
+              <button :class="mode === 'months' ? 'active' : ''" @click="setMode('months')">Months</button>
+              <button :class="mode === 'weeks' ? 'active' : ''" @click="setMode('weeks')">Weeks</button>
+            </div>
+            <!-- callout -->
+            <div class="callout callout-below" style="top: 44px; left: 130px;">
+              💡 <strong>Per-wave setting.</strong> Wave 2 could stay in Months while Wave 1 is in Weeks.
+              Disabled for pure AMS Shared waves.
+            </div>
+          </div>
+          <div class="text-xs text-slate-500 border-l pl-4">
+            Engagement: <strong>Implementation</strong>
+            <span class="text-slate-300 mx-2">|</span>
+            Applies to: <strong>Implementation · AMS Dedicated · AMS Mix</strong>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button class="px-3 py-1 border border-slate-300 rounded text-xs hover:bg-slate-50">
+            <span x-text="mode === 'months' ? '+ Add Month' : '+ Add Week'"></span>
+          </button>
+          <button class="px-3 py-1 border border-slate-300 rounded text-xs hover:bg-slate-50">
+            <span x-text="mode === 'months' ? '– Remove Month' : '– Remove Week'"></span>
+          </button>
+          <button class="px-3 py-1 border border-slate-300 rounded text-xs hover:bg-slate-50 text-red-600">Delete Wave</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ MODE-SWITCH WARNING ============ -->
+    <template x-if="showConversionToast">
+      <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded p-3 flex items-center gap-2 fade-flash">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+        <span>Switched to <strong x-text="mode.toUpperCase()"></strong>. Values converted:
+          <span x-show="mode === 'weeks'">1 month → 4 weeks, 0.5 month → 2 weeks.</span>
+          <span x-show="mode === 'months'">4 weeks → 1 month, 2 weeks → 0.5 month.</span>
+          Storage remains in months so <strong>Total MM stays identical</strong>.
+        </span>
+      </div>
+    </template>
+
+    <!-- ============ SPLIT-PANE GRID ============ -->
+    <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+      <div class="flex" style="max-height: 460px;">
+
+        <!-- LEFT PANE (identity columns up to Grp) -->
+        <div class="flex-shrink-0 bg-white" style="width: 622px; overflow: hidden;">
+          <table class="w-full border-collapse" style="table-layout: fixed;">
+            <colgroup>
+              <col style="width: 32px" /><col style="width: 32px" />
+              <col style="width: 132px" /><col style="width: 106px" />
+              <col style="width: 106px" /><col style="width: 86px" />
+              <col style="width: 50px" /><col style="width: 50px" />
+              <col style="width: 40px" />
+            </colgroup>
+            <thead>
+              <tr class="header-frozen border-b-2 border-slate-200 text-xs font-semibold text-slate-700">
+                <th class="p-2 text-center"></th>
+                <th class="p-2 text-center">#</th>
+                <th class="p-2 text-left">Skill</th>
+                <th class="p-2 text-left">Level</th>
+                <th class="p-2 text-left">Location</th>
+                <th class="p-2 text-right">$/Month</th>
+                <th class="p-2 text-center">Onsite</th>
+                <th class="p-2 text-center">Travel</th>
+                <th class="p-2 text-center">Grp</th>
+              </tr>
+            </thead>
+            <tbody class="text-xs">
+              <template x-for="(r, i) in resources" :key="i">
+                <tr class="border-b row-hover" :class="r.onsite ? 'bg-amber-50/40' : ''" style="height: 42px;">
+                  <td class="p-2 text-center text-slate-300 cursor-grab select-none">⋮⋮</td>
+                  <td class="p-2 text-center font-mono text-slate-400" x-text="i + 1"></td>
+                  <td class="p-2 truncate font-medium" x-text="r.skill"></td>
+                  <td class="p-2" x-text="r.level"></td>
+                  <td class="p-2" x-text="r.location"></td>
+                  <td class="p-2 text-right font-mono" x-text="'$' + r.salary.toLocaleString()"></td>
+                  <td class="p-2 text-center">
+                    <span class="badge" :class="r.onsite ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-600'" x-text="r.onsite ? 'ON' : 'OFF'"></span>
+                  </td>
+                  <td class="p-2 text-center">
+                    <span class="badge" :class="r.travel ? 'bg-purple-500 text-white' : 'bg-slate-200 text-slate-600'" x-text="r.travel ? 'YES' : 'NO'"></span>
+                  </td>
+                  <td class="p-2 text-center font-mono text-slate-400" x-text="r.grp"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- DIVIDER -->
+        <div class="divider-pane"></div>
+
+        <!-- RIGHT PANE (phase columns + calc) -->
+        <div class="flex-1 bg-white" style="overflow-x: auto;">
+          <table class="border-collapse text-xs" style="min-width: 100%;">
+            <thead>
+              <tr class="header-frozen border-b-2 border-slate-200 font-semibold text-slate-700">
+                <!-- Phase columns -->
+                <template x-for="(col, i) in headers()" :key="col + i">
+                  <th class="p-2 text-center bg-blue-50" :class="mode === 'months' ? 'grid-cell' : 'grid-cell-week'">
+                    <span x-text="col"></span>
+                  </th>
+                </template>
+                <!-- Calc columns -->
+                <th class="p-2 text-right border-l-2 border-emerald-200 bg-emerald-50/40" style="min-width: 82px;">Total MM</th>
+                <th class="p-2 text-right" style="min-width: 90px;">Salary Cost</th>
+                <th class="p-2 text-right" style="min-width: 82px;">Overhead</th>
+                <th class="p-2 text-right bg-slate-50" style="min-width: 92px;">Total Cost</th>
+                <th class="p-2 text-right bg-green-50" style="min-width: 100px;">Selling Price</th>
+                <th class="p-2 text-right bg-blue-50" style="min-width: 82px;">SP/MM</th>
+                <th class="p-2 text-right bg-blue-50" style="min-width: 68px;">Hourly</th>
+                <th class="p-2 text-center" style="min-width: 60px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="(r, i) in resources" :key="i">
+                <tr class="border-b row-hover" :class="r.onsite ? 'bg-amber-50/40' : ''" style="height: 42px;">
+                  <template x-for="(val, j) in cellsFor(r)" :key="j">
+                    <td class="p-1 text-center" :class="mode === 'months' ? 'grid-cell' : 'grid-cell-week'">
+                      <input type="text" class="w-full text-center font-mono border border-slate-200 rounded px-1 py-0.5 focus:outline-none focus:border-blue-400"
+                        :value="val" readonly />
+                    </td>
+                  </template>
+                  <td class="p-2 text-right font-mono font-semibold border-l-2 border-emerald-200 bg-emerald-50/40" x-text="totalMM(r).toFixed(2)"></td>
+                  <td class="p-2 text-right font-mono text-slate-600" x-text="'$' + salaryCost(r).toLocaleString()"></td>
+                  <td class="p-2 text-right font-mono text-slate-500" x-text="'$' + overhead(r).toLocaleString() + ' (30%)'"></td>
+                  <td class="p-2 text-right font-mono font-semibold bg-slate-50" x-text="'$' + totalCost(r).toLocaleString()"></td>
+                  <td class="p-2 text-right font-mono font-semibold text-emerald-600 bg-green-50/40" x-text="'$' + sellingPrice(r).toLocaleString()"></td>
+                  <td class="p-2 text-right font-mono text-blue-600 bg-blue-50/40" x-text="'$' + spPerMM(r).toLocaleString()"></td>
+                  <td class="p-2 text-right font-mono text-blue-600 bg-blue-50/40" x-text="'$' + hourly(r)"></td>
+                  <td class="p-2 text-center">
+                    <span class="text-slate-300 cursor-pointer">⚙</span>
+                    <span class="text-slate-300 cursor-pointer">⧉</span>
+                    <span class="text-red-300 cursor-pointer">🗑</span>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Grid footnote -->
+      <div class="border-t border-slate-100 bg-slate-50 px-4 py-2 text-[11px] text-slate-500 flex items-center justify-between">
+        <span>
+          <span x-show="mode === 'months'">Enter values as fraction of a month per column (0.5 = half-month = 2 weeks).</span>
+          <span x-show="mode === 'weeks'">Enter values as fraction of a week per column (1 = full week loading, 0.5 = half week).</span>
+        </span>
+        <span>
+          <span x-text="mode === 'months' ? '6 month columns' : '24 week columns (' + Math.ceil(6 * 4) + ')'"></span>
+          &nbsp;·&nbsp;
+          <span>Storage: months (1 MM = 4 wks)</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- ============ PHASE RANGES CARD (dual labels) ============ -->
+    <div class="bg-white rounded-lg border border-slate-200 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-slate-700">Phase Ranges <span class="text-slate-400 text-xs">(defines Gantt chart timeline — always in months)</span></h3>
+        <button class="text-xs text-blue-600 hover:underline">+ Add Phase</button>
+      </div>
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="text-slate-500 border-b">
+            <th class="p-2 text-left">Phase</th>
+            <th class="p-2 text-right">Start</th>
+            <th class="p-2 text-right">End</th>
+            <th class="p-2 text-left">Dual label (Weeks equivalent)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b"><td class="p-2">Prepare</td><td class="p-2 text-right font-mono">0.5</td><td class="p-2 text-right font-mono">0.5</td><td class="p-2 text-slate-400" x-text="'(W1–W2)'"></td></tr>
+          <tr class="border-b"><td class="p-2">Explore</td><td class="p-2 text-right font-mono">1</td><td class="p-2 text-right font-mono">2</td><td class="p-2 text-slate-400" x-text="'(W3–W8)'"></td></tr>
+          <tr class="border-b"><td class="p-2">Realize</td><td class="p-2 text-right font-mono">3</td><td class="p-2 text-right font-mono">5</td><td class="p-2 text-slate-400" x-text="'(W9–W20)'"></td></tr>
+          <tr><td class="p-2">Deploy</td><td class="p-2 text-right font-mono">6</td><td class="p-2 text-right font-mono">6</td><td class="p-2 text-slate-400" x-text="'(W21–W24)'"></td></tr>
+        </tbody>
+      </table>
+      <div class="mt-3 text-[11px] text-slate-500 italic">
+        📌 Phase ranges stay in months so Gantt chart, milestones, and cashflow don't need to change.
+        The <em>(W...)</em> label is a read-only reference that appears only when the wave grid is in Weeks mode.
+      </div>
+    </div>
+
+    <!-- ============ MULTI-WAVE ILLUSTRATION ============ -->
+    <div class="bg-white rounded-lg border border-slate-200 p-4">
+      <h3 class="text-sm font-semibold text-slate-700 mb-3">Multi-Wave Behaviour <span class="text-slate-400 text-xs font-normal">(per-wave, independent)</span></h3>
+      <div class="grid grid-cols-3 gap-3 text-xs">
+        <div class="border border-slate-200 rounded p-3">
+          <div class="font-semibold text-slate-700 mb-1">Wave 1 · Implementation</div>
+          <div class="text-slate-500 mb-2">6 months, 24 weeks</div>
+          <div class="segmented">
+            <button class="active">Weeks</button>
+            <button>Months</button>
+          </div>
+        </div>
+        <div class="border border-slate-200 rounded p-3">
+          <div class="font-semibold text-slate-700 mb-1">Wave 2 · AMS Mix</div>
+          <div class="text-slate-500 mb-2">12 months contract</div>
+          <div class="segmented">
+            <button>Weeks</button>
+            <button class="active">Months</button>
+          </div>
+        </div>
+        <div class="border border-slate-200 rounded p-3">
+          <div class="font-semibold text-slate-700 mb-1">Wave 3 · AMS Shared</div>
+          <div class="text-slate-500 mb-2">Toggle N/A — buckets only</div>
+          <div class="segmented opacity-50 pointer-events-none">
+            <button>Weeks</button>
+            <button class="active">Months</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ FOOTER NOTES ============ -->
+    <div class="bg-blue-50 border border-blue-200 rounded p-4 text-sm text-blue-900 space-y-1">
+      <p><strong>Key invariants tested by this mockup:</strong></p>
+      <ul class="list-disc pl-6 space-y-1 text-xs">
+        <li>Total MM is <strong>identical</strong> in both views (Solution Arch = 5.50 MM · SAP FICO = 5.50 MM · QA = 4.00 MM).</li>
+        <li>Salary Cost / Overhead / Selling Price / SP/MM / Hourly are unchanged when switching modes.</li>
+        <li>The "Add Month" button label switches to "Add Week"; adding one week extends duration by 0.25 MM.</li>
+        <li>Phase Ranges stay in months → Gantt chart, cashflow, milestones need zero changes.</li>
+        <li>Weeks view will be capped at waves ≤ 6 months (24 columns) to avoid horizontal-scroll fatigue.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    function waveMockup() {
+      return {
+        mode: 'months',
+        showConversionToast: false,
+        // Storage is ALWAYS in months. Weeks view renders values × 4.
+        // Loadings for a 6-month wave (each element = one month's loading fraction, 0..1)
+        resources: [
+          { skill: 'Solution Architect', level: 'Lead',   location: 'India', salary: 8000, onsite: true,  travel: true,  grp: 'A', months: [1, 1, 1, 1, 1, 0.5], overhead: 30 },
+          { skill: 'SAP FICO Consultant', level: 'Senior', location: 'India', salary: 5000, onsite: false, travel: false, grp: 'B', months: [0.5, 1, 1, 1, 1, 1], overhead: 30 },
+          { skill: 'QA Engineer',        level: 'Mid',    location: 'India', salary: 3500, onsite: false, travel: false, grp: 'B', months: [0, 0.5, 1, 1, 1, 0.5], overhead: 30 },
+        ],
+        profitMargin: 33,
+        setMode(m) {
+          if (this.mode === m) return;
+          this.mode = m;
+          this.showConversionToast = true;
+          setTimeout(() => { this.showConversionToast = false; }, 3500);
+        },
+        headers() {
+          if (this.mode === 'months') {
+            return ['M1','M2','M3','M4','M5','M6'];
+          }
+          return Array.from({ length: 24 }, (_, i) => 'W' + (i + 1));
+        },
+        cellsFor(r) {
+          if (this.mode === 'months') {
+            return r.months.map(v => v === 0 ? '' : String(v));
+          }
+          // Convert each month into 4 weeks with equal loading (illustration only)
+          const cells = [];
+          for (const monthVal of r.months) {
+            for (let w = 0; w < 4; w++) {
+              cells.push(monthVal === 0 ? '' : String(monthVal));
+            }
+          }
+          return cells;
+        },
+        totalMM(r) { return r.months.reduce((a,b) => a + b, 0); },
+        salaryCost(r) { return Math.round(this.totalMM(r) * r.salary); },
+        overhead(r)   { return Math.round(this.salaryCost(r) * r.overhead / 100); },
+        totalCost(r)  { return this.salaryCost(r) + this.overhead(r); },
+        sellingPrice(r){ return Math.round(this.totalCost(r) / (1 - this.profitMargin/100)); },
+        spPerMM(r)    { return Math.round(this.sellingPrice(r) / this.totalMM(r)); },
+        hourly(r)     { return Math.round(this.spPerMM(r) / 176); },
+      };
+    }
+  </script>
+</body>
+</html>
