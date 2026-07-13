@@ -424,18 +424,18 @@ const Projects = () => {
 
   const calculateProjectValue = (project) => {
     if (!project.waves || project.waves.length === 0) {
-      return { baseCost: 0, withOverhead: 0, sellingPrice: 0, negoBuffer: 0, finalPrice: 0, totalMM: 0, resourceCount: 0 };
+      return { baseCost: 0, withOverhead: 0, sellingPrice: 0, negoBuffer: 0, finalPrice: 0, grandTotal: 0, totalMM: 0, resourceCount: 0 };
     }
     const summary = calculateOverallSummary(project.waves, project.profit_margin_percentage ?? 35, project.nego_buffer_percentage ?? 0);
     const resourceCount = project.waves.reduce((sum, w) => sum + (w.grid_allocations?.length || 0), 0);
     return { 
-      baseCost: summary.onsiteSalaryCost + summary.offshoreSalaryCost, 
-      withOverhead: summary.totalRowsSellingPrice, 
-      sellingPrice: summary.sellingPrice, 
-      negoBuffer: summary.negoBuffer, 
-      finalPrice: summary.finalPrice,
-      grandTotal: summary.grandTotalFinalPrice ?? summary.finalPrice,
-      totalMM: summary.totalMM, 
+      baseCost: (summary.onsiteSalaryCost || 0) + (summary.offshoreSalaryCost || 0), 
+      withOverhead: summary.totalRowsSellingPrice || 0, 
+      sellingPrice: summary.sellingPrice || 0, 
+      negoBuffer: summary.negoBuffer || 0, 
+      finalPrice: summary.finalPrice || 0,
+      grandTotal: summary.grandTotalFinalPrice ?? summary.finalPrice ?? 0,
+      totalMM: summary.totalMM || 0, 
       resourceCount 
     };
   };
@@ -524,9 +524,9 @@ const Projects = () => {
           )}
         </TableCell>
         <TableCell className="text-center">{resourceCount}</TableCell>
-        <TableCell className="text-right font-mono tabular-nums">{totalMM.toFixed(2)}</TableCell>
+        <TableCell className="text-right font-mono tabular-nums">{(totalMM || 0).toFixed(2)}</TableCell>
         <TableCell className="text-right font-mono tabular-nums font-bold text-emerald-700" data-testid={`grand-total-${project.id}`}>
-          ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          ${(grandTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         </TableCell>
         <TableCell className="text-xs text-gray-500">
           <div className="flex flex-col">
@@ -659,9 +659,9 @@ const Projects = () => {
         <TableCell>{project.customer_name || "—"}</TableCell>
         <TableCell className="text-center">{getStatusBadge(project.status)}</TableCell>
         <TableCell className="text-center">{resourceCount}</TableCell>
-        <TableCell className="text-right font-mono tabular-nums">{totalMM.toFixed(2)}</TableCell>
+        <TableCell className="text-right font-mono tabular-nums">{(totalMM || 0).toFixed(2)}</TableCell>
         <TableCell className="text-right font-mono tabular-nums font-bold text-emerald-700" data-testid={`archived-grand-total-${project.id}`}>
-          ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          ${(grandTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         </TableCell>
         <TableCell className="text-xs text-gray-500">{formatDate(project.archived_at)}</TableCell>
         <TableCell className="text-right">
@@ -1106,15 +1106,15 @@ const Projects = () => {
                     {filteredProjects.length > 0 && (() => {
                       const totals = filteredProjects.reduce((acc, p) => {
                         const vals = calculateProjectValue(p);
-                        acc.grandTotal += vals.grandTotal;
-                        acc.totalMM += vals.totalMM;
+                        acc.grandTotal += (vals.grandTotal || 0);
+                        acc.totalMM += (vals.totalMM || 0);
                         return acc;
                       }, { grandTotal: 0, totalMM: 0 });
                       return (
                         <TableRow className="bg-[#0F172A]/5 font-bold border-t-2 border-[#0F172A]">
                           <TableCell colSpan={5} className="text-right text-[#0F172A]" data-testid="totals-label">Totals ({filteredProjects.length} projects)</TableCell>
-                          <TableCell className="text-right font-mono tabular-nums" data-testid="totals-mm">{totals.totalMM.toFixed(2)}</TableCell>
-                          <TableCell className="text-right font-mono tabular-nums text-emerald-700" data-testid="totals-grand-total">{totals.grandTotal.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</TableCell>
+                          <TableCell className="text-right font-mono tabular-nums" data-testid="totals-mm">{(totals.totalMM || 0).toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-mono tabular-nums text-emerald-700" data-testid="totals-grand-total">{(totals.grandTotal || 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</TableCell>
                           <TableCell colSpan={2}></TableCell>
                         </TableRow>
                       );
