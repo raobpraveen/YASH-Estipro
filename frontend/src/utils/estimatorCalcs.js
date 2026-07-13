@@ -153,13 +153,15 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
   // Cost to Company must include logistics (travel/per-diem/accommodation are real costs).
   const costToCompany = totalBaseSalaryCost + totalOverheadCost + logistics.totalLogistics + amsTotalCost;
   // Effective Margin formula (per business definition):
-  //   Total Net Cost   = Total CTC − Logistics  (= base + overhead + AMS internal)
-  //   Resources Price  = totalRowsSellingPrice  (T&M row SP incl. Ovr $/Hr overrides, ex. logistics)
+  //   Total Net Cost   = Total CTC − Logistics  (= base + overhead + AMS internal cost)
+  //   Resources Price  = totalRowsSellingPrice + amsSharedAnnual  (T&M row SP incl. Ovr $/Hr overrides,
+  //                      plus AMS billing revenue — both exclude logistics markup)
   //   Effective Margin = 100% − (Net Cost / Resources Price) × 100
-  // This equals `profitMarginPercentage` exactly unless one or more rows use Ovr $/Hr to override the
-  // formula-derived selling price. Logistics is a cost-pass-through so it does not shift the margin.
+  // This equals `profitMarginPercentage` exactly when every row's Ovr $/Hr is empty AND AMS hourly_rate
+  // is derived from cost_rate at the same margin. Logistics is a cost-pass-through so it does not
+  // shift the margin. Ovr $/Hr overrides or AMS mispricing are the only sources of deviation.
   const netCost = costToCompany - logistics.totalLogistics;
-  const resourcesPrice = totalRowsSellingPrice;
+  const resourcesPrice = totalRowsSellingPrice + amsSharedAnnual;
   const negoBufferPct = negoBufferPercentage || 0;
   const negoBufferAmount = waveSellingPrice * (negoBufferPct / 100);
   const finalPrice = waveSellingPrice + negoBufferAmount;
@@ -236,9 +238,10 @@ export const calculateOverallSummary = (waves, profitMarginPercentage, negoBuffe
   const onsiteAvgPerMM = onsiteMM > 0 ? onsiteSellingPrice / onsiteMM : 0;
   const offshoreAvgPerMM = offshoreMM > 0 ? offshoreSellingPrice / offshoreMM : 0;
   const grandTotalFinalPrice = totalFinalPrice + totalAmsSharedAnnual;
-  // Overall effective margin — same formula as per-wave: strip logistics from CTC, divide by T&M row SP.
+  // Overall effective margin — matches per-wave formula: strip logistics from CTC and pair against
+  // T&M row SP + AMS billing revenue on the denominator (both sides symmetric wrt logistics and AMS).
   const overallNetCost = totalCostToCompany - totalLogisticsCost;
-  const overallResourcesPrice = totalRowsSellingPrice;
+  const overallResourcesPrice = totalRowsSellingPrice + totalAmsSharedAnnual;
 
   return {
     totalMM, onsiteMM, offshoreMM,
