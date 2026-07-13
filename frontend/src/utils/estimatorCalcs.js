@@ -151,9 +151,15 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
 
   const totalCost = totalBaseSalaryCost + totalOverheadCost + logistics.totalLogistics + amsTotalCost;
   // Cost to Company must include logistics (travel/per-diem/accommodation are real costs).
-  // Previously logistics was excluded from CTC which inflated the effective margin because
-  // revenue (waveSellingPrice) includes logistics but CTC did not.
   const costToCompany = totalBaseSalaryCost + totalOverheadCost + logistics.totalLogistics + amsTotalCost;
+  // Effective Margin formula (per business definition):
+  //   Total Net Cost   = Total CTC − Logistics  (= base + overhead + AMS internal)
+  //   Resources Price  = totalRowsSellingPrice  (T&M row SP incl. Ovr $/Hr overrides, ex. logistics)
+  //   Effective Margin = 100% − (Net Cost / Resources Price) × 100
+  // This equals `profitMarginPercentage` exactly unless one or more rows use Ovr $/Hr to override the
+  // formula-derived selling price. Logistics is a cost-pass-through so it does not shift the margin.
+  const netCost = costToCompany - logistics.totalLogistics;
+  const resourcesPrice = totalRowsSellingPrice;
   const negoBufferPct = negoBufferPercentage || 0;
   const negoBufferAmount = waveSellingPrice * (negoBufferPct / 100);
   const finalPrice = waveSellingPrice + negoBufferAmount;
@@ -167,8 +173,8 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
     totalLogisticsCost: logistics.totalLogistics,
     totalCost,
     totalCostToCompany: costToCompany,
-    effectiveProfitMargin: grandTotalFinalPrice > 0
-      ? ((grandTotalFinalPrice - costToCompany) / grandTotalFinalPrice * 100)
+    effectiveProfitMargin: resourcesPrice > 0
+      ? ((resourcesPrice - netCost) / resourcesPrice * 100)
       : profitMarginPercentage,
     onsiteOverheadCost, offshoreOverheadCost,
     onsiteCTC: onsiteSalaryCost + onsiteOverheadCost,
@@ -230,14 +236,17 @@ export const calculateOverallSummary = (waves, profitMarginPercentage, negoBuffe
   const onsiteAvgPerMM = onsiteMM > 0 ? onsiteSellingPrice / onsiteMM : 0;
   const offshoreAvgPerMM = offshoreMM > 0 ? offshoreSellingPrice / offshoreMM : 0;
   const grandTotalFinalPrice = totalFinalPrice + totalAmsSharedAnnual;
+  // Overall effective margin — same formula as per-wave: strip logistics from CTC, divide by T&M row SP.
+  const overallNetCost = totalCostToCompany - totalLogisticsCost;
+  const overallResourcesPrice = totalRowsSellingPrice;
 
   return {
     totalMM, onsiteMM, offshoreMM,
     onsiteSalaryCost, offshoreSalaryCost,
     totalLogisticsCost, totalCost, totalCostToCompany,
-    effectiveProfitMargin: grandTotalFinalPrice > 0
-      ? ((grandTotalFinalPrice - totalCostToCompany) / grandTotalFinalPrice * 100)
-      : 0,
+    effectiveProfitMargin: overallResourcesPrice > 0
+      ? ((overallResourcesPrice - overallNetCost) / overallResourcesPrice * 100)
+      : profitMarginPercentage,
     onsiteOverheadCost, offshoreOverheadCost,
     onsiteCTC: onsiteSalaryCost + onsiteOverheadCost,
     offshoreCTC: offshoreSalaryCost + offshoreOverheadCost,
