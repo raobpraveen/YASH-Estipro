@@ -150,7 +150,10 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
     : 0;
 
   const totalCost = totalBaseSalaryCost + totalOverheadCost + logistics.totalLogistics + amsTotalCost;
-  const costToCompany = totalBaseSalaryCost + totalOverheadCost + amsTotalCost;
+  // Cost to Company must include logistics (travel/per-diem/accommodation are real costs).
+  // Previously logistics was excluded from CTC which inflated the effective margin because
+  // revenue (waveSellingPrice) includes logistics but CTC did not.
+  const costToCompany = totalBaseSalaryCost + totalOverheadCost + logistics.totalLogistics + amsTotalCost;
   const negoBufferPct = negoBufferPercentage || 0;
   const negoBufferAmount = waveSellingPrice * (negoBufferPct / 100);
   const finalPrice = waveSellingPrice + negoBufferAmount;
