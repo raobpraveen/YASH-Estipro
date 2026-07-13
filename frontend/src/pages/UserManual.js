@@ -251,6 +251,20 @@ export default function UserManual() {
               Filenames use <em>project number + customer + project name + version</em>. Filesystem-invalid characters are automatically stripped; customer capped at 30 chars, project name at 50.</KeyValue>
             <KeyValue label="Excel Summary Duplicate AMS Fix (Iter 68)">The exported Summary sheet no longer prints a second "AMS SHARED SUPPORT ROLL-UP" block after the Grand Total row. AMS totals continue to flow into the Grand Total exactly once.</KeyValue>
 
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.9 Effective Margin Formula &amp; Breakdown Tooltip (Iter 75–77)</h3>
+            <KeyValue label="Corrected Formula (Iter 75–76)">
+              Effective Margin is now computed as <code className="bg-gray-100 px-1 rounded">100% − (Net Cost / Resources Price) × 100</code>, where
+              <br /><strong>Net Cost</strong> = Total CTC − Logistics = base salary + overhead + AMS internal cost, and
+              <br /><strong>Resources Price</strong> = sum of T&amp;M row selling prices (with any Ovr $/Hr overrides applied) + AMS annual billing revenue.
+              <br />Logistics is a pass-through (equal amount added to both cost and revenue) so it does not shift the margin. Both sides are now symmetric wrt logistics (excluded) and AMS (included).
+            </KeyValue>
+            <KeyValue label="Set-Margin Invariant">
+              Effective Margin equals Set Margin <strong>exactly</strong> when: (1) no T&amp;M row uses <code>Ovr $/Hr</code>, AND (2) every AMS bucket's <code>hourly_rate</code> is priced at the set margin above its <code>cost_rate</code>. Any deviation surfaces the "Effective Margin (with overrides)" callout automatically.
+            </KeyValue>
+            <KeyValue label="Margin Breakdown Tooltip (Iter 77)">
+              Hover the effective-margin percentage to open a tooltip listing every T&amp;M row or AMS bucket that is pushing the blended margin away from Set Margin. Each entry shows: the wave name, the offending row/bucket label, expected vs. actual price, and the signed $ deviation (positive = boost margin, negative = drag margin). No hunting through the grid needed.
+            </KeyValue>
+
             <Tip>If you see something in this section that's not yet visible in the UI, hard-refresh your browser (Ctrl+Shift+R / Cmd+Shift+R) to ensure you're on the latest build.</Tip>
           </Section>
 

@@ -98,6 +98,10 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
   let onsiteSalaryCost = 0, offshoreSalaryCost = 0;
   let totalRowsSellingPrice = 0, totalBaseSalaryCost = 0, totalOverheadCost = 0;
   let onsiteOverheadCost = 0, offshoreOverheadCost = 0;
+  // Per-row/per-bucket deviations from set margin (populated below). Rendered by the
+  // "Effective Margin" tooltip so commercial reviewers can pinpoint what shifted the blended margin.
+  const marginDeviations = [];
+  const waveName = wave.name || "Unnamed Wave";
 
   wave.grid_allocations.forEach(allocation => {
     const totalManMonths = Object.values(allocation.phase_allocations || {}).reduce((sum, val) => sum + val, 0);
@@ -113,6 +117,18 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
     totalBaseSalaryCost += baseSalaryCost;
     totalOverheadCost += overheadCost;
     totalRowsSellingPrice += effectiveSellingPrice;
+
+    // Track deviation only when Ovr $/Hr is set AND meaningfully differs from formula-derived price
+    if (allocation.override_hourly_rate > 0 && Math.abs(effectiveSellingPrice - rowSellingPrice) > 0.5) {
+      marginDeviations.push({
+        type: "row",
+        waveName,
+        label: `${allocation.skill_name || "Resource"} (${allocation.proficiency_level || ""}${allocation.base_location_name ? " · " + allocation.base_location_name : ""})`.replace(/\s+·\s+$/, ""),
+        expected: rowSellingPrice,
+        actual: effectiveSellingPrice,
+        deviation: effectiveSellingPrice - rowSellingPrice,
+      });
+    }
 
     if (allocation.is_onsite) {
       onsiteMM += totalManMonths;
@@ -148,6 +164,30 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
         0
       ) * contractMonths
     : 0;
+
+  // Track AMS bucket deviations — expected hourly_rate = cost_rate / (1 - margin)
+  if (isAms) {
+    (wave.ams_shared_buckets || []).forEach((b, idx) => {
+      const cost = parseFloat(b.cost_rate) || 0;
+      const rate = parseFloat(b.hourly_rate) || 0;
+      const hrs = parseFloat(b.hours_per_month) || 0;
+      if (cost > 0 && rate > 0 && hrs > 0) {
+        const expectedRate = cost / (1 - profitMarginPercentage / 100);
+        if (Math.abs(rate - expectedRate) > 0.01) {
+          const expectedAnnual = expectedRate * hrs * contractMonths;
+          const actualAnnual = rate * hrs * contractMonths;
+          marginDeviations.push({
+            type: "ams",
+            waveName,
+            label: b.name || b.service_name || `AMS Service ${idx + 1}`,
+            expected: expectedAnnual,
+            actual: actualAnnual,
+            deviation: actualAnnual - expectedAnnual,
+          });
+        }
+      }
+    });
+  }
 
   const totalCost = totalBaseSalaryCost + totalOverheadCost + logistics.totalLogistics + amsTotalCost;
   // Cost to Company must include logistics (travel/per-diem/accommodation are real costs).
@@ -196,6 +236,7 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
     travelingResourceCount: logistics.travelingResourceCount,
     travelingMM: logistics.totalTravelingMM,
     logistics,
+    marginDeviations,
   };
 };
 
@@ -208,10 +249,14 @@ export const calculateOverallSummary = (waves, profitMarginPercentage, negoBuffe
   let totalCostToCompany = 0, onsiteOverheadCost = 0, offshoreOverheadCost = 0;
   let totalOnsiteResourceCount = 0, totalOffshoreResourceCount = 0;
   let totalAmsSharedMonthly = 0, totalAmsSharedAnnual = 0, totalAmsCost = 0;
+  const allMarginDeviations = [];
 
   waves.forEach(wave => {
     if (wave.exclude_from_summary) return; // Skip excluded waves
     const summary = calculateWaveSummary(wave, profitMarginPercentage, negoBufferPercentage);
+    if (summary.marginDeviations && summary.marginDeviations.length > 0) {
+      allMarginDeviations.push(...summary.marginDeviations);
+    }
     totalMM += summary.totalMM;
     onsiteMM += summary.onsiteMM;
     offshoreMM += summary.offshoreMM;
@@ -265,5 +310,6 @@ export const calculateOverallSummary = (waves, profitMarginPercentage, negoBuffe
     grandTotalFinalPrice,
     onsiteSellingPrice, offshoreSellingPrice,
     onsiteAvgPerMM, offshoreAvgPerMM,
+    marginDeviations: allMarginDeviations,
   };
 };

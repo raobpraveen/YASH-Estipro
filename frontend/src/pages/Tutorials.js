@@ -11,7 +11,7 @@ import {
   Play, BookOpen, Search, ChevronRight, ChevronLeft, Clock, FileSpreadsheet,
   BarChart3, GitCompare, Upload, Shield, Settings, Users, Layers, DollarSign,
   Video, ExternalLink, Monitor, Pause, SkipForward, SkipBack, Maximize2,
-  X, CirclePlay, MapPin, ListChecks, ArrowUp, Zap, Percent
+  X, CirclePlay, MapPin, ListChecks, ArrowUp, Zap, Percent, Info
 } from "lucide-react";
 
 // Tutorial slide images mapping
@@ -379,6 +379,27 @@ const TUTORIALS = [
       { target: "Read the Effective Margin chip.", action: "The chip uses Grand Total Final Price (T&M Final + AMS Annual Billing) as the denominator: (GrandTotal − Total CTC) / GrandTotal × 100. It turns green when above the set Profit Margin %, red when below." },
       { target: "Sanity-check the math.", action: "On a simple test project (1 resource $9,900 CTC; 1 AMS bucket 150h × $25/h cost × 12mo = $45,000 cost; AMS revenue $63,000; T&M Final $11,250 → Grand Total $74,250 → Total CTC $54,900 → Effective Margin ≈ 26%) the chip reads exactly that value." },
       { target: "Implementation-only projects are unchanged.", action: "If a project has no AMS waves, Grand Total = T&M Final and the chip value matches the legacy formula — the change is backward-safe." },
+    ],
+    hasSlideshow: false,
+    hasTour: false,
+  },
+  {
+    id: "effective-margin-breakdown",
+    title: "Effective Margin & the Margin Breakdown Tooltip",
+    description: "Learn the corrected Effective Margin formula (Iter 75–76) and the new hover tooltip that pinpoints which T&M rows or AMS buckets are driving deviation from Set Margin.",
+    duration: "3 min",
+    category: "Core Features",
+    updated: "Jul 2026 · Iter 77",
+    icon: Info,
+    color: "bg-indigo-600",
+    steps: [
+      { target: "Open any project with an Ovr $/Hr override or AMS wave.", action: "The Overall Summary card at the top of the estimator will show the 'Set Margin → Effective Margin (with overrides)' indigo banner whenever the effective margin differs from the set margin by more than 0.01%." },
+      { target: "Look at the Effective Margin percentage.", action: "It reads e.g. '32.4%'. A small info icon appears next to the number when there are contributing overrides." },
+      { target: "Hover the percentage.", action: "A tooltip opens listing every T&M row or AMS bucket that is pushing the margin away from the set target. Each entry is colour-coded: green left border = boosting margin, red = dragging margin." },
+      { target: "Read the entry.", action: "Every row shows: (i) a blue 'T&M' or purple 'AMS' badge, (ii) the resource/bucket label, (iii) the wave name, (iv) expected $ (formula-derived) vs actual $ (with override), and (v) the signed deviation on the right." },
+      { target: "Understand the sign convention.", action: "Positive deviations push the blended margin higher (you sold above formula price). Negative deviations drag it down (you discounted or under-priced an AMS bucket)." },
+      { target: "Confirm the invariant.", action: "If every row's Ovr $/Hr is empty AND every AMS bucket's hourly_rate equals cost_rate / (1 - set_margin), the callout disappears entirely — margin equals set margin exactly." },
+      { target: "Cross-check with the grid.", action: "Click into the offending wave, scroll to the resource row, and inspect the Ovr $/Hr column. For AMS buckets, open the AMS Shared Panel and check hourly_rate vs. cost_rate." },
     ],
     hasSlideshow: false,
     hasTour: false,

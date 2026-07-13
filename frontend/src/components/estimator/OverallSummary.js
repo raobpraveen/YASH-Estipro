@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export const OverallSummary = ({ overall, profitMarginPercentage, collapsedSections, toggleSection }) => (
   <Card className="border border-[#E2E8F0] shadow-sm">
@@ -214,9 +215,53 @@ export const OverallSummary = ({ overall, profitMarginPercentage, collapsedSecti
           <span className="text-indigo-300 text-lg">&rarr;</span>
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-indigo-700">Effective Margin (with overrides):</span>
-            <span className={`font-mono font-bold text-xl ${overall.effectiveProfitMargin >= profitMarginPercentage ? 'text-green-600' : 'text-red-600'}`} data-testid="effective-margin-value">
-              {overall.effectiveProfitMargin.toFixed(1)}%
-            </span>
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className={`font-mono font-bold text-xl inline-flex items-center gap-1 cursor-help ${overall.effectiveProfitMargin >= profitMarginPercentage ? 'text-green-600' : 'text-red-600'}`}
+                    data-testid="effective-margin-value"
+                  >
+                    {overall.effectiveProfitMargin.toFixed(1)}%
+                    <Info className="w-3.5 h-3.5 opacity-70" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start" className="max-w-lg p-3 bg-white text-slate-800 border border-slate-200 shadow-lg">
+                  <div className="text-xs">
+                    <p className="font-semibold text-slate-700 mb-2">
+                      Margin Breakdown — items shifting the blended margin away from {profitMarginPercentage.toFixed(1)}%:
+                    </p>
+                    {(!overall.marginDeviations || overall.marginDeviations.length === 0) ? (
+                      <p className="text-slate-500 italic">No T&amp;M Ovr $/Hr overrides and no AMS mispricing detected. Margin drift may come from data-only edits (e.g. logistics config, negotiated buffer).</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {overall.marginDeviations.map((d, i) => (
+                          <div key={i} className="border-l-2 pl-2" style={{ borderColor: d.deviation >= 0 ? '#10B981' : '#EF4444' }}>
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="font-medium">
+                                <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mr-1 ${d.type === 'ams' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                                  {d.type === 'ams' ? 'AMS' : 'T&M'}
+                                </span>
+                                {d.label}
+                              </span>
+                              <span className={`font-mono font-semibold ${d.deviation >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                                {d.deviation >= 0 ? '+' : ''}${Math.round(d.deviation).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 mt-0.5">
+                              Wave: {d.waveName} · Expected ${Math.round(d.expected).toLocaleString()} → Actual ${Math.round(d.actual).toLocaleString()}
+                            </div>
+                          </div>
+                        ))}
+                        <div className="border-t pt-1.5 mt-2 text-[10px] text-slate-500">
+                          Positive amounts push margin higher, negative amounts drag it lower.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       )}

@@ -145,6 +145,15 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
     - `wave-grid-split-pane` (Jul 2026 · Iter 72) — 8 steps covering the two-pane grid + wave tab drag reorder + downstream effects on Gantt / exports / summaries.
     - `consistent-export-filenames` (Jul 2026 · Iter 71) — 7 steps covering the standardised `{PRJ}_{Customer}_{ProjectName}_v{N}_{Suffix}.{ext}` convention across Estimate / Cashflow / Milestones / Gantt.
 
+### Iteration 76: Effective Margin AMS Symmetry (Completed Jul 2026)
+80. **Bug**: Post-Iter 75, margin formula was still asymmetric wrt AMS — `netCost` included `amsTotalCost` but `resourcesPrice` had no `amsSharedAnnual`. PRJ-0037 v2 (T&M @ 35% + AMS_Shared @ 35%) showed a suppressed margin instead of 35%.
+81. **Fix**: `resourcesPrice = totalRowsSellingPrice + amsSharedAnnual` in `calculateWaveSummary`; `overallResourcesPrice = totalRowsSellingPrice + totalAmsSharedAnnual` in `calculateOverallSummary`. Verified live on PRJ-0037 v2: margin = 35.0% ✓ (callout auto-hidden).
+
+### Iteration 77: Margin Breakdown Tooltip + Help Docs (Completed Jul 2026)
+82. **Margin Breakdown tooltip** — `estimatorCalcs.js` now populates `marginDeviations[]` for each wave and aggregates into `overall.marginDeviations`. Entries are added when (a) a T&M row has `override_hourly_rate > 0` and its effective SP differs from formula SP by > $0.50, or (b) an AMS bucket's `hourly_rate` differs from `cost_rate / (1 − margin)` by > $0.01.
+83. **UI**: `OverallSummary.js` wraps the effective-margin percentage in a Shadcn Tooltip. Info icon appears next to the value. Tooltip lists every deviation with green/red left border (boost/drag), T&M or AMS badge, wave name, expected vs. actual price, and signed $ delta. Empty state shows a helpful hint about data-only edits.
+84. **Help docs**: UserManual §0.9 documents the corrected formula, the set-margin invariant, and the tooltip usage. SupportGuide §15.7 adds Iter 75–77 implementation notes. Tutorials gained a new `effective-margin-breakdown` walkthrough (7 steps).
+
 ### Iteration 74: Failed to Fetch Projects Toast (Completed Jul 2026)
 78. **P0 UI crash**: `Projects.js::calculateProjectValue` returned `undefined` for `grandTotal` / `totalMM` when a project summary had no `grandTotalFinalPrice` / `finalPrice`. Downstream `.toLocaleString()` / `.toFixed()` calls crashed rendering; React's error boundary showed the misleading "Failed to fetch projects" toast (fetch itself was HTTP 200). Also caused the illusion that saving new projects wasn't working (records saved fine but list re-render crashed). Fix: `|| 0` fallbacks inside `calculateProjectValue` return, at every `.toLocaleString()` / `.toFixed()` render site (3 places), and inside the Totals reducer. Verified: 36 projects rendered, totals row = $11,054,917, no console errors.
 
