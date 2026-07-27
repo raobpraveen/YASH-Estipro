@@ -265,6 +265,23 @@ export default function UserManual() {
               Hover the effective-margin percentage to open a tooltip listing every T&amp;M row or AMS bucket that is pushing the blended margin away from Set Margin. Each entry shows: the wave name, the offending row/bucket label, expected vs. actual price, and the signed $ deviation (positive = boost margin, negative = drag margin). No hunting through the grid needed.
             </KeyValue>
 
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.10 Billing Entity + Multi-level Approval Matrix (Iter 78–79)</h3>
+            <KeyValue label="Billing Entity master data">
+              A new admin-managed master (<strong>Master Data → Billing Entities</strong>) that captures each Yash legal entity (name, code, country). Every project must be tagged with a Billing Entity — used for filtering, exports, and, most importantly, for routing approvals.
+            </KeyValue>
+            <KeyValue label="Approval Matrix (Admin section)">
+              Configure a per-Billing-Entity multi-level sequential approval ladder (up to 5 levels). At each level you can add one or more approvers. The Approval Matrix screen now lives under <strong>Admin → Approval Matrix</strong> in the sidebar, next to User Management. A small badge at the top shows how many <em>Approver-role</em> users are available for selection.
+            </KeyValue>
+            <KeyValue label="Sequential email routing">
+              When a project is submitted for review, <em>only Level 1</em> approvers receive the email + notification. As soon as any one Level 1 approver approves, Level 2 approvers are notified, and so on until the final level closes the workflow.
+            </KeyValue>
+            <KeyValue label="Approval Progress tracker">
+              A new card at the top of the Estimator (above Project Information) shows every level, its label (e.g. "Delivery Director"), and every approver with real-time status: <span className="text-emerald-700 font-semibold">Approved</span> (with who approved, when, and their comment), <span className="text-amber-700 font-semibold">Awaiting</span>, or <span className="text-gray-500 font-semibold">Pending</span>. Copy-email and mailto follow-up icons appear next to the current-level approvers so you can chase them directly. Card is collapsible.
+            </KeyValue>
+            <KeyValue label="Quick actions from the bell">
+              For any "review request" notification in the top-bar bell, admins/approvers now see inline <strong>Approve / Reject / Open</strong> buttons. Approve opens a small comment box in-place — no need to open the project unless you want to.
+            </KeyValue>
+
             <Tip>If you see something in this section that's not yet visible in the UI, hard-refresh your browser (Ctrl+Shift+R / Cmd+Shift+R) to ensure you're on the latest build.</Tip>
           </Section>
 
@@ -643,6 +660,12 @@ export default function UserManual() {
               <span className="flex items-center gap-2 text-sm"><span className="w-4 h-4 rounded bg-purple-100 border"></span> Logistics Section</span>
             </div>
             <Tip>The exported Excel preserves the Resource Group ID in a "Group" column at the end of each detail sheet.</Tip>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">8.5 Summary Sheet Additions (Iter 79)</h3>
+            <p>The Summary sheet now includes richer project metadata and approval details:</p>
+            <KeyValue label="Project info fields">Billing Entity, Bid Category, Forecasted Closure Date, Competencies, Commercial Status, and computed Effective Margin %.</KeyValue>
+            <KeyValue label="Approval Matrix & History">A dedicated block lists every configured level with all approvers, plus an Approval History table capturing each level's actual approver, timestamp, and comment (only present after approvals happen).</KeyValue>
+            <KeyValue label="Import behavior">Billing Entity, Bid Category, Forecasted Closure Date, Competencies, and Commercial Status are also read back on <strong>Smart Import</strong> and matched to your master data by name. Approver names, timestamps and comments are <em>export-only</em> — they are never overwritten during import.</KeyValue>
           </Section>
 
           {/* Section 9: Quick Estimator */}
@@ -674,6 +697,28 @@ export default function UserManual() {
             <KeyValue label="Suspended">Project estimation was approved, but a new version has been created post-approval. The original approval is retained for reference.</KeyValue>
             <KeyValue label="Obsolete">This estimation was not sent for approval, or was a draft superseded by an approved version. Made obsolete from further usage.</KeyValue>
             <Warning>Once a project is approved, it becomes read-only. To make changes, clone the project or create a new version.</Warning>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">10.1 Multi-level Sequential Approval Matrix (Iter 78–79)</h3>
+            <p>Each Billing Entity can have a multi-level (up to 5) approval ladder. When a project tagged to that Billing Entity is submitted for review, the workflow moves through the levels one at a time:</p>
+            <Step num="1"><strong>Submit for Review</strong> — Level 1 approvers get email + in-app notification. If the project's Billing Entity has a matrix configured, the "Select Approver" dropdown is hidden and replaced with a preview of every level.</Step>
+            <Step num="2"><strong>Level 1 Approve</strong> — Any one Level 1 approver clicks Approve → the project advances to Level 2 and only Level 2 approvers are notified.</Step>
+            <Step num="3"><strong>...continue level-by-level</strong> — This repeats until the last configured level approves, at which point the project status becomes Approved.</Step>
+            <Step num="4"><strong>Reject anywhere</strong> — Any approver at any level can reject; the whole project is rejected immediately, and no further level is notified.</Step>
+            <KeyValue label="Multiple approvers per level">Behave as an OR gate — the first approver in that level who acts advances (or rejects) the project. Other approvers at the same level are informed but their vote is no longer needed.</KeyValue>
+            <KeyValue label="Approval Matrix admin">Only <strong>Admin</strong> role users can access Admin → Approval Matrix and configure the ladder for each Billing Entity.</KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">10.2 Approval Progress Tracker</h3>
+            <p>Whenever a project is in-review, approved, or rejected, an <strong>Approval Progress</strong> card is shown at the top of the Estimator (above Project Information). It gives a live view of the approval ladder for the project's Billing Entity:</p>
+            <KeyValue label="Level cards">Each level appears as a card with a status pill — <span className="text-emerald-700 font-semibold">Approved</span>, <span className="text-amber-700 font-semibold">Awaiting</span> (current level), <span className="text-gray-500 font-semibold">Pending</span>, or <span className="text-red-600 font-semibold">Rejected</span>. Approved levels show who approved, timestamp, and their comment.</KeyValue>
+            <KeyValue label="Approver chips">Each approver in the level is a chip with copy-email and (for the awaiting level) mailto follow-up icons so you can chase them directly from the app.</KeyValue>
+            <KeyValue label="Collapsible">Click the card header to collapse/expand the details.</KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-6">10.3 Quick Approve / Reject from Notification Bell</h3>
+            <p>Approvers can act on a pending review directly from the top-bar bell without navigating to the project:</p>
+            <Step num="1">Click the bell to open the notifications popover.</Step>
+            <Step num="2">On any "review request" notification, click <strong>Approve</strong>, <strong>Reject</strong>, or <strong>Open</strong>.</Step>
+            <Step num="3">Approve opens a compact comment textarea (rejection requires a reason). Click <strong>Confirm Approve</strong> / <strong>Confirm Reject</strong> to record your decision.</Step>
+            <Tip>The project's Approval Progress tracker and everyone else's notifications update automatically to reflect your action.</Tip>
           </Section>
 
           {/* Section 11: Access Level */}

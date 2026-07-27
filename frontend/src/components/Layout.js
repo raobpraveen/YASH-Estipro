@@ -33,6 +33,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -55,6 +57,33 @@ const Layout = ({ user, onLogout }) => {
   });
   const [flyoutSection, setFlyoutSection] = useState(null);
   const flyoutRef = useRef(null);
+  // Inline approval action state (per-notification)
+  const [expandedActionId, setExpandedActionId] = useState(null);
+  const [actionComments, setActionComments] = useState({}); // { [notifId]: string }
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const handleQuickApprove = async (notif, action) => {
+    if (!notif.project_id) return;
+    setActionLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const comments = actionComments[notif.id] || "";
+      const url = `${API}/projects/${notif.project_id}/${action}?comments=${encodeURIComponent(comments)}`;
+      const res = await axios.post(url, {}, { headers: { Authorization: `Bearer ${token}` } });
+      // Mark this notification as read
+      try {
+        await axios.put(`${API}/notifications/${notif.id}/read`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      } catch { /* noop */ }
+      toast.success(res.data?.message || `Project ${action === "approve" ? "approved" : "rejected"}`);
+      setExpandedActionId(null);
+      setActionComments(prev => ({ ...prev, [notif.id]: "" }));
+      await fetchNotifications();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || `Failed to ${action}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('sidebar-collapsed', isCollapsed.toString());
@@ -398,7 +427,7 @@ const Layout = ({ user, onLogout }) => {
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" align="end">
+            <PopoverContent className="w-96 p-0" align="end">
               <div className="p-3 border-b flex justify-between items-center">
                 <h4 className="font-semibold">Notifications</h4>
                 {unreadCount > 0 && (
@@ -407,24 +436,28 @@ const Layout = ({ user, onLogout }) => {
                   </Button>
                 )}
               </div>
-              <div className="max-h-80 overflow-y-auto">
+              <div className="max-h-[420px] overflow-y-auto">
                 {notifications.length === 0 ? (
                   <div className="p-4 text-center text-gray-500 text-sm">
                     No notifications
                   </div>
                 ) : (
-                  notifications.map((notif) => (
+                  notifications.map((notif) => {
+                    const isActionable = notif.type === 'review_request' && !!notif.project_id;
+                    const isExpanded = expandedActionId === notif.id;
+                    return (
                     <div
                       key={notif.id}
-                      onClick={() => {
-                        if (notif.project_id) {
-                          navigate(`/projects/${notif.project_id}/summary`);
-                        }
-                      }}
-                      className={`p-3 border-b last:border-b-0 hover:bg-gray-50 ${!notif.is_read ? 'bg-blue-50' : ''} ${notif.project_id ? 'cursor-pointer' : ''}`}
+                      className={`p-3 border-b last:border-b-0 ${!notif.is_read ? 'bg-blue-50' : ''}`}
                       data-testid={`notification-item-${notif.id}`}
                     >
-                      <div className="flex items-start gap-2">
+                      <div
+                        className={`flex items-start gap-2 ${notif.project_id ? 'cursor-pointer' : ''}`}
+                        onClick={() => {
+                          if (isActionable) return; // don't navigate when approving inline; use the buttons
+                          if (notif.project_id) navigate(`/projects/${notif.project_id}/summary`);
+                        }}
+                      >
                         <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
                           notif.type === 'approved' ? 'bg-green-500' :
                           notif.type === 'rejected' ? 'bg-red-500' :
@@ -432,14 +465,77 @@ const Layout = ({ user, onLogout }) => {
                         }`} />
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm">{notif.title}</p>
-                          <p className="text-xs text-gray-500 truncate">{notif.message}</p>
+                          <p className="text-xs text-gray-500 line-clamp-2">{notif.message}</p>
                           <p className="text-xs text-gray-400 mt-1">
                             {new Date(notif.created_at).toLocaleString()}
                           </p>
                         </div>
                       </div>
+                      {isActionable && (
+                        <div className="mt-2 ml-4 space-y-2" data-testid={`notif-actions-${notif.id}`}>
+                          {!isExpanded ? (
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                size="sm"
+                                className="h-7 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                                onClick={(e) => { e.stopPropagation(); setExpandedActionId(notif.id); }}
+                                data-testid={`notif-quick-approve-${notif.id}`}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 px-2 text-xs border-red-500 text-red-600 hover:bg-red-50"
+                                onClick={(e) => { e.stopPropagation(); setExpandedActionId(`reject-${notif.id}`); }}
+                                data-testid={`notif-quick-reject-${notif.id}`}
+                              >
+                                Reject
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs text-blue-600"
+                                onClick={(e) => { e.stopPropagation(); navigate(`/projects/${notif.project_id}/summary`); }}
+                                data-testid={`notif-open-project-${notif.id}`}
+                              >
+                                Open
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="space-y-2 bg-white border rounded-md p-2">
+                              <Textarea
+                                placeholder={expandedActionId?.startsWith("reject") ? "Reason for rejection (required)" : "Optional comment"}
+                                value={actionComments[notif.id] || ""}
+                                onChange={(e) => setActionComments(prev => ({ ...prev, [notif.id]: e.target.value }))}
+                                className="text-xs h-16 resize-none"
+                                onClick={(e) => e.stopPropagation()}
+                                data-testid={`notif-comment-${notif.id}`}
+                              />
+                              <div className="flex gap-1 justify-end">
+                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); setExpandedActionId(null); }}>
+                                  Cancel
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className={`h-7 text-xs ${expandedActionId?.startsWith("reject") ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"} text-white`}
+                                  disabled={actionLoading || (expandedActionId?.startsWith("reject") && !(actionComments[notif.id] || "").trim())}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleQuickApprove(notif, expandedActionId?.startsWith("reject") ? "reject" : "approve");
+                                  }}
+                                  data-testid={`notif-submit-action-${notif.id}`}
+                                >
+                                  {actionLoading ? "..." : (expandedActionId?.startsWith("reject") ? "Confirm Reject" : "Confirm Approve")}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </PopoverContent>

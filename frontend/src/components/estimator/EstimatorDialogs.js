@@ -402,6 +402,17 @@ export const SmartImportDialog = ({ open, onOpenChange, smartImportData, smartIm
               <p className="text-xs text-purple-600">Logistics configuration will be imported from the Excel file.</p>
             </div>
           )}
+          {(smartImportData.billingEntityName || smartImportData.bidCategory || smartImportData.forecastedClosureDate || (smartImportData.competencyNames || []).length > 0 || smartImportData.commercialStatus) && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 space-y-1">
+              <p className="text-sm font-semibold text-emerald-700 mb-1">Project info fields detected from Summary sheet:</p>
+              {smartImportData.billingEntityName && <p className="text-xs text-emerald-700"><strong>Billing Entity:</strong> {smartImportData.billingEntityName}</p>}
+              {smartImportData.bidCategory && <p className="text-xs text-emerald-700"><strong>Bid Category:</strong> {smartImportData.bidCategory}</p>}
+              {smartImportData.forecastedClosureDate && <p className="text-xs text-emerald-700"><strong>Forecasted Closure:</strong> {smartImportData.forecastedClosureDate}</p>}
+              {(smartImportData.competencyNames || []).length > 0 && <p className="text-xs text-emerald-700"><strong>Competencies:</strong> {smartImportData.competencyNames.join(", ")}</p>}
+              {smartImportData.commercialStatus && <p className="text-xs text-emerald-700"><strong>Commercial Status:</strong> {smartImportData.commercialStatus}</p>}
+              <p className="text-[10px] text-emerald-600 mt-1 italic">Values matched by name will be applied. Approval/approver fields are export-only and won&apos;t be imported.</p>
+            </div>
+          )}
           <div className="bg-gray-50 border rounded-lg p-3 text-xs text-gray-500">
             <strong>Replace current:</strong> Overwrites all waves locally (save to persist).<br/>
             {projectId && <><strong>Import as New Version:</strong> Creates a new version and suspends the current one.</>}

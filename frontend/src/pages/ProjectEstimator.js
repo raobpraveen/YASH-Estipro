@@ -1513,7 +1513,14 @@ const ProjectEstimator = () => {
         projectActivities,
         cashflowData,
         skills,
-        projectData: { ...(projectData || {}), billing_entity_name: billingEntities.find(be => be.id === billingEntityId)?.name || "" },
+        projectData: {
+          ...(projectData || {}),
+          billing_entity_name: billingEntities.find(be => be.id === billingEntityId)?.name || "",
+          bid_category: bidCategory,
+          forecasted_closure_date: forecastedClosureDate,
+          competency_names: competencyIds.map(id => competencies.find(c => c.id === id)?.name || "").filter(Boolean),
+          commercial_status: commercialStatus,
+        },
         approvalMatrix,
       });
       // Upload to backend and trigger download via hidden iframe
@@ -1630,6 +1637,23 @@ const ProjectEstimator = () => {
         if (smartImportData.negoBuffer !== null && smartImportData.negoBuffer !== undefined) {
           payload.nego_buffer_percentage = smartImportData.negoBuffer;
         }
+        // Apply imported project-info fields from Summary sheet (Billing Entity, Bid Category, etc.)
+        if (smartImportData.billingEntityName) {
+          const be = billingEntities.find(x => x.name.toLowerCase() === smartImportData.billingEntityName.toLowerCase());
+          if (be) { payload.billing_entity_id = be.id; payload.billing_entity_name = be.name; }
+        }
+        if (smartImportData.bidCategory) payload.bid_category = smartImportData.bidCategory;
+        if (smartImportData.forecastedClosureDate) payload.forecasted_closure_date = smartImportData.forecastedClosureDate;
+        if (smartImportData.commercialStatus) payload.commercial_status = smartImportData.commercialStatus;
+        if ((smartImportData.competencyNames || []).length > 0) {
+          const matchedIds = smartImportData.competencyNames
+            .map(nm => competencies.find(c => c.name.toLowerCase() === nm.toLowerCase())?.id)
+            .filter(Boolean);
+          if (matchedIds.length > 0) {
+            payload.competency_ids = matchedIds;
+            payload.competency_names = smartImportData.competencyNames;
+          }
+        }
         try {
           const response = await axios.post(`${API}/projects/${projectId}/new-version`, payload, { headers: apiHeaders });
 
@@ -1698,6 +1722,20 @@ const ProjectEstimator = () => {
         }
         if (smartImportData.negoBuffer !== null && smartImportData.negoBuffer !== undefined) {
           setNegoBufferPercentage(smartImportData.negoBuffer);
+        }
+        // Apply imported project-info fields (Billing Entity, Bid Category, Competencies, etc.)
+        if (smartImportData.billingEntityName) {
+          const be = billingEntities.find(x => x.name.toLowerCase() === smartImportData.billingEntityName.toLowerCase());
+          if (be) setBillingEntityId(be.id);
+        }
+        if (smartImportData.bidCategory) setBidCategory(smartImportData.bidCategory);
+        if (smartImportData.forecastedClosureDate) setForecastedClosureDate(smartImportData.forecastedClosureDate);
+        if (smartImportData.commercialStatus) setCommercialStatus(smartImportData.commercialStatus);
+        if ((smartImportData.competencyNames || []).length > 0) {
+          const matchedIds = smartImportData.competencyNames
+            .map(nm => competencies.find(c => c.name.toLowerCase() === nm.toLowerCase())?.id)
+            .filter(Boolean);
+          if (matchedIds.length > 0) setCompetencyIds(matchedIds);
         }
         // If Excel contains milestones, overwrite in current project
         const importedMs = smartImportData.milestones || [];

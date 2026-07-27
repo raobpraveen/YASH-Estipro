@@ -373,7 +373,18 @@ export async function buildExportWorkbook({
     ["CRM ID", crmId || "\u2014"],
     ["Description", projectDescription],
     ["Billing Entity", (projectData?.billing_entity_name) || "\u2014"],
+    ["Bid Category", (projectData?.bid_category) || "\u2014"],
+    ["Forecasted Closure Date", (projectData?.forecasted_closure_date) || "\u2014"],
+    ["Competencies", ((projectData?.competency_names || []).join(", ")) || "\u2014"],
+    ["Commercial Status", (projectData?.commercial_status) || "\u2014"],
   ];
+  // Effective margin (from computed overall) — useful reference
+  try {
+    const _overall = calculateOverallSummary(waves, profitMarginPercentage, negoBufferPercentage);
+    if (_overall && typeof _overall.effectiveProfitMargin === "number") {
+      infoFields.push(["Effective Margin %", `${_overall.effectiveProfitMargin.toFixed(2)}%`]);
+    }
+  } catch { /* noop */ }
   if (versionNotes) infoFields.push(["Version Notes", versionNotes]);
   infoFields.forEach(([label, val]) => {
     const r = summaryWs.addRow([label, val]);

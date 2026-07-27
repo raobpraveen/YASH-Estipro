@@ -1,0 +1,46 @@
+{
+  "summary": "Iter 80/81/82 tests: (1) Backend sequential approval matrix flow — 3/3 pytest tests passed. Model exposes matrix_levels/matrix_approvers/current_approval_level/approval_history. submit-for-review accepts empty approver_email when a matrix exists and only L1 approvers get emailed initially; approve advances through levels (L1→L2→approved). (2) Frontend notification bell inline actions — Approve UI works correctly (textarea shows 'Optional comment', Confirm Approve button not disabled). BUG FOUND: Reject button click does NOT open the comment textarea due to isExpanded state-check bug in Layout.js. (3) ApprovalStatusTracker renders correctly above Project Information on the estimator for PRJ-0040 (approved state, 2 levels) showing L1/L2 approvers, timestamps and comments; collapsible header works.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Layout.js — Notification bell inline Reject",
+        "issue": "Clicking the Reject button sets expandedActionId = `reject-${notif.id}` but the render condition on line 447 uses strict equality: `isExpanded = expandedActionId === notif.id`. As a result, the textarea + Confirm Reject panel never appears, and the Approve/Reject/Open buttons remain visible. Only Approve currently expands the comment panel. Reject-with-reason flow is fully broken in the notification bell.",
+        "selector": "[data-testid=\"notif-quick-reject-<id>\"] → expects [data-testid=\"notif-comment-<id>\"] to become visible",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Dashboard (Sales Manager Leaderboard table)",
+        "issues": ["React hydration warnings in console: 'In HTML, <span> cannot be a child of <tbody>' and '<tr> cannot be a child of <span>'. A veDynamic wrapper <span style={display:contents}> is being rendered inside <tbody> and around <tr>, which is invalid HTML. Not visible to users but pollutes console and can break SSR."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter80_approval_matrix.py",
+    "/app/test_reports/pytest/iter80_results.xml"
+  ],
+  "action_items": [
+    "Fix Layout.js line 447: change `const isExpanded = expandedActionId === notif.id;` to `const isExpanded = expandedActionId === notif.id || expandedActionId === `reject-${notif.id}`;` so the Reject action expands the comment textarea. Without this fix, the inline Reject-from-bell flow is unusable — placeholder 'Reason for rejection (required)' and Confirm Reject button are never rendered.",
+    "(Nice-to-have) Investigate and remove the veDynamic <span style={display:contents}> wrapper around Sales Manager Leaderboard <tr> rows on the Dashboard to eliminate invalid-HTML hydration warnings."
+  ],
+  "critical_code_review_comments": [
+    "Layout.js:447 — isExpanded strict-equality check misses the 'reject-<id>' prefix used by the Reject button's setExpandedActionId call. Rewrite to accept either form (or better, store `{ id, mode }` as state instead of a stringly-typed 'reject-<id>' key).",
+    "projects.py submit_for_review: dedup on approver emails uses .lower() but matrix_levels stores emails as-is; downstream comparisons should also lowercase. Currently OK because the L1 fan-out uses lowercased emails from matrix_approvers, but any custom approver_email supplied by user is NOT lowercased before being stored in project.approver_email, which could break later access checks that compare against user.email."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter80_approval_matrix.py"
+  ],
+  "success_rate": {"backend": "100% (3/3)", "frontend": "80% (Approve OK, Tracker OK, Reject inline broken)"},
+  "seed_data_creation": "One TEST_no_matrix_project was created and deleted during backend tests; one clone of PRJ-0040 was created, run through the full L1→L2 approval flow, then deleted.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@yash.com / password",
+  "context_for_next_testing_agent": "After Layout.js:447 fix, re-run the notification bell Reject flow: click bell → click a review_request Reject → confirm textarea with 'Reason for rejection (required)' placeholder appears; confirm 'Confirm Reject' is disabled until reason is typed. Excel export / Smart Import feature was NOT tested through the UI (would need file download/upload plumbing); backend fields feeding those exports were verified indirectly via GET /api/projects/{id}. PRJ-0040 already has approved status with full approval_history, so the ApprovalStatusTracker is validated in the 'all approved' state — testing an 'awaiting L2' state would require submitting a new copy.",
+  "rca_of_the_issue": "In frontend/src/components/Layout.js the notification quick-action panel supports two modes: 'approve' (expandedActionId = notif.id) and 'reject' (expandedActionId = `reject-${notif.id}`). However line 447 computes `isExpanded = expandedActionId === notif.id`, which is true only for the approve case. When Reject is clicked, expandedActionId becomes 'reject-<id>' but isExpanded stays false, so the textarea + Confirm buttons block (guarded by `{!isExpanded ? <buttons> : <panel>}`) never renders. The placeholder and disabled-when-empty logic inside that block are correct — they just never mount for the reject flow. Fix: broaden the isExpanded check or refactor state to `{ id, mode }` and compare mode explicitly."
+}

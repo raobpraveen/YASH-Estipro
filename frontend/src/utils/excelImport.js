@@ -28,9 +28,14 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
   const missingLocations = new Set();
   const parsedMilestones = []; // { wave_name, milestones: [], payment_terms_days }
 
-  // Parse Summary sheet for Profit Margin and Nego Buffer
+  // Parse Summary sheet for Profit Margin, Nego Buffer and project info labels
   let importedPM = null;
   let importedNB = null;
+  let importedBillingEntity = "";
+  let importedBidCategory = "";
+  let importedForecastedClosureDate = "";
+  let importedCompetencies = [];
+  let importedCommercialStatus = "";
   const summaryWs = wb.getWorksheet("Summary");
   if (summaryWs) {
     const pmCell = summaryWs.getRow(5).getCell(2);
@@ -42,6 +47,29 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
     }
     if (nbVal !== "" && nbVal !== null && nbVal !== undefined) {
       importedNB = typeof nbVal === "number" ? (nbVal < 1 ? nbVal * 100 : nbVal) : parseFloat(nbVal) || null;
+    }
+    // Label-based scan for project info fields (column A = label, column B = value)
+    const labelMap = {
+      "billing entity": v => { importedBillingEntity = String(v || "").trim(); },
+      "bid category":   v => { importedBidCategory = String(v || "").trim(); },
+      "forecasted closure date": v => { importedForecastedClosureDate = String(v || "").trim(); },
+      "competencies":   v => {
+        const s = String(v || "").trim();
+        importedCompetencies = s && s !== "\u2014" ? s.split(",").map(x => x.trim()).filter(Boolean) : [];
+      },
+      "commercial status": v => { importedCommercialStatus = String(v || "").trim(); },
+    };
+    const maxRow = Math.min(summaryWs.rowCount || 0, 60);
+    for (let r = 1; r <= maxRow; r++) {
+      const row = summaryWs.getRow(r);
+      const labelRaw = (getCellVal(row.getCell(1)) || "").toString().trim().toLowerCase();
+      if (!labelRaw) continue;
+      const handler = labelMap[labelRaw];
+      if (handler) {
+        const val = getCellVal(row.getCell(2));
+        const clean = val === "\u2014" ? "" : val;
+        handler(clean);
+      }
     }
   }
 
@@ -348,6 +376,11 @@ export async function parseSmartImportExcel(buffer, skills, locations, rates) {
     profitMargin: importedPM,
     negoBuffer: importedNB,
     milestones: parsedMilestones,
+    billingEntityName: importedBillingEntity,
+    bidCategory: importedBidCategory,
+    forecastedClosureDate: importedForecastedClosureDate,
+    competencyNames: importedCompetencies,
+    commercialStatus: importedCommercialStatus,
   };
 }
 
