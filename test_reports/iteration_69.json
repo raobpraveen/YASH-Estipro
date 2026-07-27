@@ -1,0 +1,36 @@
+{
+  "summary": "Verified Iter 83-84 fixes end-to-end. Backend: 10/10 tests passing in test_iter83_84_approval.py covering (a) approve authorization 403 on wrong-level caller including PRJ-0043 v1 as admin, (b) sequential L1->L2->approved flow, (c) idempotency 409 when the same caller re-approves the CURRENT level, (d) new-version routing Option B: L1 edit -> in_review at L2 with synthetic 'L1 already approved on previous version v{n}' history entry + review_request notification to L2; L2 edit -> draft with version_alert notifications to L1 (and creator email included via matrix), (e) PRJ-0040 remains approved. Frontend: /projects Totals row cells align exactly under Resources (214), Man-Months (1238.10), Grand Total ($12,033,359); PRJ-0042 and PRJ-0043 show Resources = 4 (group-aware, was 6 before).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/projects/{id}/new-version", "issue": "Response can take >15s when SMTP send_email is invoked for L1/L2 alert fan-out; used 60s client timeout in tests. Consider fire-and-forget/background task for email dispatch."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter83_84_approval.py",
+    "/app/test_reports/pytest/iter83_84.xml"
+  ],
+  "action_items": [
+    "(Minor) Move new-version notification/email dispatch to a background task to avoid 15-60s response times when multiple L1 approvers + creator are alerted."
+  ],
+  "critical_code_review_comments": [
+    "ProjectUpdate model does not expose matrix_levels / matrix_approvers / current_approval_level / approval_history — this is by design (they are managed by submit/approve endpoints) and defends against tampering. Retain as-is; documented in test with a direct-DB fixture (_set_matrix) to install controlled scenarios.",
+    "approve_project authorization block correctly returns 403 with 'Waiting on: <emails>' and 409 for idempotent re-approve at the same level. Good.",
+    "create_new_version Option B: caller level is looked up from parent's matrix_levels by emails, and matrix state is carried over on L1 auto-submit (matrix_levels + matrix_approvers) — good. Version-alert branch also emails creator via existing.created_by_email — good."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter83_84_approval.py (new)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Registered two throwaway approver users (test_l1_*/test_l2_*@example.com) per module; each test creates its own draft project and deletes it in teardown (or leaks harmlessly with TEST_ prefix).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@yash.com / password",
+  "context_for_next_testing_agent": "test_iter83_84_approval.py depends on PRJ-0043 v1 id=f6619193-81bf-4822-a658-9d2074a94287 (current_level=2) and PRJ-0040 id=25d34438-9123-447a-9a76-b68e3fa341a9 (approved). Both those tests use pytest.skip if the fixture project isn't present, so the file is safe to re-run. The idempotency and E2E flow tests manipulate approval state via direct MongoDB writes (pymongo -> DB_NAME/projects) because ProjectUpdate does not expose matrix_* fields; keep that helper (_set_matrix) if extending the file.",
+  "rca_of_the_issue": "N/A — all targeted fixes verified working."
+}

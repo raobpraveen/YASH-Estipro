@@ -434,7 +434,17 @@ const Projects = () => {
       return { baseCost: 0, withOverhead: 0, sellingPrice: 0, negoBuffer: 0, finalPrice: 0, grandTotal: 0, totalMM: 0, resourceCount: 0 };
     }
     const summary = calculateOverallSummary(project.waves, project.profit_margin_percentage ?? 35, project.nego_buffer_percentage ?? 0);
-    const resourceCount = project.waves.reduce((sum, w) => sum + (w.grid_allocations?.length || 0), 0);
+    // Group-aware unique resource count — rows sharing the same non-empty resource_group_id count as ONE resource
+    const resourceCount = project.waves.reduce((sum, w) => {
+      const seen = new Set();
+      let count = 0;
+      (w.grid_allocations || []).forEach(a => {
+        const grp = (a.resource_group_id || "").toString().trim();
+        if (grp) { if (!seen.has(grp)) { seen.add(grp); count += 1; } }
+        else { count += 1; }
+      });
+      return sum + count;
+    }, 0);
     return { 
       baseCost: (summary.onsiteSalaryCost || 0) + (summary.offshoreSalaryCost || 0), 
       withOverhead: summary.totalRowsSellingPrice || 0, 
@@ -1134,13 +1144,15 @@ const Projects = () => {
                         const vals = calculateProjectValue(p);
                         acc.grandTotal += (vals.grandTotal || 0);
                         acc.totalMM += (vals.totalMM || 0);
+                        acc.resources += (vals.resourceCount || 0);
                         return acc;
-                      }, { grandTotal: 0, totalMM: 0 });
+                      }, { grandTotal: 0, totalMM: 0, resources: 0 });
                       return (
                         <TableRow className="bg-[#0F172A]/5 font-bold border-t-2 border-[#0F172A]">
                           <TableCell colSpan={6} className="text-right text-[#0F172A]" data-testid="totals-label">Totals ({filteredProjects.length} projects)</TableCell>
+                          <TableCell className="text-center font-mono tabular-nums" data-testid="totals-resources">{totals.resources}</TableCell>
                           <TableCell className="text-right font-mono tabular-nums" data-testid="totals-mm">{(totals.totalMM || 0).toFixed(2)}</TableCell>
-                          <TableCell className="text-right font-mono tabular-nums text-emerald-700" data-testid="totals-grand-total">{(totals.grandTotal || 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</TableCell>
+                          <TableCell className="text-right font-mono tabular-nums text-emerald-700" data-testid="totals-grand-total">${(totals.grandTotal || 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</TableCell>
                           <TableCell colSpan={2}></TableCell>
                         </TableRow>
                       );

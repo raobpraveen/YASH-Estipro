@@ -182,9 +182,24 @@ const ProjectEstimator = () => {
   // Get current user role
   const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
   const isApprover = currentUser.role === "approver" || currentUser.role === "admin";
-  
-  // Check if current user is the DESIGNATED approver for this project
-  const isDesignatedApprover = isApprover && approverEmail && currentUser.email === approverEmail;
+
+  // Check if current user is the DESIGNATED approver for this project.
+  // Matrix-aware: if the project has an Approval Matrix, only the CURRENT level's
+  // approvers are considered "designated" (not the legacy single approver_email).
+  // Falls back to the single-approver flow when no matrix is configured.
+  const isDesignatedApprover = (() => {
+    if (!isApprover) return false;
+    const hasMatrix = Array.isArray(matrixLevels) && matrixLevels.some(l => (l.approver_emails || []).length > 0);
+    if (hasMatrix) {
+      const currentEntry = matrixLevels.find(l => (l.level || 0) === (currentApprovalLevel || 1));
+      const emails = ((currentEntry?.approver_emails) || []).map(e => (e || "").toLowerCase());
+      // Idempotency: if this user has already approved the current level in history, they are no longer "designated"
+      const alreadyApproved = (approvalHistory || []).some(h => (h.level === (currentApprovalLevel || 1)) && ((h.approver_email || "").toLowerCase() === (currentUser.email || "").toLowerCase()));
+      return !alreadyApproved && emails.includes((currentUser.email || "").toLowerCase());
+    }
+    // Legacy single-approver fallback
+    return approverEmail && currentUser.email === approverEmail;
+  })();
   
   // Read-only logic:
   // - Not latest version → read-only

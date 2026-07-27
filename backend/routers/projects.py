@@ -327,12 +327,52 @@ async def create_new_version(project_id: str, input: ProjectUpdate, user: dict =
     new_project_data["approval_comments"] = ""
     new_project_data["submitted_at"] = None
     new_project_data["approved_at"] = None
+    # Iter 84: Reset multi-level approval matrix state on new version by default.
+    new_project_data["matrix_levels"] = []
+    new_project_data["matrix_approvers"] = []
+    new_project_data["current_approval_level"] = 1
+    new_project_data["approval_history"] = []
+
+    # Iter 84: Approver-driven edit routing (Option B).
+    # - L1 approver edits    → auto-submit new version at Level 2 with a "L1 already approved" note.
+    # - L2+ approver edits   → keep as draft, restart from L1 on manual submission; email alert
+    #                           is fired to Level-1 approvers so they can review the changes.
+    current_user_pre = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
+    caller_email_pre = (current_user_pre or {}).get("email", "").lower()
+    parent_matrix_levels = existing.get("matrix_levels", []) or []
+    caller_level_in_parent = None
+    for _lvl in parent_matrix_levels:
+        allowed = [(e or "").lower() for e in (_lvl.get("emails") or [])]
+        if caller_email_pre and caller_email_pre in allowed:
+            caller_level_in_parent = _lvl.get("level")
+            break
+
+    if caller_level_in_parent == 1 and len(parent_matrix_levels) >= 2:
+        # L1 approver edited → auto-advance to L2
+        new_project_data["status"] = "in_review"
+        new_project_data["matrix_levels"] = parent_matrix_levels
+        new_project_data["matrix_approvers"] = existing.get("matrix_approvers", []) or []
+        new_project_data["current_approval_level"] = 2
+        new_project_data["approval_history"] = [{
+            "level": 1,
+            "approver_email": caller_email_pre,
+            "approver_name": (current_user_pre or {}).get("name", ""),
+            "approved_at": datetime.now(timezone.utc).isoformat(),
+            "comments": f"L1 already approved on previous version v{existing.get('version', 1)}. Carried over automatically after edits by the L1 approver.",
+        }]
+        new_project_data["submitted_at"] = datetime.now(timezone.utc).isoformat()
+
     update_data = input.model_dump(exclude_unset=True)
     update_data.pop("status", None)
     update_data.pop("approver_email", None)
     update_data.pop("approval_comments", None)
     update_data.pop("submitted_at", None)
     update_data.pop("approved_at", None)
+    # Iter 84: protect the approval routing decisions we just made from being clobbered by client payload
+    update_data.pop("matrix_levels", None)
+    update_data.pop("matrix_approvers", None)
+    update_data.pop("current_approval_level", None)
+    update_data.pop("approval_history", None)
     for key, value in update_data.items():
         if value is not None:
             new_project_data[key] = value
@@ -348,8 +388,62 @@ async def create_new_version(project_id: str, input: ProjectUpdate, user: dict =
             entity_id=project_obj.id, entity_name=project_obj.name,
             project_id=project_obj.id, project_number=project_obj.project_number,
             project_name=project_obj.name,
-            metadata={"new_version": new_version, "previous_version": existing.get("version", 1), "version_notes": update_data.get("version_notes", "")}
+            metadata={"new_version": new_version, "previous_version": existing.get("version", 1), "version_notes": update_data.get("version_notes", ""), "caller_level_in_parent": caller_level_in_parent}
         )
+    # Iter 84: fire notifications based on approver-driven edit routing
+    if project_obj.status == "in_review" and caller_level_in_parent == 1 and len(parent_matrix_levels) >= 2:
+        # Auto-submitted at L2 — notify L2 approvers
+        l2 = next((_l for _l in parent_matrix_levels if _l.get("level") == 2), None)
+        for recipient in list(set((l2 or {}).get("emails", []) or [])):
+            notif = Notification(
+                user_email=recipient, type="review_request",
+                title="Approval Needed - Level 2",
+                message=f"Project {project_obj.project_number} '{project_obj.name}' v{new_version} was edited by the L1 approver and has been auto-submitted for your Level 2 approval.",
+                project_id=project_obj.id, project_number=project_obj.project_number
+            )
+            doc_n = notif.model_dump()
+            doc_n['created_at'] = doc_n['created_at'].isoformat()
+            await db.notifications.insert_one(doc_n)
+            if current_user:
+                subject, html_body, text_body = get_review_request_email(
+                    project_obj.project_number, project_obj.name,
+                    current_user.get("name", ""), current_user.get("email", ""),
+                    project_obj.id, project_data=project_obj.model_dump()
+                )
+                await send_email(recipient, subject, html_body, text_body)
+    elif caller_level_in_parent and caller_level_in_parent >= 2 and parent_matrix_levels:
+        # L2+ approver edited — draft new version; alert L1 approvers so they can re-review on manual submit
+        l1 = next((_l for _l in parent_matrix_levels if _l.get("level") == 1), None)
+        alert_recipients = list(set((l1 or {}).get("emails", []) or []))
+        # Include the project creator (if we can resolve their email) so they are looped in
+        creator_email = (existing.get("created_by_email") or "").lower()
+        if creator_email and creator_email not in [r.lower() for r in alert_recipients]:
+            alert_recipients.append(creator_email)
+        for recipient in alert_recipients:
+            notif = Notification(
+                user_email=recipient, type="version_alert",
+                title=f"New version v{new_version} edited by higher-level approver",
+                message=f"Project {project_obj.project_number} '{project_obj.name}' was modified by {(current_user_pre or {}).get('name','a Level '+str(caller_level_in_parent)+' approver')} in a new draft version. Manual submission is required to re-initiate approvals from Level 1.",
+                project_id=project_obj.id, project_number=project_obj.project_number
+            )
+            doc_n = notif.model_dump()
+            doc_n['created_at'] = doc_n['created_at'].isoformat()
+            await db.notifications.insert_one(doc_n)
+            try:
+                subject_alert = f"[YASH EstPro] Project {project_obj.project_number} v{new_version} needs re-approval"
+                text_alert = (
+                    f"Hello,\n\n{(current_user_pre or {}).get('name','A higher-level approver')} "
+                    f"({caller_email_pre}) edited project {project_obj.project_number} "
+                    f"'{project_obj.name}' and created a new draft version v{new_version}.\n\n"
+                    f"Because the change was made by a Level {caller_level_in_parent} approver, the "
+                    f"approval workflow will restart from Level 1 once the draft is manually submitted "
+                    f"for review.\n\nUse the Version Comparison feature in the Estimator to inspect the "
+                    f"differences at line-item level.\n\nRegards,\nYASH EstPro"
+                )
+                html_alert = f"<p>{text_alert}</p>".replace("\n\n", "</p><p>").replace("\n", "<br/>")
+                await send_email(recipient, subject_alert, html_alert, text_alert)
+            except Exception:
+                pass
     return project_obj
 
 
@@ -612,6 +706,26 @@ async def approve_project(project_id: str, comments: str = "", user: dict = Depe
     matrix_levels = project.get("matrix_levels", []) or []
     current_level = project.get("current_approval_level", 1)
     approval_history = list(project.get("approval_history", []))
+
+    # Iter 83: Authorization — caller must be listed in the CURRENT level's approvers.
+    # Prevents (a) unauthorised users from advancing the flow and (b) the same L1 approver
+    # from clicking Approve twice and skipping subsequent levels.
+    caller_email = (current_user or {}).get("email", "").lower()
+    if matrix_levels:
+        current_lvl_entry = next((lvl for lvl in matrix_levels if lvl.get("level") == current_level), None)
+        allowed_emails = [(e or "").lower() for e in ((current_lvl_entry or {}).get("emails", []) or [])]
+        if allowed_emails and caller_email not in allowed_emails:
+            waiting_on = ", ".join(allowed_emails)
+            raise HTTPException(
+                status_code=403,
+                detail=f"You are not authorised to approve at Level {current_level}. Waiting on: {waiting_on}",
+            )
+        # Idempotency: if the caller has ALREADY approved this level, block the duplicate
+        if any(
+            (h.get("level") == current_level) and ((h.get("approver_email") or "").lower() == caller_email)
+            for h in approval_history
+        ):
+            raise HTTPException(status_code=409, detail=f"You have already approved Level {current_level}.")
 
     # Append this approval to history
     approval_history.append({
