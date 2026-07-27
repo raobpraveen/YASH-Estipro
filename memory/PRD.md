@@ -149,6 +149,10 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 80. **Bug**: Post-Iter 75, margin formula was still asymmetric wrt AMS — `netCost` included `amsTotalCost` but `resourcesPrice` had no `amsSharedAnnual`. PRJ-0037 v2 (T&M @ 35% + AMS_Shared @ 35%) showed a suppressed margin instead of 35%.
 81. **Fix**: `resourcesPrice = totalRowsSellingPrice + amsSharedAnnual` in `calculateWaveSummary`; `overallResourcesPrice = totalRowsSellingPrice + totalAmsSharedAnnual` in `calculateOverallSummary`. Verified live on PRJ-0037 v2: margin = 35.0% ✓ (callout auto-hidden).
 
+### Iteration 78: Approval Matrix moved to Admin + Approver count badge (Completed Jul 2026)
+85. **UX**: Moved "Approval Matrix" link out of Master Data and into the Admin section of the sidebar (`Layout.js`) so only admins can access it — matches Users/Audit Logs grouping.
+86. **UI**: Added a compact amber "Approver Users" count card at the top-right of the Approval Matrix page that shows the number of active users with `role === 'approver'`. Uses the same `/users/approvers/list` endpoint (which returns approvers + admins) and filters on the client so admins aren't counted.
+
 ### Iteration 77: Margin Breakdown Tooltip + Help Docs (Completed Jul 2026)
 82. **Margin Breakdown tooltip** — `estimatorCalcs.js` now populates `marginDeviations[]` for each wave and aggregates into `overall.marginDeviations`. Entries are added when (a) a T&M row has `override_hourly_rate > 0` and its effective SP differs from formula SP by > $0.50, or (b) an AMS bucket's `hourly_rate` differs from `cost_rate / (1 − margin)` by > $0.01.
 83. **UI**: `OverallSummary.js` wraps the effective-margin percentage in a Shadcn Tooltip. Info icon appears next to the value. Tooltip lists every deviation with green/red left border (boost/drag), T&M or AMS badge, wave name, expected vs. actual price, and signed $ delta. Empty state shows a helpful hint about data-only edits.

@@ -98,9 +98,20 @@ const ApprovalMatrix = () => {
     <div className="p-6 space-y-6" data-testid="approval-matrix-page">
       <div className="flex items-center gap-3">
         <Shield className="w-8 h-8 text-[#3B82F6]" />
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-[#0F172A]">Approval Matrix</h1>
           <p className="text-sm text-gray-500">Configure multi-level approvers per Billing Entity. Up to {MAX_LEVELS} levels. When a project is submitted for review, every approver listed here receives an email.</p>
+        </div>
+        <div
+          className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"
+          data-testid="approver-role-count"
+          title="Active users with the Approver role available for selection below"
+        >
+          <Shield className="w-4 h-4 text-amber-600" />
+          <div className="leading-tight">
+            <div className="text-lg font-bold text-amber-700">{users.filter(u => u.role === 'approver').length}</div>
+            <div className="text-[10px] uppercase tracking-wider text-amber-700/80 font-semibold">Approver Users</div>
+          </div>
         </div>
       </div>
 

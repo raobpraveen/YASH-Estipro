@@ -140,12 +140,12 @@ const Layout = ({ user, onLogout }) => {
     { path: "/activity-templates", icon: FileText, label: "Activity Templates" },
     { path: "/competencies", icon: Award, label: "Competencies" },
     { path: "/billing-entities", icon: Building2, label: "Billing Entities" },
-    { path: "/approval-matrix", icon: Shield, label: "Approval Matrix" },
   ];
 
   const adminItems = [];
   if (user?.role === "admin") {
     adminItems.push({ path: "/users", icon: UserCog, label: "User Management" });
+    adminItems.push({ path: "/approval-matrix", icon: Shield, label: "Approval Matrix" });
     adminItems.push({ path: "/audit-logs", icon: History, label: "Audit Logs" });
   }
 
