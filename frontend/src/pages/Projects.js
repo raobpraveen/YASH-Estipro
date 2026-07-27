@@ -45,6 +45,7 @@ const Projects = () => {
   const [projectTypes, setProjectTypes] = useState([]);
   const [salesManagers, setSalesManagers] = useState([]);
   const [competencies, setCompetencies] = useState([]);
+  const [billingEntities, setBillingEntities] = useState([]);
   const [allVersions, setAllVersions] = useState({});
   const [expandedProjects, setExpandedProjects] = useState({});
   const [loadingVersions, setLoadingVersions] = useState({});
@@ -73,6 +74,7 @@ const Projects = () => {
     status: "",
     bidCategory: "",
     competency: "",
+    billingEntity: "",
     forecastedFrom: "",
     forecastedTo: "",
   });
@@ -87,6 +89,7 @@ const Projects = () => {
     fetchProjectTypes();
     fetchSalesManagers();
     fetchCompetencies();
+    (async () => { try { setBillingEntities((await axios.get(`${API}/billing-entities`)).data); } catch { /* noop */ } })();
   }, []);
 
   // Handle URL query params from dashboard drill-down
@@ -235,6 +238,9 @@ const Projects = () => {
     if (filters.competency) {
       result = result.filter(p => (p.competency_ids || []).includes(filters.competency));
     }
+    if (filters.billingEntity) {
+      result = result.filter(p => (p.billing_entity_id || "") === filters.billingEntity);
+    }
 
     if (filters.forecastedFrom) {
       const fromDate = new Date(filters.forecastedFrom);
@@ -266,6 +272,7 @@ const Projects = () => {
       status: "",
       bidCategory: "",
       competency: "",
+      billingEntity: "",
       forecastedFrom: "",
       forecastedTo: "",
     });
@@ -992,6 +999,23 @@ const Projects = () => {
                     <SelectItem value="all">All Competencies</SelectItem>
                     {competencies.map(c => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Billing Entity</Label>
+                <Select
+                  value={filters.billingEntity || "all"}
+                  onValueChange={(v) => setFilters({ ...filters, billingEntity: v === "all" ? "" : v })}
+                >
+                  <SelectTrigger data-testid="filter-billing-entity">
+                    <SelectValue placeholder="All Billing Entities" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Billing Entities</SelectItem>
+                    {billingEntities.map(be => (
+                      <SelectItem key={be.id} value={be.id}>{be.name}{be.code ? ` (${be.code})` : ""}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
