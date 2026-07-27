@@ -26,6 +26,7 @@ import { ProjectInfoCard } from "@/components/estimator/ProjectInfoCard";
 import { WaveContent } from "@/components/estimator/WaveContent";
 import { PROFICIENCY_LEVELS, convertMonthPhasesToRanges } from "@/components/estimator/constants";
 import { PhaseActivitiesModal } from "@/components/estimator/PhaseActivitiesModal";
+import ApprovalStatusTracker from "@/components/estimator/ApprovalStatusTracker";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -87,6 +88,9 @@ const ProjectEstimator = () => {
   const [approvalActionDialog, setApprovalActionDialog] = useState(false);
   const [approvalAction, setApprovalAction] = useState("");
   const [approversList, setApproversList] = useState([]);
+  const [matrixLevels, setMatrixLevels] = useState([]); // [{level, approver_emails, approver_names, label}]
+  const [approvalHistory, setApprovalHistory] = useState([]);
+  const [currentApprovalLevel, setCurrentApprovalLevel] = useState(1);
   
   // Access control
   const [visibility, setVisibility] = useState("public");
@@ -310,6 +314,32 @@ const ProjectEstimator = () => {
       setBillingEntityId(project.billing_entity_id || "");
       setCommercialStatus(project.commercial_status || "");
       setPreviousStatus(project.previous_status || "");
+
+      // Approval matrix progress (persisted on project)
+      // matrix_levels shape from backend: [{level, emails: [...]}]
+      // We normalize to the shape expected by ApprovalStatusTracker: {level, approver_emails, approver_names, label}
+      const rawLevels = project.matrix_levels || [];
+      // Fetch full matrix (for names + labels) if billing entity present
+      let mergedLevels = rawLevels.map(l => ({ level: l.level, approver_emails: l.emails || l.approver_emails || [], approver_names: [], label: "" }));
+      if (project.billing_entity_id) {
+        try {
+          const mRes = await axios.get(`${API}/approval-matrices/${project.billing_entity_id}`);
+          const full = (mRes.data?.levels || []);
+          mergedLevels = mergedLevels.map(ml => {
+            const match = full.find(f => f.level === ml.level);
+            if (!match) return ml;
+            // Order approver_names to align with emails
+            const names = ml.approver_emails.map(em => {
+              const idx = (match.approver_emails || []).findIndex(e => (e || "").toLowerCase() === (em || "").toLowerCase());
+              return idx >= 0 ? (match.approver_names || [])[idx] || "" : "";
+            });
+            return { ...ml, approver_names: names, label: match.label || "" };
+          });
+        } catch { /* matrix might not exist */ }
+      }
+      setMatrixLevels(mergedLevels);
+      setApprovalHistory(project.approval_history || []);
+      setCurrentApprovalLevel(project.current_approval_level || 1);
       
       // Access control
       setVisibility(project.visibility || "public");
@@ -1099,8 +1129,25 @@ const ProjectEstimator = () => {
     }
   };
 
-  const openSubmitForReviewDialog = () => {
+  const openSubmitForReviewDialog = async () => {
     fetchApprovers();
+    // Also refresh matrix preview for current billing entity so dropdown hides correctly
+    if (billingEntityId) {
+      try {
+        const r = await axios.get(`${API}/approval-matrices/${billingEntityId}`);
+        const lvls = (r.data?.levels || []).map(l => ({
+          level: l.level,
+          approver_emails: l.approver_emails || [],
+          approver_names: l.approver_names || [],
+          label: l.label || "",
+        }));
+        setMatrixLevels(lvls);
+      } catch {
+        setMatrixLevels([]);
+      }
+    } else {
+      setMatrixLevels([]);
+    }
     setSubmitForReviewDialog(true);
   };
 
@@ -1109,7 +1156,8 @@ const ProjectEstimator = () => {
       toast.error("Please save the project first");
       return;
     }
-    if (!approverEmail) {
+    const hasMatrix = matrixLevels.some(l => (l.approver_emails || []).length > 0);
+    if (!hasMatrix && !approverEmail) {
       toast.error("Please select an approver");
       return;
     }
@@ -1117,10 +1165,13 @@ const ProjectEstimator = () => {
     try {
       const token = localStorage.getItem("token");
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.post(`${API}/projects/${projectId}/submit-for-review?approver_email=${encodeURIComponent(approverEmail)}`, {}, config);
+      const emailParam = hasMatrix ? "" : approverEmail;
+      await axios.post(`${API}/projects/${projectId}/submit-for-review?approver_email=${encodeURIComponent(emailParam)}`, {}, config);
       setProjectStatus("in_review");
       setSubmitForReviewDialog(false);
-      toast.success("Project submitted for review");
+      toast.success(hasMatrix ? "Submitted — Level 1 approvers notified" : "Project submitted for review");
+      // Reload to pull in fresh approval_history / current_approval_level
+      await loadProject(projectId);
     } catch (error) {
       toast.error("Failed to submit for review");
       console.error(error);
@@ -1134,14 +1185,17 @@ const ProjectEstimator = () => {
       const token = localStorage.getItem("token");
       const config = { headers: { Authorization: `Bearer ${token}` } };
       if (approvalAction === "approve") {
-        await axios.post(`${API}/projects/${projectId}/approve?comments=${encodeURIComponent(approvalComments)}`, {}, config);
-        setProjectStatus("approved");
-        toast.success("Project approved");
+        const res = await axios.post(`${API}/projects/${projectId}/approve?comments=${encodeURIComponent(approvalComments)}`, {}, config);
+        // Backend returns status = 'in_review' (level advanced) OR 'approved' (final)
+        setProjectStatus(res.data?.status || "approved");
+        toast.success(res.data?.message || "Project approved");
       } else if (approvalAction === "reject") {
         await axios.post(`${API}/projects/${projectId}/reject?comments=${encodeURIComponent(approvalComments)}`, {}, config);
         setProjectStatus("rejected");
         toast.success("Project rejected");
       }
+      // Refresh approval progress
+      await loadProject(projectId);
       setApprovalActionDialog(false);
       setApprovalComments("");
     } catch (error) {
@@ -1721,8 +1775,16 @@ const ProjectEstimator = () => {
         onOpenActivities={() => setActivitiesModalOpen(true)}
       />
 
-      <SubmitReviewDialog open={submitForReviewDialog} onOpenChange={setSubmitForReviewDialog} approverEmail={approverEmail} setApproverEmail={setApproverEmail} approversList={approversList} onSubmit={handleSubmitForReview} />
+      <SubmitReviewDialog open={submitForReviewDialog} onOpenChange={setSubmitForReviewDialog} approverEmail={approverEmail} setApproverEmail={setApproverEmail} approversList={approversList} onSubmit={handleSubmitForReview} matrixLevels={matrixLevels} />
       <ApprovalActionDialog open={approvalActionDialog} onOpenChange={setApprovalActionDialog} approvalAction={approvalAction} approvalComments={approvalComments} setApprovalComments={setApprovalComments} onAction={handleApprovalAction} />
+
+      {/* Approval Progress Tracker — shown above Project Info when project is in an approval state */}
+      <ApprovalStatusTracker
+        projectStatus={projectStatus}
+        matrixLevels={matrixLevels.map(l => ({ level: l.level, emails: l.approver_emails, names: l.approver_names, label: l.label }))}
+        approvalHistory={approvalHistory}
+        currentApprovalLevel={currentApprovalLevel}
+      />
 
       <ProjectInfoCard
         isReadOnly={isReadOnly} isLatestVersion={isLatestVersion} projectStatus={projectStatus}

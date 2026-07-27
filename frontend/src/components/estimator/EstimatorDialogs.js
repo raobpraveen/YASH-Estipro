@@ -9,52 +9,88 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Send, CheckCircle, XCircle, Clock, History, RefreshCw, Upload, Zap } from "lucide-react";
 import { COUNTRIES } from "@/utils/constants";
 
-export const SubmitReviewDialog = ({ open, onOpenChange, approverEmail, setApproverEmail, approversList, onSubmit }) => (
+export const SubmitReviewDialog = ({ open, onOpenChange, approverEmail, setApproverEmail, approversList, onSubmit, matrixLevels = [] }) => {
+  const hasMatrix = Array.isArray(matrixLevels) && matrixLevels.some(l => (l.approver_emails || []).length > 0);
+  const canSubmit = hasMatrix || !!approverEmail;
+  return (
   <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent className="sm:max-w-lg">
       <DialogHeader>
         <DialogTitle className="text-xl font-bold text-[#0F172A]">Submit for Review</DialogTitle>
-        <DialogDescription>Select an approver to submit this project for review.</DialogDescription>
+        <DialogDescription>
+          {hasMatrix
+            ? "This project's billing entity has an Approval Matrix. Approvers will be notified level-by-level automatically."
+            : "Select an approver to submit this project for review."}
+        </DialogDescription>
       </DialogHeader>
       <div className="space-y-4 py-4">
-        <div className="space-y-2">
-          <Label htmlFor="approver-select">Select Approver *</Label>
-          {approversList.length === 0 ? (
-            <p className="text-sm text-amber-600 py-2">No approvers available. Please contact an administrator to assign approver roles.</p>
-          ) : (
-            <Select value={approverEmail} onValueChange={setApproverEmail}>
-              <SelectTrigger className="w-full h-12" data-testid="approver-select">
-                <SelectValue placeholder="Select an approver..." />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                {approversList.map((approver) => (
-                  <SelectItem key={approver.id} value={approver.email} className="py-3">
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">{approver.name}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${approver.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {approver.role}
-                        </span>
+        {hasMatrix ? (
+          <div className="space-y-3" data-testid="matrix-preview">
+            <Label>Approval Matrix — sequential routing</Label>
+            <div className="border rounded-lg divide-y bg-slate-50 max-h-72 overflow-y-auto">
+              {matrixLevels.map((lvl, i) => (
+                <div key={i} className="p-3">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Badge className="bg-[#3B82F6] text-white text-[10px]">Level {lvl.level}</Badge>
+                    {lvl.label && <span className="text-xs text-gray-600 italic">{lvl.label}</span>}
+                    {i === 0 && <span className="text-[10px] text-amber-600 font-semibold ml-auto">Notified first</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(lvl.approver_emails || []).length === 0 ? (
+                      <span className="text-xs text-gray-400 italic">No approvers configured</span>
+                    ) : (lvl.approver_emails || []).map((em, ei) => (
+                      <span key={ei} className="inline-flex items-center gap-1 bg-white border border-slate-300 rounded px-2 py-0.5 text-[11px]">
+                        {(lvl.approver_names || [])[ei] || em}
+                        <span className="text-slate-400">&lt;{em}&gt;</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-gray-500">Only Level 1 approvers are emailed on submit. When any Level 1 approver approves, Level 2 is notified, and so on.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Label htmlFor="approver-select">Select Approver *</Label>
+            {approversList.length === 0 ? (
+              <p className="text-sm text-amber-600 py-2">No approvers available. Please contact an administrator to assign approver roles.</p>
+            ) : (
+              <Select value={approverEmail} onValueChange={setApproverEmail}>
+                <SelectTrigger className="w-full h-12" data-testid="approver-select">
+                  <SelectValue placeholder="Select an approver..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {approversList.map((approver) => (
+                    <SelectItem key={approver.id} value={approver.email} className="py-3">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">{approver.name}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${approver.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {approver.role}
+                          </span>
+                        </div>
+                        <span className="text-sm text-gray-500">{approver.email}</span>
                       </div>
-                      <span className="text-sm text-gray-500">{approver.email}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-        <p className="text-xs text-gray-500">The selected approver will receive a notification and can approve, reject, or request changes to this estimate.</p>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <p className="text-xs text-gray-500">Tip: Configure an Approval Matrix for the billing entity (Admin section) to enable multi-level sequential approvals.</p>
+          </div>
+        )}
       </div>
       <DialogFooter className="gap-2 sm:gap-0">
         <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-        <Button onClick={onSubmit} className="bg-purple-600 hover:bg-purple-700 text-white" disabled={!approverEmail || approversList.length === 0} data-testid="confirm-submit-review">
+        <Button onClick={onSubmit} className="bg-purple-600 hover:bg-purple-700 text-white" disabled={!canSubmit} data-testid="confirm-submit-review">
           <Send className="w-4 h-4 mr-2" /> Submit for Review
         </Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>
-);
+  );
+};
 
 export const ApprovalActionDialog = ({ open, onOpenChange, approvalAction, approvalComments, setApprovalComments, onAction }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>

@@ -360,6 +360,11 @@ class Project(BaseModel):
     billing_entity_name: str = ""
     commercial_status: str = ""
     previous_status: str = ""
+    # Multi-level approval matrix runtime state
+    matrix_levels: List[Dict] = []
+    matrix_approvers: List[str] = []
+    current_approval_level: int = 1
+    approval_history: List[Dict] = []
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

@@ -499,7 +499,7 @@ async def create_from_template(template_id: str, user: dict = Depends(require_au
 # ========== Approval Workflow ==========
 
 @router.post("/projects/{project_id}/submit-for-review")
-async def submit_for_review(project_id: str, approver_email: str, user: dict = Depends(require_auth)):
+async def submit_for_review(project_id: str, approver_email: str = "", user: dict = Depends(require_auth)):
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
