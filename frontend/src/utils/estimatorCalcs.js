@@ -55,21 +55,28 @@ export const calculateWaveLogistics = (wave) => {
   };
 
   let totalTravelingMM = 0;
-  let travelingResourceCount = 0;
   let totalOnsiteMM = 0;
-  let onsiteResourceCount = 0;
+  // Group-aware counts: multiple rows sharing the same non-empty resource_group_id represent
+  // one physical resource (e.g. same person switching onsite/offshore across months).
+  const onsiteGroups = new Set();
+  const travelingGroups = new Set();
+  let ungroupedOnsite = 0;
+  let ungroupedTraveling = 0;
 
   wave.grid_allocations.forEach(allocation => {
     const mm = Object.values(allocation.phase_allocations || {}).reduce((sum, val) => sum + val, 0);
+    const grp = (allocation.resource_group_id || "").toString().trim();
     if (allocation.is_onsite) {
       totalOnsiteMM += mm;
-      onsiteResourceCount++;
+      if (grp) onsiteGroups.add(grp); else ungroupedOnsite++;
     }
     if (allocation.travel_required) {
       totalTravelingMM += mm;
-      travelingResourceCount++;
+      if (grp) travelingGroups.add(grp); else ungroupedTraveling++;
     }
   });
+  const onsiteResourceCount = onsiteGroups.size + ungroupedOnsite;
+  const travelingResourceCount = travelingGroups.size + ungroupedTraveling;
 
   const perDiemCost = totalTravelingMM * config.per_diem_daily * config.per_diem_days;
   const accommodationCost = totalTravelingMM * config.accommodation_daily * config.accommodation_days;
@@ -249,7 +256,7 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
     amsContractMonths: contractMonths,
     grandTotalFinalPrice,
     onsiteResourceCount: logistics.onsiteResourceCount,
-    offshoreResourceCount: (wave.grid_allocations || []).length - logistics.onsiteResourceCount,
+    offshoreResourceCount: Math.max(0, uniqueResourceCount - logistics.onsiteResourceCount),
     travelingResourceCount: logistics.travelingResourceCount,
     travelingMM: logistics.totalTravelingMM,
     logistics,

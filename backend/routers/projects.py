@@ -372,6 +372,13 @@ async def clone_project(project_id: str, user: dict = Depends(require_auth)):
     cloned_data["approval_comments"] = ""
     cloned_data["submitted_at"] = None
     cloned_data["approved_at"] = None
+    # Reset multi-level approval matrix runtime state — the clone should start fresh
+    cloned_data["matrix_levels"] = []
+    cloned_data["matrix_approvers"] = []
+    cloned_data["current_approval_level"] = 1
+    cloned_data["approval_history"] = []
+    cloned_data["previous_status"] = ""
+    cloned_data["commercial_status"] = ""
     cloned_data["created_at"] = datetime.now(timezone.utc)
     cloned_data["updated_at"] = datetime.now(timezone.utc)
     if current_user:

@@ -201,7 +201,7 @@ export const WaveContent = ({
             );
           })()}
           <span className="text-sm text-gray-600">Duration: {wave.duration_months} months</span>
-          <span className="text-sm text-gray-600">Resources: {wave.grid_allocations.length}</span>
+          <span className="text-sm text-gray-600">Resources: {waveSummary.uniqueResourceCount}</span>
           <span className="text-sm text-[#F59E0B]">Onsite: {waveSummary.onsiteResourceCount}</span>
           <span className="text-sm text-purple-600">Traveling: {waveSummary.travelingResourceCount}</span>
           {!isReadOnly && (

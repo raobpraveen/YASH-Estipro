@@ -444,7 +444,7 @@ const Layout = ({ user, onLogout }) => {
                 ) : (
                   notifications.map((notif) => {
                     const isActionable = notif.type === 'review_request' && !!notif.project_id;
-                    const isExpanded = expandedActionId === notif.id;
+                    const isExpanded = expandedActionId === notif.id || expandedActionId === `reject-${notif.id}`;
                     return (
                     <div
                       key={notif.id}
