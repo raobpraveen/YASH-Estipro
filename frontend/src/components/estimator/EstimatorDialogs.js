@@ -262,7 +262,14 @@ export const SummaryDialog = ({ open, onOpenChange, projectNumber, projectVersio
             <Card key={wave.id} className="border-2 border-[#0EA5E9]">
               <CardHeader className="pb-3 bg-[#E0F2FE]">
                 <CardTitle className="text-lg font-bold text-[#0F172A] flex items-center justify-between">
-                  <span>{wave.name} - {wave.duration_months} months ({wave.grid_allocations.length} resources)</span>
+                  <span>
+                    {wave.name} - {wave.duration_months} months ·{" "}
+                    {wave.engagement_type && wave.engagement_type !== "Implementation" && (
+                      <Badge className="mr-1 bg-purple-100 text-purple-700 text-xs">{wave.engagement_type}</Badge>
+                    )}
+                    ({summary.uniqueResourceCount || wave.grid_allocations.length} resources
+                    {(wave.ams_shared_buckets || []).length > 0 && `, ${wave.ams_shared_buckets.length} AMS bucket${wave.ams_shared_buckets.length > 1 ? 's' : ''}`})
+                  </span>
                   <Badge className="bg-green-100 text-green-700">Profit: {profitMarginPercentage}%</Badge>
                 </CardTitle>
               </CardHeader>
@@ -272,10 +279,20 @@ export const SummaryDialog = ({ open, onOpenChange, projectNumber, projectVersio
                   <div className="text-center p-3 bg-amber-50 rounded"><p className="text-sm text-gray-600">Onsite MM</p><p className="text-2xl font-bold font-mono text-[#F59E0B]">{summary.onsiteMM.toFixed(2)}</p><p className="text-xs text-gray-500 mt-1">Avg: ${onsiteAvgPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}/MM</p></div>
                   <div className="text-center p-3 bg-blue-50 rounded"><p className="text-sm text-gray-600">Offshore MM</p><p className="text-2xl font-bold font-mono text-[#0EA5E9]">{summary.offshoreMM.toFixed(2)}</p><p className="text-xs text-gray-500 mt-1">Avg: ${offshoreAvgPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}/MM</p></div>
                   <div className="text-center p-3 bg-purple-50 rounded"><p className="text-sm text-gray-600">Logistics</p><p className="text-2xl font-bold font-mono">${summary.totalLogisticsCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p></div>
+                  {summary.amsSharedAnnual > 0 && (
+                    <>
+                      <div className="text-center p-3 bg-purple-50 rounded border border-purple-300"><p className="text-sm text-gray-600">AMS Monthly Billing</p><p className="text-xl font-bold font-mono text-purple-700">${summary.amsSharedMonthly.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p></div>
+                      <div className="text-center p-3 bg-purple-50 rounded border border-purple-300"><p className="text-sm text-gray-600">AMS Annual Revenue</p><p className="text-xl font-bold font-mono text-purple-700">${summary.amsSharedAnnual.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p><p className="text-[10px] text-gray-500">{summary.amsContractMonths}-mo contract</p></div>
+                      <div className="text-center p-3 bg-red-50 rounded border border-red-200"><p className="text-sm text-gray-600">AMS Internal Cost</p><p className="text-xl font-bold font-mono text-red-700">${summary.amsTotalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p></div>
+                    </>
+                  )}
                   <div className="col-span-2 text-center p-4 bg-gray-100 rounded"><p className="text-sm text-gray-600">Cost to Company</p><p className="text-3xl font-bold font-mono">${summary.totalCostToCompany.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p></div>
                   <div className="text-center p-4 bg-green-50 rounded"><p className="text-sm text-gray-600">Wave Selling Price</p><p className="text-3xl font-bold font-mono text-[#10B981]">${summary.sellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p></div>
                   <div className="text-center p-4 bg-blue-50 rounded border border-blue-200"><p className="text-sm text-gray-600">Nego Buffer ({summary.negoBufferPercentage}%)</p><p className="text-2xl font-bold font-mono text-blue-600">${summary.negoBufferAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p></div>
-                  <div className="col-span-2 text-center p-4 bg-emerald-100 rounded border border-emerald-400"><p className="text-sm text-emerald-700 font-semibold">Final Price (incl. buffer)</p><p className="text-3xl font-bold font-mono text-emerald-700">${summary.finalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p></div>
+                  <div className={`${summary.amsSharedAnnual > 0 ? '' : 'col-span-2'} text-center p-4 bg-emerald-100 rounded border border-emerald-400`}><p className="text-sm text-emerald-700 font-semibold">Final Price (T&amp;M + buffer)</p><p className="text-2xl font-bold font-mono text-emerald-700">${summary.finalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p></div>
+                  {summary.amsSharedAnnual > 0 && (
+                    <div className="col-span-2 text-center p-4 bg-emerald-100 rounded border-2 border-emerald-500"><p className="text-sm text-emerald-800 font-semibold">Grand Total (T&amp;M Final + AMS Annual)</p><p className="text-3xl font-bold font-mono text-emerald-800">${summary.grandTotalFinalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p></div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -299,8 +316,11 @@ export const SummaryDialog = ({ open, onOpenChange, projectNumber, projectVersio
               <div className="text-center p-4 bg-blue-50 rounded border border-blue-200"><p className="text-sm text-gray-600 mb-2">Total Nego Buffer</p><p className="text-2xl font-bold font-mono text-blue-600">${overall.negoBuffer.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p></div>
               <div className="col-span-2 text-center p-4 bg-green-50 rounded"><p className="text-sm text-gray-600 mb-2">Total Selling Price</p><p className="text-3xl font-bold font-mono text-[#10B981]">${overall.sellingPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p></div>
               <div className="col-span-2 md:col-span-4 text-center p-6 bg-gradient-to-r from-emerald-100 to-teal-100 rounded-lg border-2 border-emerald-600">
-                <p className="text-lg text-emerald-800 mb-3 font-semibold">GRAND TOTAL (Final Price incl. Nego Buffer)</p>
-                <p className="text-5xl font-extrabold font-mono text-emerald-700">${overall.finalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                <p className="text-lg text-emerald-800 mb-3 font-semibold">GRAND TOTAL {(overall.totalAmsSharedAnnual || 0) > 0 ? '(T&M Final + AMS Annual Revenue)' : '(Final Price incl. Nego Buffer)'}</p>
+                <p className="text-5xl font-extrabold font-mono text-emerald-700">${(overall.grandTotalFinalPrice || overall.finalPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                {(overall.totalAmsSharedAnnual || 0) > 0 && (
+                  <p className="text-xs text-emerald-700 mt-2">Includes AMS annual billing of ${overall.totalAmsSharedAnnual.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                )}
               </div>
             </div>
           </CardContent>

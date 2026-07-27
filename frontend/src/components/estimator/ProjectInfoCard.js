@@ -13,6 +13,7 @@ import { COUNTRIES } from "@/utils/constants";
 
 const BID_CATEGORIES = [
   { value: "", label: "None" },
+  { value: "Pipeline", label: "Pipeline" },
   { value: "Budgetary", label: "Budgetary" },
   { value: "Most Likely", label: "Most Likely" },
   { value: "Committed", label: "Committed" },
@@ -391,8 +392,8 @@ export const ProjectInfoCard = ({
             <Textarea id="project-description" placeholder="Project description" value={projectDescription} onChange={(e) => setProjectDescription(e.target.value)} data-testid="project-description-input" rows={2} disabled={isReadOnly} />
           </div>
           <div className="md:col-span-2 lg:col-span-3">
-            <Label htmlFor="version-notes">Version Notes</Label>
-            <Textarea id="version-notes" placeholder="Notes for this version (e.g., changes made, reason for update)" value={versionNotes} onChange={(e) => setVersionNotes(e.target.value)} data-testid="version-notes-input" rows={2} disabled={isReadOnly || !!projectId} />
+            <Label htmlFor="version-notes">Version Notes <span className="text-red-500">*</span></Label>
+            <Textarea id="version-notes" placeholder="Notes for this version (mandatory: describe changes made, reason for update)" value={versionNotes} onChange={(e) => setVersionNotes(e.target.value)} data-testid="version-notes-input" rows={2} disabled={isReadOnly} required />
           </div>
         </div>
       </CardContent>

@@ -143,6 +143,23 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
     }
   });
 
+  // Unique resource count — rows sharing the same non-empty resource_group_id count as ONE resource.
+  // Rows without a group are counted individually. E.g. two "Solution Architect" rows both tagged
+  // Grp=01 → 1 resource, not 2.
+  const uniqueResourceCount = (() => {
+    const seen = new Set();
+    let count = 0;
+    (wave.grid_allocations || []).forEach(a => {
+      const grp = (a.resource_group_id || "").toString().trim();
+      if (grp) {
+        if (!seen.has(grp)) { seen.add(grp); count += 1; }
+      } else {
+        count += 1;
+      }
+    });
+    return count;
+  })();
+
   const logistics = calculateWaveLogistics(wave);
   const waveSellingPrice = totalRowsSellingPrice + logistics.totalLogistics;
 
@@ -237,6 +254,7 @@ export const calculateWaveSummary = (wave, profitMarginPercentage, negoBufferPer
     travelingMM: logistics.totalTravelingMM,
     logistics,
     marginDeviations,
+    uniqueResourceCount,
   };
 };
 

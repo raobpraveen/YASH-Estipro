@@ -12,7 +12,7 @@ SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
 SMTP_FROM_EMAIL = os.environ.get('SMTP_FROM_EMAIL', '')
 SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'YASH EstiPro')
 
-APP_BASE_URL = os.environ.get('APP_BASE_URL', 'http://192.168.3.42')
+APP_BASE_URL = os.environ.get('APP_BASE_URL', 'http://192.168.3.143')
 YASH_LOGO_PATH = os.path.join(os.path.dirname(__file__), "yash_logo.png")
 YASH_BRAND_RED = "#E31E24"
 YASH_BRAND_BLUE = "#1A73C7"

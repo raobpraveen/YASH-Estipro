@@ -160,7 +160,17 @@ const ProjectEstimator = () => {
   };
 
   // Section collapse/expand
-  const [collapsedSections, setCollapsedSections] = useState({});
+  // Default all expand/collapse sections to COLLAPSED (Iter 78 request). Users can expand as needed.
+  const [collapsedSections, setCollapsedSections] = useState({
+    projectInfo: true,
+    timeline: true,
+    waves: true,
+    summary: true,
+    activities: true,
+    milestones: true,
+    cashflow: true,
+    gantt: true,
+  });
   const toggleSection = (key) => setCollapsedSections((p) => ({ ...p, [key]: !p[key] }));
 
   // Get current user role
