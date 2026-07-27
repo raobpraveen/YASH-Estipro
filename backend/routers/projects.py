@@ -537,11 +537,25 @@ async def submit_for_review(project_id: str, approver_email: str, user: dict = D
         raise HTTPException(status_code=400, detail="Approver email is required (either supply one or configure an Approval Matrix for the billing entity)")
 
     old_status = project.get("status", "draft")
+    # Iter 82: Sequential level-gating — only Level 1 approvers get emailed initially.
+    # As each level approves, `approve_project` advances to next level and emails those approvers.
+    matrix_levels = []  # ordered list of {level, emails[]}
+    if matrix_approvers:
+        # Group approvers by level from the matrix doc (already sorted)
+        level_map = {}
+        for a in matrix_approvers:
+            level_map.setdefault(a["level"], []).append(a["email"])
+        matrix_levels = [{"level": lv, "emails": emails} for lv, emails in sorted(level_map.items())]
+
+    initial_level = matrix_levels[0]["level"] if matrix_levels else 1
     update_data = {
         "status": "in_review", "approver_email": approver_email,
         "submitted_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "matrix_approvers": [a["email"] for a in matrix_approvers],
+        "matrix_levels": matrix_levels,
+        "current_approval_level": initial_level,
+        "approval_history": [],
     }
     await db.projects.update_one({"id": project_id}, {"$set": update_data})
     current_user = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
@@ -552,16 +566,18 @@ async def submit_for_review(project_id: str, approver_email: str, user: dict = D
             project_id=project_id, project_number=project.get("project_number", ""),
             project_name=project.get("name", ""),
             changes=[{"field": "status", "old_value": old_status, "new_value": "in_review"}],
-            metadata={"approver_email": approver_email, "matrix_approvers": [a["email"] for a in matrix_approvers]}
+            metadata={"approver_email": approver_email, "matrix_approvers": [a["email"] for a in matrix_approvers], "current_level": initial_level}
         )
-    # Build unique recipient list: primary + everyone in the matrix (deduped)
-    recipients = {approver_email.lower()}
-    for a in matrix_approvers:
-        recipients.add(a["email"])
+    # Sequential gating: only recipients at the current level (level 1) get emailed now.
+    # If no matrix, fall back to the single `approver_email`.
+    if matrix_levels:
+        recipients = set(matrix_levels[0]["emails"])
+    else:
+        recipients = {approver_email.lower()}
     for recipient in recipients:
         notification = Notification(
             user_email=recipient, type="review_request", title="New Project Review Request",
-            message=f"Project {project.get('project_number', '')} '{project.get('name', '')}' has been submitted for your review.",
+            message=f"Project {project.get('project_number', '')} '{project.get('name', '')}' has been submitted for your review (Level {initial_level}).",
             project_id=project_id, project_number=project.get("project_number", "")
         )
         notif_doc = notification.model_dump()
@@ -574,7 +590,7 @@ async def submit_for_review(project_id: str, approver_email: str, user: dict = D
                 project_id, project_data=project
             )
             await send_email(recipient, subject, html_body, text_body)
-    return {"message": "Project submitted for review", "status": "in_review", "recipients": list(recipients)}
+    return {"message": "Project submitted for review", "status": "in_review", "current_level": initial_level, "recipients": list(recipients)}
 
 
 @router.post("/projects/{project_id}/approve")
@@ -583,9 +599,72 @@ async def approve_project(project_id: str, comments: str = "", user: dict = Depe
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     old_status = project.get("status", "in_review")
+    current_user = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
+
+    # Iter 82: Sequential level-gating — check whether more approval levels remain.
+    matrix_levels = project.get("matrix_levels", []) or []
+    current_level = project.get("current_approval_level", 1)
+    approval_history = list(project.get("approval_history", []))
+
+    # Append this approval to history
+    approval_history.append({
+        "level": current_level,
+        "approver_email": (current_user or {}).get("email", ""),
+        "approver_name": (current_user or {}).get("name", ""),
+        "approved_at": datetime.now(timezone.utc).isoformat(),
+        "comments": comments,
+    })
+
+    # Find next level in sequence
+    next_level_entry = None
+    if matrix_levels:
+        for lvl in matrix_levels:
+            if lvl.get("level", 0) > current_level:
+                next_level_entry = lvl
+                break
+
+    if next_level_entry:
+        # Advance to next level — project stays in_review, email next level's approvers
+        next_level = next_level_entry["level"]
+        next_recipients = list(set(next_level_entry.get("emails", [])))
+        await db.projects.update_one({"id": project_id}, {"$set": {
+            "current_approval_level": next_level,
+            "approval_history": approval_history,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }})
+        for recipient in next_recipients:
+            notification = Notification(
+                user_email=recipient, type="review_request",
+                title=f"Approval Needed - Level {next_level}",
+                message=f"Project {project.get('project_number', '')} '{project.get('name', '')}' has been approved at Level {current_level} and now needs your Level {next_level} approval.",
+                project_id=project_id, project_number=project.get("project_number", "")
+            )
+            notif_doc = notification.model_dump()
+            notif_doc['created_at'] = notif_doc['created_at'].isoformat()
+            await db.notifications.insert_one(notif_doc)
+            if current_user:
+                subject, html_body, text_body = get_review_request_email(
+                    project.get("project_number", ""), project.get("name", ""),
+                    current_user.get("name", ""), current_user.get("email", ""),
+                    project_id, project_data=project
+                )
+                await send_email(recipient, subject, html_body, text_body)
+        if current_user:
+            await create_audit_log(
+                user=current_user, action="approval_progress", entity_type="project",
+                entity_id=project_id, entity_name=project.get("name", ""),
+                project_id=project_id, project_number=project.get("project_number", ""),
+                project_name=project.get("name", ""),
+                changes=[{"field": "approval_level", "old_value": current_level, "new_value": next_level}],
+                metadata={"comments": comments, "approver_email": current_user.get("email", "")}
+            )
+        return {"message": f"Level {current_level} approved; advanced to Level {next_level}", "status": "in_review", "current_level": next_level}
+
+    # Final approval — no more levels remaining
     update_data = {
         "status": "approved", "approval_comments": comments,
         "approved_at": datetime.now(timezone.utc).isoformat(),
+        "approval_history": approval_history,
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     await db.projects.update_one({"id": project_id}, {"$set": update_data})
@@ -595,7 +674,6 @@ async def approve_project(project_id: str, comments: str = "", user: dict = Depe
             {"project_number": project_number, "status": "draft", "id": {"$ne": project_id}},
             {"$set": {"status": "obsolete", "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
-    current_user = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
     if current_user:
         await create_audit_log(
             user=current_user, action="status_change", entity_type="project",

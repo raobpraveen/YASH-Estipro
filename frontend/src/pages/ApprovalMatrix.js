@@ -23,7 +23,7 @@ const ApprovalMatrix = () => {
   useEffect(() => {
     (async () => {
       try { setBillingEntities((await axios.get(`${API}/billing-entities`)).data); } catch { /* noop */ }
-      try { setUsers((await axios.get(`${API}/users`)).data); } catch { /* noop */ }
+      try { setUsers((await axios.get(`${API}/users/approvers/list`)).data); } catch { /* noop */ }
     })();
   }, []);
 

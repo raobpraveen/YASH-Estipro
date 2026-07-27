@@ -1439,6 +1439,16 @@ const ProjectEstimator = () => {
         } catch { /* ignore */ }
       }
 
+      // Iter 82: Fetch project data (approval history) + approval matrix for the billing entity
+      let projectData = null;
+      let approvalMatrix = null;
+      if (projectId) {
+        try { projectData = (await axios.get(`${API}/projects/${projectId}`)).data; } catch { /* noop */ }
+      }
+      if (billingEntityId) {
+        try { approvalMatrix = (await axios.get(`${API}/approval-matrices/${billingEntityId}`)).data; } catch { /* noop */ }
+      }
+
       const { buffer, fileName } = await buildExportWorkbook({
         waves, profitMarginPercentage, negoBufferPercentage,
         projectName, projectDescription, projectNumber, projectVersion, projectStatus,
@@ -1449,6 +1459,8 @@ const ProjectEstimator = () => {
         projectActivities,
         cashflowData,
         skills,
+        projectData: { ...(projectData || {}), billing_entity_name: billingEntities.find(be => be.id === billingEntityId)?.name || "" },
+        approvalMatrix,
       });
       // Upload to backend and trigger download via hidden iframe
       const uploadRes = await fetch(`${API}/download-file`, {

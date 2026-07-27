@@ -21,6 +21,8 @@ export async function buildExportWorkbook({
   projectActivities = [],
   skills = [],
   cashflowData = null,
+  projectData = null,
+  approvalMatrix = null,
 }) {
   const selectedCustomer = customers.find(c => c.id === customerId);
   const wb = new ExcelJS.Workbook();
@@ -370,6 +372,7 @@ export async function buildExportWorkbook({
     ["Sales Manager", salesManagers.find(m => m.id === salesManagerId)?.name || "\u2014"],
     ["CRM ID", crmId || "\u2014"],
     ["Description", projectDescription],
+    ["Billing Entity", (projectData?.billing_entity_name) || "\u2014"],
   ];
   if (versionNotes) infoFields.push(["Version Notes", versionNotes]);
   infoFields.forEach(([label, val]) => {
@@ -377,6 +380,43 @@ export async function buildExportWorkbook({
     r.getCell(1).font = { bold: true, color: { argb: "FF374151" } };
   });
   summaryWs.addRow([]);
+
+  // Approval Matrix + Approval History (Iter 82)
+  const matrixLevels = (approvalMatrix?.levels || []);
+  const approvalHistory = (projectData?.approval_history || []);
+  if (matrixLevels.length > 0 || approvalHistory.length > 0) {
+    const approvalHdr = summaryWs.addRow(["APPROVAL MATRIX & HISTORY"]);
+    approvalHdr.font = { bold: true, size: 12 };
+    approvalHdr.eachCell(c => { c.fill = subHeaderFill; });
+    summaryWs.addRow(["Current Status", projectStatus || "Draft"]);
+    if (projectData?.submitted_at) summaryWs.addRow(["Submitted for Review At", new Date(projectData.submitted_at).toLocaleString()]);
+    if (projectData?.current_approval_level) summaryWs.addRow(["Current Approval Level", `Level ${projectData.current_approval_level}`]);
+    if (matrixLevels.length > 0) {
+      summaryWs.addRow(["Configured Approvers by Level:", ""]);
+      matrixLevels.forEach(lvl => {
+        const label = lvl.label ? ` (${lvl.label})` : "";
+        (lvl.approver_emails || []).forEach((email, i) => {
+          const name = (lvl.approver_names || [])[i] || "";
+          summaryWs.addRow([`  Level ${lvl.level}${label}`, `${name}${name ? " · " : ""}${email}`]);
+        });
+      });
+    }
+    if (approvalHistory.length > 0) {
+      summaryWs.addRow([]);
+      const hHdr = summaryWs.addRow(["Approval History"]);
+      hHdr.font = { bold: true }; hHdr.eachCell(c => { c.fill = subHeaderFill; });
+      summaryWs.addRow(["Level", "Approver", "Approved At", "Comments"]).eachCell(c => { c.font = { bold: true }; });
+      approvalHistory.forEach(h => {
+        summaryWs.addRow([
+          `Level ${h.level}`,
+          `${h.approver_name || ""} <${h.approver_email || ""}>`,
+          h.approved_at ? new Date(h.approved_at).toLocaleString() : "",
+          h.comments || "",
+        ]);
+      });
+    }
+    summaryWs.addRow([]);
+  }
 
   waveRefs.forEach((ref) => {
     const wHdr = summaryWs.addRow([`WAVE: ${ref.name}`]);
