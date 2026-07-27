@@ -73,6 +73,8 @@ const ProjectEstimator = () => {
   const [forecastedClosureDate, setForecastedClosureDate] = useState("");
   const [competencyIds, setCompetencyIds] = useState([]);
   const [competencies, setCompetencies] = useState([]);
+  const [billingEntityId, setBillingEntityId] = useState("");
+  const [billingEntities, setBillingEntities] = useState([]);
   const [commercialStatus, setCommercialStatus] = useState("");
   const [previousStatus, setPreviousStatus] = useState("");
   
@@ -305,6 +307,7 @@ const ProjectEstimator = () => {
       setBidCategory(project.bid_category || "");
       setForecastedClosureDate(project.forecasted_closure_date || "");
       setCompetencyIds(project.competency_ids || []);
+      setBillingEntityId(project.billing_entity_id || "");
       setCommercialStatus(project.commercial_status || "");
       setPreviousStatus(project.previous_status || "");
       
@@ -452,6 +455,7 @@ const ProjectEstimator = () => {
 
   const fetchCompetencies = async () => {
     try { setCompetencies((await axios.get(`${API}/competencies`)).data); } catch { /* noop */ }
+    try { setBillingEntities((await axios.get(`${API}/billing-entities`)).data); } catch { /* noop */ }
   };
 
 
@@ -1073,6 +1077,8 @@ const ProjectEstimator = () => {
       sales_manager_name: salesManagers.find(m => m.id === salesManagerId)?.name || "",
       bid_category: bidCategory === "none" ? "" : bidCategory,
       forecasted_closure_date: forecastedClosureDate,
+      billing_entity_id: billingEntityId,
+      billing_entity_name: billingEntities.find(be => be.id === billingEntityId)?.name || "",
       competency_ids: competencyIds,
       competency_names: competencyIds.map(id => competencies.find(c => c.id === id)?.name || "").filter(Boolean),
       commercial_status: commercialStatus,
@@ -1729,6 +1735,7 @@ const ProjectEstimator = () => {
         bidCategory={bidCategory} setBidCategory={setBidCategory}
         forecastedClosureDate={forecastedClosureDate} setForecastedClosureDate={setForecastedClosureDate}
         competencyIds={competencyIds} setCompetencyIds={setCompetencyIds} competencies={competencies}
+        billingEntityId={billingEntityId} setBillingEntityId={setBillingEntityId} billingEntities={billingEntities}
         commercialStatus={commercialStatus} setCommercialStatus={setCommercialStatus}
         previousStatus={previousStatus}
       />

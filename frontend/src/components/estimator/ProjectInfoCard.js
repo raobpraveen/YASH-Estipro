@@ -41,6 +41,7 @@ export const ProjectInfoCard = ({
   projectId,
   bidCategory, setBidCategory,
   forecastedClosureDate, setForecastedClosureDate,
+  billingEntityId, setBillingEntityId, billingEntities = [],
   competencyIds, setCompetencyIds, competencies,
   commercialStatus, setCommercialStatus,
   previousStatus,
@@ -281,6 +282,22 @@ export const ProjectInfoCard = ({
               <SelectContent>
                 {BID_CATEGORIES.map(bc => (
                   <SelectItem key={bc.value || "none"} value={bc.value || "none"}>{bc.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {/* Billing Entity - mandatory (Iter 79) */}
+          <div>
+            <Label>Billing Entity <span className="text-red-500">*</span></Label>
+            <Select value={billingEntityId || ""} onValueChange={(v) => setBillingEntityId(v)} disabled={isReadOnly}>
+              <SelectTrigger data-testid="billing-entity-select" className={!billingEntityId ? "border-red-300" : ""}>
+                <SelectValue placeholder="Select billing entity" />
+              </SelectTrigger>
+              <SelectContent>
+                {billingEntities.length === 0 ? (
+                  <div className="px-2 py-2 text-xs text-gray-500">No entities — add one under Master Data &rarr; Billing Entities</div>
+                ) : billingEntities.map(be => (
+                  <SelectItem key={be.id} value={be.id}>{be.name}{be.code ? ` (${be.code})` : ""}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

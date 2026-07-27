@@ -209,6 +209,21 @@ class CompetencyCreate(BaseModel):
     name: str
     description: str = ""
 
+class BillingEntity(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    code: str = ""
+    country: str = ""
+    description: str = ""
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class BillingEntityCreate(BaseModel):
+    name: str
+    code: str = ""
+    country: str = ""
+    description: str = ""
+
 
 # ========== Project Models ==========
 
@@ -321,6 +336,8 @@ class Project(BaseModel):
     forecasted_closure_date: str = ""
     competency_ids: List[str] = []
     competency_names: List[str] = []
+    billing_entity_id: str = ""
+    billing_entity_name: str = ""
     commercial_status: str = ""
     previous_status: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -361,6 +378,8 @@ class ProjectCreate(BaseModel):
     forecasted_closure_date: str = ""
     competency_ids: List[str] = []
     competency_names: List[str] = []
+    billing_entity_id: str = ""
+    billing_entity_name: str = ""
     commercial_status: str = ""
     previous_status: str = ""
 
@@ -401,6 +420,8 @@ class ProjectUpdate(BaseModel):
     forecasted_closure_date: Optional[str] = None
     competency_ids: Optional[List[str]] = None
     competency_names: Optional[List[str]] = None
+    billing_entity_id: Optional[str] = None
+    billing_entity_name: Optional[str] = None
     commercial_status: Optional[str] = None
     previous_status: Optional[str] = None
 

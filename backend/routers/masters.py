@@ -12,6 +12,7 @@ from models import (
     ProficiencyRate, ProficiencyRateCreate,
     SalesManager, SalesManagerCreate, SalesManagerUpdate,
     Competency, CompetencyCreate,
+    BillingEntity, BillingEntityCreate,
 )
 
 router = APIRouter()
@@ -339,3 +340,40 @@ async def delete_competency(comp_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Competency not found")
     return {"message": "Competency deleted successfully"}
+
+
+# ========== Billing Entities ==========
+
+@router.post("/billing-entities", response_model=BillingEntity)
+async def create_billing_entity(input: BillingEntityCreate):
+    if not input.name.strip():
+        raise HTTPException(status_code=400, detail="Name is required")
+    entity = BillingEntity(**input.model_dump())
+    await db.billing_entities.insert_one(entity.model_dump())
+    return entity
+
+@router.get("/billing-entities", response_model=List[BillingEntity])
+async def get_billing_entities():
+    items = await db.billing_entities.find({}, {"_id": 0}).to_list(1000)
+    return items
+
+@router.put("/billing-entities/{entity_id}")
+async def update_billing_entity(entity_id: str, input: dict):
+    name = input.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    update_data = {"name": name}
+    for key in ("code", "country", "description"):
+        if key in input:
+            update_data[key] = input[key]
+    result = await db.billing_entities.update_one({"id": entity_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Billing entity not found")
+    return {"message": "Billing entity updated successfully"}
+
+@router.delete("/billing-entities/{entity_id}")
+async def delete_billing_entity(entity_id: str):
+    result = await db.billing_entities.delete_one({"id": entity_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Billing entity not found")
+    return {"message": "Billing entity deleted successfully"}
