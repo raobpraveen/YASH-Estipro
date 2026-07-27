@@ -1,14 +1,16 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Printer, Search, ChevronDown, ChevronRight, Shield,
   Server, Users, Database, Settings, FileText, AlertTriangle,
-  Lock, Mail, Activity, Info, Terminal, HardDrive, RefreshCw, ArrowUp
+  Lock, Mail, Activity, Info, Terminal, HardDrive, RefreshCw, ArrowUp, Sparkles, BookOpen
 } from "lucide-react";
 
 const TOC = [
+  { id: "whats-new", title: "0. What's New (2026)", icon: Sparkles },
   { id: "architecture", title: "1. System Architecture", icon: Server },
   { id: "user-mgmt", title: "2. User Management", icon: Users },
   { id: "master-data", title: "3. Master Data Administration", icon: Database },
@@ -26,24 +28,90 @@ const TOC = [
   { id: "release-notes", title: "15. Release Notes (2025)", icon: RefreshCw },
 ];
 
-const Section = ({ id, title, updated, children }) => (
-  <section id={id} className="mb-10 scroll-mt-20" data-testid={`guide-section-${id}`}>
-    <div className="flex items-baseline gap-3 flex-wrap border-b-2 border-[#10B981] pb-2 mb-4">
-      <h2 className="text-2xl font-bold text-[#0F172A]">{title}</h2>
-      {updated && (
-        <span
-          className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#059669] bg-[#10B981]/10 border border-[#10B981]/30 rounded-full px-2 py-0.5"
-          data-testid={`guide-updated-badge-${id}`}
-          title={`Last updated: ${updated}`}
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-          Updated · {updated}
-        </span>
-      )}
+// Iter 87: broadcast open/close-all to every Section/Subsection
+const CollapseSignalContext = React.createContext({ open: false, v: 0 });
+
+const isSubsectionHeader = (child) => {
+  if (!React.isValidElement(child)) return false;
+  if (child.type === "h3") return true;
+  const cls = (child.props && child.props.className) || "";
+  return typeof cls === "string" && cls.includes("text-lg font-semibold");
+};
+
+const Subsection = ({ header, defaultOpen = false, children }) => {
+  const signal = React.useContext(CollapseSignalContext);
+  const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => { setOpen(signal.open); }, [signal.v]); // eslint-disable-line react-hooks/exhaustive-deps
+  const label = (header && header.props && (typeof header.props.children === "string" ? header.props.children : "Subsection")) || "";
+  return (
+    <div className="border-l-2 border-transparent hover:border-[#10B981]/20 transition-colors" data-testid={`guide-subsection-${label.replace(/\W+/g, "-").toLowerCase().slice(0, 40)}`}>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 w-full text-left group -ml-1 pl-1 rounded hover:bg-slate-50 print:hover:bg-transparent"
+        aria-expanded={open}
+      >
+        {open ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />}
+        {header && React.cloneElement(header, { className: `${(header.props && header.props.className) || ""} !mt-3 flex-1` })}
+      </button>
+      {open && <div className="pl-6 mt-2 space-y-3">{children}</div>}
     </div>
-    <div className="space-y-4 text-gray-700 leading-relaxed">{children}</div>
-  </section>
-);
+  );
+};
+
+const Section = ({ id, title, updated, children, defaultOpen = false }) => {
+  const signal = React.useContext(CollapseSignalContext);
+  const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => { setOpen(signal.open); }, [signal.v]); // eslint-disable-line react-hooks/exhaustive-deps
+  const arr = React.Children.toArray(children);
+  const groups = [];
+  let current = { header: null, items: [] };
+  arr.forEach(child => {
+    if (isSubsectionHeader(child)) {
+      if (current.header || current.items.length) groups.push(current);
+      current = { header: child, items: [] };
+    } else {
+      current.items.push(child);
+    }
+  });
+  if (current.header || current.items.length) groups.push(current);
+
+  return (
+    <section id={id} className="mb-6 scroll-mt-20" data-testid={`guide-section-${id}`}>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-baseline gap-3 flex-wrap border-b-2 border-[#10B981] pb-2 mb-4 text-left hover:bg-[#10B981]/[0.02] rounded-t-md px-1 print:hover:bg-transparent"
+        aria-expanded={open}
+        data-testid={`guide-section-toggle-${id}`}
+      >
+        {open ? <ChevronDown className="w-5 h-5 text-[#10B981] flex-shrink-0 self-center" /> : <ChevronRight className="w-5 h-5 text-[#10B981] flex-shrink-0 self-center" />}
+        <h2 className="text-2xl font-bold text-[#0F172A] flex-1">{title}</h2>
+        {updated && (
+          <span
+            className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#059669] bg-[#10B981]/10 border border-[#10B981]/30 rounded-full px-2 py-0.5"
+            data-testid={`guide-updated-badge-${id}`}
+            title={`Last updated: ${updated}`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+            Updated · {updated}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="space-y-4 text-gray-700 leading-relaxed">
+          {groups.map((g, i) => (
+            g.header ? (
+              <Subsection key={i} header={g.header}>{g.items}</Subsection>
+            ) : (
+              <div key={i} className="space-y-3">{g.items}</div>
+            )
+          ))}
+        </div>
+      )}
+    </section>
+  );
+};
 
 const Tip = ({ children }) => (
   <div className="flex gap-3 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg my-3">
@@ -77,12 +145,19 @@ export default function SupportGuide() {
   const [search, setSearch] = useState("");
   const [expandedToc, setExpandedToc] = useState(true);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [collapseSignal, setCollapseSignal] = useState({ open: false, v: 0 });
+  const expandAll = () => setCollapseSignal(s => ({ open: true, v: s.v + 1 }));
+  const collapseAll = () => setCollapseSignal(s => ({ open: false, v: s.v + 1 }));
   const contentRef = useRef(null);
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    expandAll();
+    setTimeout(() => window.print(), 250);
+  };
 
   const scrollTo = (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    setCollapseSignal(s => ({ open: true, v: s.v + 1 }));
+    setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }), 50);
   };
 
   const scrollToTop = () => {
@@ -92,7 +167,12 @@ export default function SupportGuide() {
   useEffect(() => {
     const handleScroll = () => setShowBackToTop(window.scrollY > 400);
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    const onBeforePrint = () => setCollapseSignal(s => ({ open: true, v: s.v + 1 }));
+    window.addEventListener("beforeprint", onBeforePrint);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("beforeprint", onBeforePrint);
+    };
   }, []);
 
   const filteredTOC = TOC.filter(t => t.title.toLowerCase().includes(search.toLowerCase()));
@@ -109,10 +189,32 @@ export default function SupportGuide() {
             <p className="text-sm text-gray-500">YASH EstiPro &mdash; Administration & Technical Reference</p>
           </div>
         </div>
-        <Button onClick={handlePrint} className="bg-[#10B981] hover:bg-[#059669] text-white print:hidden" data-testid="print-guide-btn">
-          <Printer className="w-4 h-4 mr-2" /> Download / Print
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={expandAll}
+            className="print:hidden border-[#10B981]/40 text-[#059669] hover:bg-[#10B981]/5"
+            data-testid="guide-expand-all-btn"
+            title="Expand every section and subsection"
+          >
+            <ChevronDown className="w-4 h-4 mr-1" /> Expand All
+          </Button>
+          <Button
+            variant="outline"
+            onClick={collapseAll}
+            className="print:hidden border-[#10B981]/40 text-[#059669] hover:bg-[#10B981]/5"
+            data-testid="guide-collapse-all-btn"
+            title="Collapse every section and subsection"
+          >
+            <ChevronRight className="w-4 h-4 mr-1" /> Collapse All
+          </Button>
+          <Button onClick={handlePrint} className="bg-[#10B981] hover:bg-[#059669] text-white print:hidden" data-testid="print-guide-btn">
+            <Printer className="w-4 h-4 mr-2" /> Download / Print
+          </Button>
+        </div>
       </div>
+
+      <CollapseSignalContext.Provider value={collapseSignal}>
 
       <div className="flex gap-6">
         {/* Sticky TOC */}
@@ -145,6 +247,48 @@ export default function SupportGuide() {
 
         {/* Content */}
         <div className="flex-1 min-w-0" ref={contentRef}>
+          <Tabs defaultValue="whats-new" className="w-full">
+            <TabsList className="mb-4 print:hidden">
+              <TabsTrigger value="whats-new" data-testid="tab-guide-whats-new" className="gap-2">
+                <Sparkles className="w-4 h-4" /> What&apos;s New
+              </TabsTrigger>
+              <TabsTrigger value="full-guide" data-testid="tab-full-guide" className="gap-2">
+                <BookOpen className="w-4 h-4" /> Full Guide
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="whats-new" className="mt-0 focus-visible:outline-none">
+              {/* Section 0: What's New — support/technical summary */}
+              <Section id="whats-new" title="0. What's New (2026)" updated="Jul 2026 · Iter 87">
+                <p>This page groups the most impactful admin/technical changes shipped through Iterations 78–87. Full changelog and low-level notes remain in section 15 (Release Notes).</p>
+
+                <h3 className="text-lg font-semibold text-[#10B981] mt-4">0.1 Billing Entity &amp; Multi-Level Approval Matrix</h3>
+                <KeyValue label="Master data"><code>billing_entities</code> collection, CRUD at <code>/api/billing-entities</code>. Every project stores <code>billing_entity_id</code> and <code>billing_entity_name</code>. Legacy rows were backfilled once to "Yash Technologies Middle East FZ LLC".</KeyValue>
+                <KeyValue label="Approval Matrix"><code>approval_matrices</code> stores levels per Billing Entity (up to 5). Admin UI now lives at <em>Admin → Approval Matrix</em>. On <code>POST /submit-for-review</code>, only Level 1 gets emailed; every subsequent <code>/approve</code> advances to the next level (or finalises).</KeyValue>
+                <KeyValue label="Sequential gating (Iter 83)">The <code>/approve</code> endpoint now enforces: (a) caller must be in the current level's approver list (else 403), (b) same user can't approve the same level twice (else 409). Fixes the "L1 approver approving twice = final approval" bug.</KeyValue>
+                <KeyValue label="Approver-driven edit routing (Iter 84 / Option B)">If an L1 approver edits, the new version auto-submits at Level 2 with a synthetic history entry. If L2+ edits, the new version stays as draft; alert email + <code>version_alert</code> notification is sent to L1 + creator. Runtime state on <code>Project</code>: <code>matrix_levels</code>, <code>matrix_approvers</code>, <code>current_approval_level</code>, <code>approval_history</code>.</KeyValue>
+
+                <h3 className="text-lg font-semibold text-[#10B981] mt-4">0.2 Projects List, Excel, &amp; Data Quality</h3>
+                <KeyValue label="Group-aware resource counts"><code>resource_group_id</code> now deduplicates rows in the Projects list Resources column and in the wave grid header. Onsite/Traveling counts inside <code>calculateWaveLogistics</code> also dedupe by group so flight/visa costs no longer double-charge grouped rows.</KeyValue>
+                <KeyValue label="Excel export additions">Summary sheet includes Billing Entity, Bid Category, Forecasted Closure Date, Competencies, Commercial Status, Effective Margin %, plus an Approval Matrix &amp; History block. Projects list Excel adds Billing Entity, Resources, Total MM columns and a Totals row driven by live <code>SUM()</code> formulas.</KeyValue>
+                <KeyValue label="Smart Import extension"><code>excelImport.js</code> label-scans the Summary sheet and returns <code>billingEntityName</code>, <code>bidCategory</code>, <code>forecastedClosureDate</code>, <code>competencyNames</code>, <code>commercialStatus</code>. Approver names/dates/comments are export-only, never imported back.</KeyValue>
+                <KeyValue label="Clone reset"><code>/projects/&#123;id&#125;/clone</code> now clears every carry-over field: matrix state, approval_history, commercial/previous status, version_notes, submitted/approved metadata, CRM ID, archive/template flags.</KeyValue>
+
+                <h3 className="text-lg font-semibold text-[#10B981] mt-4">0.3 Notifications, Deep-Links &amp; Background Emails</h3>
+                <KeyValue label="Notification bell inline actions"><code>Layout.js</code> renders inline Approve/Reject/Open buttons on every <code>review_request</code> notification, with a comment textarea in-place. No page navigation needed. Rejection requires a reason.</KeyValue>
+                <KeyValue label="Version-alert deep-link">Clicking a <code>version_alert</code> notification now navigates directly to <code>/projects/&#123;id&#125;/compare</code> so reviewers land on the diff view.</KeyValue>
+                <KeyValue label="Background emails on /new-version">SMTP dispatch moved to <code>fastapi.BackgroundTasks</code>. Endpoint responds in ~200 ms regardless of recipient count; notifications stay inline for instant bell visibility.</KeyValue>
+
+                <h3 className="text-lg font-semibold text-[#10B981] mt-4">0.4 Approval Escalation &amp; Approver Load</h3>
+                <KeyValue label="Escalation Timer">New module <code>backend/approval_escalation.py</code> starts an asyncio loop from server startup. Scans every <code>APPROVAL_ESCALATION_INTERVAL_HOURS</code> hours (default 6) for <code>in_review</code> projects awaiting the current level &gt; <code>APPROVAL_ESCALATION_DAYS</code> days (default 2); sends reminder email + notification. Cooldown via <code>project.escalation_reminders["level_N"]</code> for <code>APPROVAL_ESCALATION_COOLDOWN_HOURS</code> (default 24). Manual trigger: <code>POST /api/admin/run-escalation-scan</code>.</KeyValue>
+                <KeyValue label="Approver Load widget">New endpoint <code>GET /api/admin/approver-load</code> (admin only) returns each approver's pending count and single longest-waiting project. Widget lives on the Approval Matrix screen.</KeyValue>
+
+                <h3 className="text-lg font-semibold text-[#10B981] mt-4">0.5 Docs UX (Iter 87)</h3>
+                <KeyValue label="Tabs">Both User Manual and Support Guide now split into a <strong>What&apos;s New</strong> tab (this one) and a <strong>Full Manual/Guide</strong> tab.</KeyValue>
+                <KeyValue label="Collapsible sections + subsections">Every section (1, 2, 3…) and every X.Y subsection is independently collapsible. Broadcast <em>Expand All</em> / <em>Collapse All</em> buttons at the top toggle every one. Default state on open = <strong>collapsed</strong> for both docs.</KeyValue>
+                <KeyValue label="Print/Download">Unchanged — clicking Download/Print or hitting Ctrl+P automatically expands every section first (<code>window.beforeprint</code> listener) so the printed PDF still contains the complete content.</KeyValue>
+              </Section>
+            </TabsContent>
+            <TabsContent value="full-guide" className="mt-0 focus-visible:outline-none">
           {/* Section 1: Architecture */}
           <Section id="architecture" title="1. System Architecture">
             <h3 className="text-lg font-semibold text-[#10B981] mt-2">1.1 Technology Stack</h3>
@@ -984,6 +1128,8 @@ mongosh --eval "db.adminCommand('ping')"`}
             <h3 className="text-lg font-semibold text-[#10B981] mt-6">15.9 Test Coverage</h3>
             <p>Iteration tests are stored in <code>/app/backend/tests/</code> and reports under <code>/app/test_reports/iteration_*.json</code>. Recent runs include <code>iteration_60.json</code> (AMS Billing Freq + Advance), <code>iteration_63.json</code> (Smart Import AMS_Shared + CTC fix), and <code>iteration_64.json</code> (Effective Margin denominator). All passed 100% on backend + frontend.</p>
           </Section>
+            </TabsContent>
+          </Tabs>
 
           {/* Footer */}
           <div className="border-t-2 border-[#10B981] pt-4 mt-10 text-center text-sm text-gray-500 print:mt-4">
@@ -996,6 +1142,7 @@ mongosh --eval "db.adminCommand('ping')"`}
           </div>
         </div>
       </div>
+      </CollapseSignalContext.Provider>
 
       {/* Back to Top Button */}
       {showBackToTop && (

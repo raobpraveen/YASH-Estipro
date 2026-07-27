@@ -455,7 +455,13 @@ const Layout = ({ user, onLogout }) => {
                         className={`flex items-start gap-2 ${notif.project_id ? 'cursor-pointer' : ''}`}
                         onClick={() => {
                           if (isActionable) return; // don't navigate when approving inline; use the buttons
-                          if (notif.project_id) navigate(`/projects/${notif.project_id}/summary`);
+                          if (!notif.project_id) return;
+                          // Iter 86: Deep-link `version_alert` notifications straight to the compare view
+                          if (notif.type === 'version_alert') {
+                            navigate(`/projects/${notif.project_id}/compare`);
+                          } else {
+                            navigate(`/projects/${notif.project_id}/summary`);
+                          }
                         }}
                       >
                         <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${

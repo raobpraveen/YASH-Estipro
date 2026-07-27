@@ -149,6 +149,17 @@ Build an IT/Software Project estimator tool named "YASH EstPro" with wave-based 
 80. **Bug**: Post-Iter 75, margin formula was still asymmetric wrt AMS — `netCost` included `amsTotalCost` but `resourcesPrice` had no `amsSharedAnnual`. PRJ-0037 v2 (T&M @ 35% + AMS_Shared @ 35%) showed a suppressed margin instead of 35%.
 81. **Fix**: `resourcesPrice = totalRowsSellingPrice + amsSharedAnnual` in `calculateWaveSummary`; `overallResourcesPrice = totalRowsSellingPrice + totalAmsSharedAnnual` in `calculateOverallSummary`. Verified live on PRJ-0037 v2: margin = 35.0% ✓ (callout auto-hidden).
 
+### Iteration 86–87: Approver Load widget + Version-alert deep-link + Docs Tabs & Collapsible sections (Completed Jul 2026)
+109. **Approver Load widget**: New backend endpoint `GET /api/admin/approver-load` (admin-only via `require_admin`) returns each approver's pending `in_review` project count and single longest-waiting project. New frontend widget `ApproverLoadWidget.js` on the Approval Matrix page — click the longest-waiting entry to jump straight to that project. Sorted by pending count, badges by role.
+110. **Version-alert deep-link**: In `Layout.js` notification bell, clicking a `version_alert` notification now navigates directly to `/projects/{id}/compare` (the Version Comparison view) so reviewers land on the diff without any extra clicks.
+111. **User Manual & Support Guide — tabs + full collapse**: Both docs restructured:
+   - `Tabs` split into **What's New** and **Full Manual / Full Guide** — What's New tab shows only Section 0.
+   - `Section` component refactored to auto-group its children by `<h3>` markers → auto-renders each subsection inside a collapsible `Subsection` container. **Zero refactor** of individual subsection JSX bodies.
+   - New `Expand All` / `Collapse All` buttons in the header broadcast via a `CollapseSignalContext` — every Section and Subsection listens and updates. Default state on open = **collapsed**.
+   - `beforeprint` listener + click-through auto-expand ensures Download/Print still captures the entire content regardless of current collapse state.
+   - TOC scrollTo now fires an expand-all so the target section is visible when navigated to.
+   - Bug fix: `{n}` in a JSX text was being interpreted as a JS expression and crashed the manual at runtime — escaped as `&#123;n&#125;`.
+
 ### Iteration 85: Clone reset + Excel formula totals + Background emails + Escalation Timer (Completed Jul 2026)
 104. **Clone endpoint reset (extended)**: `POST /api/projects/{id}/clone` now also clears `version_notes`, `submitted_by`, `approved_by`, `crm_id`, `is_archived`, `archived_at`, `is_template`, `template_name`. Combined with the earlier reset of `matrix_levels`/`approval_history`/`current_approval_level`/`matrix_approvers`/`commercial_status`/`previous_status`/`approver_email`/`approval_comments`/`submitted_at`/`approved_at`, a cloned project now starts on a truly blank canvas.
 105. **Projects list Excel export — new columns + formula totals**: Added **Billing Entity** column (between Customer and Status), **Resources** and **Total MM** columns (before Profit Margin %). A final Totals row uses **Excel SUM() formulas** — `SUM(M2:MN)` for Resources, `SUM(N2:NN)` for Total MM, `SUM(Q2:QN)` for Grand Total — so if the user edits any row inside Excel the totals live-update.

@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Printer, Search, ChevronDown, ChevronRight, BookOpen,
   LayoutDashboard, FolderKanban, Calculator, Layers, FileSpreadsheet,
-  Settings, ArrowRight, CheckCircle, AlertTriangle, Info, ArrowUp
+  Settings, ArrowRight, CheckCircle, AlertTriangle, Info, ArrowUp, Sparkles
 } from "lucide-react";
 
 const TOC = [
@@ -33,24 +34,93 @@ const TOC = [
   { id: "activity-templates", title: "21. Activity Templates & Deliverables", icon: Layers },
 ];
 
-const Section = ({ id, title, updated, children }) => (
-  <section id={id} className="mb-10 scroll-mt-20" data-testid={`manual-section-${id}`}>
-    <div className="flex items-baseline gap-3 flex-wrap border-b-2 border-[#1E40AF] pb-2 mb-4">
-      <h2 className="text-2xl font-bold text-[#0F172A]">{title}</h2>
-      {updated && (
-        <span
-          className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#1E40AF] bg-[#1E40AF]/10 border border-[#1E40AF]/30 rounded-full px-2 py-0.5"
-          data-testid={`manual-updated-badge-${id}`}
-          title={`Last updated: ${updated}`}
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-[#1E40AF] animate-pulse" />
-          Updated · {updated}
-        </span>
-      )}
+// Iter 87: Collapse signal broadcast — Section/Subsection subscribe to this
+// and update their `open` state when the parent fires expand/collapse-all.
+const CollapseSignalContext = React.createContext({ open: false, v: 0 });
+
+const isSubsectionHeader = (child) => {
+  if (!React.isValidElement(child)) return false;
+  if (child.type === "h3") return true;
+  const cls = (child.props && child.props.className) || "";
+  return typeof cls === "string" && cls.includes("text-lg font-semibold");
+};
+
+const Subsection = ({ header, defaultOpen = false, children }) => {
+  const signal = React.useContext(CollapseSignalContext);
+  const [open, setOpen] = useState(defaultOpen);
+  // Follow broadcast signal changes (but allow user to toggle independently after)
+  useEffect(() => { setOpen(signal.open); }, [signal.v]); // eslint-disable-line react-hooks/exhaustive-deps
+  const label = (header && header.props && (typeof header.props.children === "string" ? header.props.children : "Subsection")) || "";
+  return (
+    <div className="border-l-2 border-transparent hover:border-[#1E40AF]/20 transition-colors" data-testid={`manual-subsection-${label.replace(/\W+/g, "-").toLowerCase().slice(0, 40)}`}>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 w-full text-left group -ml-1 pl-1 rounded hover:bg-slate-50 print:hover:bg-transparent"
+        aria-expanded={open}
+      >
+        {open ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />}
+        {header && React.cloneElement(header, { className: `${(header.props && header.props.className) || ""} !mt-3 flex-1` })}
+      </button>
+      {open && <div className="pl-6 mt-2 space-y-3">{children}</div>}
     </div>
-    <div className="space-y-4 text-gray-700 leading-relaxed">{children}</div>
-  </section>
-);
+  );
+};
+
+const Section = ({ id, title, updated, children, defaultOpen = false }) => {
+  const signal = React.useContext(CollapseSignalContext);
+  const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => { setOpen(signal.open); }, [signal.v]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Regroup children: whenever we encounter a subsection header (h3), open a new group
+  const arr = React.Children.toArray(children);
+  const groups = [];
+  let current = { header: null, items: [] };
+  arr.forEach((child) => {
+    if (isSubsectionHeader(child)) {
+      if (current.header || current.items.length) groups.push(current);
+      current = { header: child, items: [] };
+    } else {
+      current.items.push(child);
+    }
+  });
+  if (current.header || current.items.length) groups.push(current);
+
+  return (
+    <section id={id} className="mb-6 scroll-mt-20" data-testid={`manual-section-${id}`}>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-baseline gap-3 flex-wrap border-b-2 border-[#1E40AF] pb-2 mb-4 text-left hover:bg-[#1E40AF]/[0.02] rounded-t-md px-1 print:hover:bg-transparent"
+        aria-expanded={open}
+        data-testid={`manual-section-toggle-${id}`}
+      >
+        {open ? <ChevronDown className="w-5 h-5 text-[#1E40AF] flex-shrink-0 self-center" /> : <ChevronRight className="w-5 h-5 text-[#1E40AF] flex-shrink-0 self-center" />}
+        <h2 className="text-2xl font-bold text-[#0F172A] flex-1">{title}</h2>
+        {updated && (
+          <span
+            className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#1E40AF] bg-[#1E40AF]/10 border border-[#1E40AF]/30 rounded-full px-2 py-0.5"
+            data-testid={`manual-updated-badge-${id}`}
+            title={`Last updated: ${updated}`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#1E40AF] animate-pulse" />
+            Updated · {updated}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="space-y-4 text-gray-700 leading-relaxed">
+          {groups.map((g, i) => (
+            g.header ? (
+              <Subsection key={i} header={g.header}>{g.items}</Subsection>
+            ) : (
+              <div key={i} className="space-y-3">{g.items}</div>
+            )
+          ))}
+        </div>
+      )}
+    </section>
+  );
+};
 
 const Tip = ({ children }) => (
   <div className="flex gap-3 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg my-3">
@@ -84,14 +154,22 @@ export default function UserManual() {
   const [search, setSearch] = useState("");
   const [expandedToc, setExpandedToc] = useState(true);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  // Iter 87: broadcast open/close-all to every Section/Subsection via CollapseSignalContext
+  const [collapseSignal, setCollapseSignal] = useState({ open: false, v: 0 });
+  const expandAll = () => setCollapseSignal(s => ({ open: true, v: s.v + 1 }));
+  const collapseAll = () => setCollapseSignal(s => ({ open: false, v: s.v + 1 }));
   const contentRef = useRef(null);
 
   const handlePrint = () => {
-    window.print();
+    // Iter 87: temporarily expand everything so print captures full content, then restore.
+    expandAll();
+    setTimeout(() => window.print(), 250);
   };
 
   const scrollTo = (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    // Iter 87: navigating via TOC should reveal the target section
+    setCollapseSignal(s => ({ open: true, v: s.v + 1 }));
+    setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }), 50);
   };
 
   const scrollToTop = () => {
@@ -101,7 +179,13 @@ export default function UserManual() {
   useEffect(() => {
     const handleScroll = () => setShowBackToTop(window.scrollY > 400);
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    // Iter 87: also expand everything on native browser print (Ctrl+P) so no content is missed.
+    const onBeforePrint = () => setCollapseSignal(s => ({ open: true, v: s.v + 1 }));
+    window.addEventListener("beforeprint", onBeforePrint);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("beforeprint", onBeforePrint);
+    };
   }, []);
 
   const filteredTOC = TOC.filter(t => t.title.toLowerCase().includes(search.toLowerCase()));
@@ -118,10 +202,32 @@ export default function UserManual() {
             <p className="text-sm text-gray-500">YASH EstiPro &mdash; Project Cost Estimator</p>
           </div>
         </div>
-        <Button onClick={handlePrint} className="bg-[#1E40AF] hover:bg-[#1E3A8A] text-white print:hidden" data-testid="print-manual-btn">
-          <Printer className="w-4 h-4 mr-2" /> Download / Print
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={expandAll}
+            className="print:hidden border-[#1E40AF]/40 text-[#1E40AF] hover:bg-[#1E40AF]/5"
+            data-testid="manual-expand-all-btn"
+            title="Expand every section and subsection"
+          >
+            <ChevronDown className="w-4 h-4 mr-1" /> Expand All
+          </Button>
+          <Button
+            variant="outline"
+            onClick={collapseAll}
+            className="print:hidden border-[#1E40AF]/40 text-[#1E40AF] hover:bg-[#1E40AF]/5"
+            data-testid="manual-collapse-all-btn"
+            title="Collapse every section and subsection"
+          >
+            <ChevronRight className="w-4 h-4 mr-1" /> Collapse All
+          </Button>
+          <Button onClick={handlePrint} className="bg-[#1E40AF] hover:bg-[#1E3A8A] text-white print:hidden" data-testid="print-manual-btn">
+            <Printer className="w-4 h-4 mr-2" /> Download / Print
+          </Button>
+        </div>
       </div>
+
+      <CollapseSignalContext.Provider value={collapseSignal}>
 
       <div className="flex gap-6">
         {/* Sticky Table of Contents */}
@@ -167,8 +273,20 @@ export default function UserManual() {
 
         {/* Content */}
         <div className="flex-1 min-w-0" ref={contentRef}>
+          <Tabs defaultValue="whats-new" className="w-full">
+            <TabsList className="mb-4 print:hidden">
+              <TabsTrigger value="whats-new" data-testid="tab-whats-new" className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                What&apos;s New
+              </TabsTrigger>
+              <TabsTrigger value="full-manual" data-testid="tab-full-manual" className="gap-2">
+                <BookOpen className="w-4 h-4" />
+                Full Manual
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="whats-new" className="mt-0 focus-visible:outline-none">
           {/* Section 0: What's New */}
-          <Section id="whats-new" title="0. What's New (2026)" updated="Jul 2026 · Iter 72">
+          <Section id="whats-new" title="0. What's New (2026)" updated="Jul 2026 · Iter 86">
             <p>Recent updates rolled out across Phase 4, Phase 5, Iteration 56, the AMS Shared Support rollout (Iterations 57–64), and the Jul 2026 UX + export polish batch (Iterations 68–72). The most impactful changes are highlighted here so you can spot the differences quickly.</p>
 
             <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.1 Status &amp; Workflow</h3>
@@ -282,8 +400,44 @@ export default function UserManual() {
               For any "review request" notification in the top-bar bell, admins/approvers now see inline <strong>Approve / Reject / Open</strong> buttons. Approve opens a small comment box in-place — no need to open the project unless you want to.
             </KeyValue>
 
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.11 Approval Flow Hardening (Iter 82–84)</h3>
+            <KeyValue label="Sequential gating on Approve">
+              The backend now verifies that the caller is listed in the CURRENT matrix level's approvers before advancing the flow. If they aren't, the Approve endpoint returns 403 with a message pointing at who is expected to act. This closes the "L1 approver approving twice = final approval" bug.
+            </KeyValue>
+            <KeyValue label="Matrix-aware Approve button">
+              The Approve button in the Estimator toolbar now hides for a user the moment they have approved the current level (idempotent), and appears for the next level's approvers instead of the legacy single-approver field.
+            </KeyValue>
+            <KeyValue label="Approver-driven edit routing (Option B)">
+              If an <strong>L1 approver</strong> edits a project before approving, a new version is auto-created and auto-submitted directly to <strong>Level 2</strong> — the L1 endorsement is carried forward as a synthetic history entry noting "L1 already approved on v&#123;n&#125;". If a <strong>higher-level approver</strong> (L2+) edits, the new version stays as a draft; L1 approvers and the project creator receive an email alert + <em>version_alert</em> notification asking them to review and manually re-submit. Manual submission then restarts the flow from Level 1.
+            </KeyValue>
+            <KeyValue label="Clone starts clean">
+              Cloning a project now clears every carry-over field that could confuse a fresh estimate: version notes, submitted/approved metadata, CRM ID, archive/template flags, and the full approval-matrix runtime state (levels, approvers, history, current level, commercial + previous status).
+            </KeyValue>
+
+            <h3 className="text-lg font-semibold text-[#1E40AF] mt-4">0.12 Excel, Emails &amp; Escalation (Iter 85–86)</h3>
+            <KeyValue label="Projects list Excel export">
+              The Excel export from the Projects list now includes <strong>Billing Entity</strong>, <strong>Resources</strong>, and <strong>Total MM</strong> columns, and ends with a <strong>Totals row driven by live Excel SUM() formulas</strong> — edit any row in Excel and the totals update automatically.
+            </KeyValue>
+            <KeyValue label="Instant submit response (background emails)">
+              Creating a new version no longer waits on SMTP. Notifications land in the bell immediately; approval / re-approval emails are dispatched in the background so the UI returns in about 200 ms even when several recipients are notified.
+            </KeyValue>
+            <KeyValue label="Approval Escalation Timer">
+              A background job now scans every 6 hours for projects that have been sitting <strong>in review for more than 2 days</strong> at any level and fires a reminder email + in-app notification to the current level's approvers. Same reminder is not repeated within 24 hours. Admins can run a scan on-demand via <em>POST /api/admin/run-escalation-scan</em>.
+            </KeyValue>
+            <KeyValue label="Approver Load widget (Admin)">
+              A new widget on the Approval Matrix screen lists every approver / admin, the number of <em>in_review</em> projects currently sitting in their queue, and the single longest-waiting project — one click jumps you straight to that project in view mode. Sorted by pending count so the busiest people are always on top.
+            </KeyValue>
+            <KeyValue label="Version-alert deep-link">
+              Clicking a "New version needs re-approval" notification in the bell now opens the <strong>Version Comparison</strong> view directly, so reviewers land on the diff without navigating.
+            </KeyValue>
+            <KeyValue label="Collapsible manual + What&apos;s New tab">
+              This manual now lives under two tabs — <strong>What&apos;s New</strong> and <strong>Full Manual</strong>. Every section and every subsection is independently collapsible: click the section heading or any 1.1 / 1.2 sub-heading to toggle it. Print &amp; download options still capture the entire content regardless of collapse state.
+            </KeyValue>
+
             <Tip>If you see something in this section that's not yet visible in the UI, hard-refresh your browser (Ctrl+Shift+R / Cmd+Shift+R) to ensure you're on the latest build.</Tip>
           </Section>
+            </TabsContent>
+            <TabsContent value="full-manual" className="mt-0 focus-visible:outline-none">
 
           {/* Section 1: Getting Started */}
           <Section id="getting-started" title="1. Getting Started">
@@ -1095,6 +1249,8 @@ export default function UserManual() {
             <Step num="5">Activities are saved per wave and per phase, and appear in the Excel export.</Step>
             <Warning>Template activities are copied into the project at adoption time. Later changes to the master template do not automatically update already-adopted project activities.</Warning>
           </Section>
+            </TabsContent>
+          </Tabs>
 
           {/* Footer */}
           <div className="border-t-2 border-[#1E40AF] pt-4 mt-10 text-center text-sm text-gray-500 print:mt-4">
@@ -1107,6 +1263,7 @@ export default function UserManual() {
           </div>
         </div>
       </div>
+      </CollapseSignalContext.Provider>
 
       {/* Back to Top Button */}
       {showBackToTop && (

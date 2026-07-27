@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Shield, Plus, Trash2, Save } from "lucide-react";
 import { toast } from "sonner";
+import ApproverLoadWidget from "@/components/admin/ApproverLoadWidget";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const MAX_LEVELS = 5;
@@ -114,6 +115,9 @@ const ApprovalMatrix = () => {
           </div>
         </div>
       </div>
+
+      {/* Iter 86: Approver Load — pending review counts per approver */}
+      <ApproverLoadWidget />
 
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-lg">Billing Entity</CardTitle></CardHeader>
