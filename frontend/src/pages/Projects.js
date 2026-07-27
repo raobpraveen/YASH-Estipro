@@ -740,37 +740,64 @@ const Projects = () => {
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet("Projects List");
       const headerRow = ws.addRow([
-        "Project #", "Version", "Project Name", "Customer", "Status",
+        "Project #", "Version", "Project Name", "Customer", "Billing Entity", "Status",
         "Technologies", "Sub Technologies", "Project Types", "Sales Manager",
-        "CRM ID", "Locations", "Profit Margin %", "Nego Buffer %", "Grand Total ($)",
+        "CRM ID", "Locations", "Resources", "Total MM", "Profit Margin %", "Nego Buffer %", "Grand Total ($)",
         "Created By", "Created Date", "Updated Date", "Approver", "Description"
       ]);
       headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
       headerRow.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0EA5E9" } }; c.alignment = { horizontal: "center" }; });
 
+      let projectCount = 0;
       Object.values(grouped).forEach(versions => {
         versions.forEach(p => {
-          const { grandTotal } = calculateProjectValue(p);
+          const { grandTotal, totalMM, resourceCount } = calculateProjectValue(p);
           ws.addRow([
             p.project_number || "", p.version || 1, p.name || "",
-            p.customer_name || "", (p.status || "").toUpperCase(),
+            p.customer_name || "", p.billing_entity_name || "", (p.status || "").toUpperCase(),
             (p.technology_names || []).join(", "), (p.sub_technology_names || []).join(", "),
             (p.project_type_names || []).join(", "), p.sales_manager_name || "",
             p.crm_id || "", (p.project_location_names || []).join(", "),
+            resourceCount || 0,
+            Number(((totalMM || 0)).toFixed(2)),
             p.profit_margin_percentage || 0, p.nego_buffer_percentage || 0,
             Math.round(grandTotal || 0),
             p.created_by_name || "", p.created_at ? new Date(p.created_at).toLocaleDateString() : "",
             p.updated_at ? new Date(p.updated_at).toLocaleDateString() : "",
             p.approver_email || "", p.description || ""
           ]);
+          projectCount++;
         });
       });
+
+      // Formula-based Totals row (uses SUM over the data range so re-editing in Excel updates the totals)
+      if (projectCount > 0) {
+        const firstDataRow = 2;
+        const lastDataRow = 1 + projectCount;
+        const totalsRow = ws.addRow([
+          `Totals (${projectCount} projects)`, "", "", "", "", "", "", "", "", "", "", "",
+          { formula: `SUM(M${firstDataRow}:M${lastDataRow})` },  // Resources
+          { formula: `SUM(N${firstDataRow}:N${lastDataRow})` },  // Total MM
+          "", "",
+          { formula: `SUM(Q${firstDataRow}:Q${lastDataRow})` },  // Grand Total $
+          "", "", "", "", ""
+        ]);
+        totalsRow.font = { bold: true };
+        totalsRow.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } }; });
+        // Number format for the totals cells
+        ws.getCell(`M${lastDataRow + 1}`).numFmt = "#,##0";
+        ws.getCell(`N${lastDataRow + 1}`).numFmt = "#,##0.00";
+        ws.getCell(`Q${lastDataRow + 1}`).numFmt = "$#,##0";
+      }
 
       // Auto-fit columns
       ws.columns.forEach(col => { col.width = 18; });
       ws.getColumn(1).width = 12;
       ws.getColumn(2).width = 8;
       ws.getColumn(3).width = 30;
+      ws.getColumn(5).width = 26; // Billing Entity
+      ws.getColumn(13).width = 11; // Resources
+      ws.getColumn(14).width = 12; // Total MM
 
       const buffer = await wb.xlsx.writeBuffer();
       const fileName = `YASH_EstPro_Projects_List_${new Date().toISOString().slice(0,10)}.xlsx`;

@@ -73,6 +73,23 @@ async def create_default_admin():
         logger.info("Default admin user created: admin@yash.com")
 
 
+@app.on_event("startup")
+async def start_escalation_loop():
+    # Iter 85: launch approval-escalation background loop as a fire-and-forget task.
+    import asyncio
+    from approval_escalation import escalation_loop
+    asyncio.create_task(escalation_loop())
+    logger.info("Approval escalation loop started")
+
+
+@app.post("/api/admin/run-escalation-scan")
+async def trigger_escalation_scan():
+    """Manual trigger — useful for testing the escalation logic without waiting for the loop."""
+    from approval_escalation import _run_once
+    result = await _run_once()
+    return {"ok": True, **result}
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()

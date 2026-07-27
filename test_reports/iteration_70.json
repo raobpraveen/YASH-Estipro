@@ -1,0 +1,32 @@
+{
+  "summary": "Iter 85 full regression: clone reset, Excel export (Billing Entity + Resources + Total MM + formula Totals), background email response time on /new-version, escalation manual scan + cooldown + startup lifecycle. All 5 pytest cases pass; frontend Excel export verified end-to-end by intercepting the POST body and inspecting the .xlsx with openpyxl (data_only=False) and raw sheet1.xml.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter85_features.py",
+    "/app/test_reports/pytest/iter85.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "approval_escalation._run_once uses `now - timedelta(days=ESCALATION_DAYS)` with days granularity for the waited-days display, so a project that just crossed 2*24h will show 'Approval pending 2+ days' which is correct; consider using hours when APPROVAL_ESCALATION_DAYS<1 in future.",
+    "clone_project resets `previous_status` and `commercial_status` but not `archived_at` timestamp being cleared explicitly to None from clone — verified it is set to None (line 472) OK.",
+    "create_new_version calls `input.model_dump(exclude_unset=True)` twice (lines 299 and 365) — minor DRY issue; harmless but a re-assignment overwrites variable `is_import` behavior only once. Consider consolidating."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter85_features.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Test transiently backdated PRJ-0043 v1 submitted_at by 3 days to trigger escalation; restored original values in teardown. Cloned PRJ-0040 briefly then deleted the clone. Created new-version on PRJ-0043 briefly then deleted it.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@yash.com / password",
+  "context_for_next_testing_agent": "Iter 85 = clone reset (POST /projects/{id}/clone), Excel formula totals + Billing Entity/Resources/Total MM columns in Projects list export (handleExportProjectList), FastAPI BackgroundTasks for SMTP on /projects/{id}/new-version, approval_escalation.py loop + POST /api/admin/run-escalation-scan (returns {ok, scanned, fired}). Sheet1.xml formulas verified via zipfile + regex: SUM(M...), SUM(N...), SUM(Q...). Response time for new-version measured at <2s.",
+  "rca_of_the_issue": "N/A — all 5 tests pass. Only one adjustment made during test-writing: escalation stamp key check widened from strict 'level_1' to 'level_N' because PRJ-0043 v1 was already on current_approval_level=2 (not 1), which the loop correctly targets. This is a test-fixture nuance, not a product defect.",
+  "verifications_performed": [
+    "POST /api/projects/25d34438-.../clone → status=draft, all reset fields empty, matrix_levels=[], approval_history=[], current_approval_level=1, is_archived=false, is_template=false. Clone deleted after.",
+    "POST /api/projects/f6619193-.../new-version {description:'perf test iter85'} → 200 in <2s; new version created with description propagated; new project deleted after.",
+    "POST /api/admin/run-escalation-scan returns {ok:true, scanned:int, fired:int}.",
+    "Backdated PRJ-0043 v1 submitted_at −3d, cleared escalation_reminders → scan fired>=1; Notification with title 'Reminder: Approval pending ...' created for current level's approvers.",
+    "Immediate second scan → escalation_reminders.level_N stamp present; cooldown enforced (no duplicate fire for the same project/level).",
+    "Backend startup log contains 'Approval escalation loop started'.",
+    "Projects Excel export via UI: header row shows Billing Entity between Customer and Status; Resources & Total MM before Profit Margin %; billing_entity_name populated in body rows; Totals row at line 59 uses formulas (data_type='f') =SUM(M2:M58), =SUM(N2:N58), =SUM(Q2:Q58); raw sheet1.xml contains three <f> tags with those SUM formulas."
+  ]
+}

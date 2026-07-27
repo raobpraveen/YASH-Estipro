@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from typing import List
 from datetime import datetime, timezone
 import uuid
@@ -292,7 +292,7 @@ async def unarchive_project(project_id: str, user: dict = Depends(get_current_us
 
 
 @router.post("/projects/{project_id}/new-version", response_model=Project)
-async def create_new_version(project_id: str, input: ProjectUpdate, user: dict = Depends(get_current_user)):
+async def create_new_version(project_id: str, input: ProjectUpdate, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
     existing = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -391,6 +391,7 @@ async def create_new_version(project_id: str, input: ProjectUpdate, user: dict =
             metadata={"new_version": new_version, "previous_version": existing.get("version", 1), "version_notes": update_data.get("version_notes", ""), "caller_level_in_parent": caller_level_in_parent}
         )
     # Iter 84: fire notifications based on approver-driven edit routing
+    # Iter 85: SMTP send is slow — schedule all email dispatches on BackgroundTasks so the response returns immediately.
     if project_obj.status == "in_review" and caller_level_in_parent == 1 and len(parent_matrix_levels) >= 2:
         # Auto-submitted at L2 — notify L2 approvers
         l2 = next((_l for _l in parent_matrix_levels if _l.get("level") == 2), None)
@@ -410,7 +411,7 @@ async def create_new_version(project_id: str, input: ProjectUpdate, user: dict =
                     current_user.get("name", ""), current_user.get("email", ""),
                     project_obj.id, project_data=project_obj.model_dump()
                 )
-                await send_email(recipient, subject, html_body, text_body)
+                background_tasks.add_task(send_email, recipient, subject, html_body, text_body)
     elif caller_level_in_parent and caller_level_in_parent >= 2 and parent_matrix_levels:
         # L2+ approver edited — draft new version; alert L1 approvers so they can re-review on manual submit
         l1 = next((_l for _l in parent_matrix_levels if _l.get("level") == 1), None)
@@ -429,21 +430,18 @@ async def create_new_version(project_id: str, input: ProjectUpdate, user: dict =
             doc_n = notif.model_dump()
             doc_n['created_at'] = doc_n['created_at'].isoformat()
             await db.notifications.insert_one(doc_n)
-            try:
-                subject_alert = f"[YASH EstPro] Project {project_obj.project_number} v{new_version} needs re-approval"
-                text_alert = (
-                    f"Hello,\n\n{(current_user_pre or {}).get('name','A higher-level approver')} "
-                    f"({caller_email_pre}) edited project {project_obj.project_number} "
-                    f"'{project_obj.name}' and created a new draft version v{new_version}.\n\n"
-                    f"Because the change was made by a Level {caller_level_in_parent} approver, the "
-                    f"approval workflow will restart from Level 1 once the draft is manually submitted "
-                    f"for review.\n\nUse the Version Comparison feature in the Estimator to inspect the "
-                    f"differences at line-item level.\n\nRegards,\nYASH EstPro"
-                )
-                html_alert = f"<p>{text_alert}</p>".replace("\n\n", "</p><p>").replace("\n", "<br/>")
-                await send_email(recipient, subject_alert, html_alert, text_alert)
-            except Exception:
-                pass
+            subject_alert = f"[YASH EstPro] Project {project_obj.project_number} v{new_version} needs re-approval"
+            text_alert = (
+                f"Hello,\n\n{(current_user_pre or {}).get('name','A higher-level approver')} "
+                f"({caller_email_pre}) edited project {project_obj.project_number} "
+                f"'{project_obj.name}' and created a new draft version v{new_version}.\n\n"
+                f"Because the change was made by a Level {caller_level_in_parent} approver, the "
+                f"approval workflow will restart from Level 1 once the draft is manually submitted "
+                f"for review.\n\nUse the Version Comparison feature in the Estimator to inspect the "
+                f"differences at line-item level.\n\nRegards,\nYASH EstPro"
+            )
+            html_alert = f"<p>{text_alert}</p>".replace("\n\n", "</p><p>").replace("\n", "<br/>")
+            background_tasks.add_task(send_email, recipient, subject_alert, html_alert, text_alert)
     return project_obj
 
 
@@ -466,6 +464,14 @@ async def clone_project(project_id: str, user: dict = Depends(require_auth)):
     cloned_data["approval_comments"] = ""
     cloned_data["submitted_at"] = None
     cloned_data["approved_at"] = None
+    cloned_data["submitted_by"] = ""
+    cloned_data["approved_by"] = ""
+    cloned_data["version_notes"] = ""
+    cloned_data["crm_id"] = ""
+    cloned_data["is_archived"] = False
+    cloned_data["archived_at"] = None
+    cloned_data["is_template"] = False
+    cloned_data["template_name"] = ""
     # Reset multi-level approval matrix runtime state — the clone should start fresh
     cloned_data["matrix_levels"] = []
     cloned_data["matrix_approvers"] = []
