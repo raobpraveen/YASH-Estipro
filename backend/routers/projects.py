@@ -503,13 +503,45 @@ async def submit_for_review(project_id: str, approver_email: str, user: dict = D
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    # Iter 81: If project has a Billing Entity with a configured Approval Matrix,
+    # auto-fan-out to every approver at every level (dedup by email). The `approver_email`
+    # param still selects the primary approver whose "approved" click closes the workflow;
+    # remaining approvers get informational review-request emails so the whole matrix is aware.
+    matrix_approvers = []  # list of {level, email, name}
+    billing_entity_id = project.get("billing_entity_id", "")
+    if billing_entity_id:
+        matrix = await db.approval_matrices.find_one({"billing_entity_id": billing_entity_id}, {"_id": 0})
+        if matrix:
+            seen = set()
+            for lvl in matrix.get("levels", []):
+                emails = lvl.get("approver_emails", []) or []
+                names = lvl.get("approver_names", []) or []
+                for i, e in enumerate(emails):
+                    e_clean = (e or "").strip().lower()
+                    if e_clean and e_clean not in seen:
+                        seen.add(e_clean)
+                        matrix_approvers.append({
+                            "level": lvl.get("level", 0),
+                            "email": e_clean,
+                            "name": names[i] if i < len(names) else "",
+                        })
+
+    # If no explicit approver_email supplied, use level-1 approver from matrix
+    if not approver_email and matrix_approvers:
+        # pick lowest-level approver
+        primary = sorted(matrix_approvers, key=lambda x: x["level"])[0]
+        approver_email = primary["email"]
+
     if not approver_email:
-        raise HTTPException(status_code=400, detail="Approver email is required")
+        raise HTTPException(status_code=400, detail="Approver email is required (either supply one or configure an Approval Matrix for the billing entity)")
+
     old_status = project.get("status", "draft")
     update_data = {
         "status": "in_review", "approver_email": approver_email,
         "submitted_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat()
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "matrix_approvers": [a["email"] for a in matrix_approvers],
     }
     await db.projects.update_one({"id": project_id}, {"$set": update_data})
     current_user = await db.users.find_one({"id": user["user_id"]}, {"_id": 0})
@@ -520,24 +552,29 @@ async def submit_for_review(project_id: str, approver_email: str, user: dict = D
             project_id=project_id, project_number=project.get("project_number", ""),
             project_name=project.get("name", ""),
             changes=[{"field": "status", "old_value": old_status, "new_value": "in_review"}],
-            metadata={"approver_email": approver_email}
+            metadata={"approver_email": approver_email, "matrix_approvers": [a["email"] for a in matrix_approvers]}
         )
-    notification = Notification(
-        user_email=approver_email, type="review_request", title="New Project Review Request",
-        message=f"Project {project.get('project_number', '')} '{project.get('name', '')}' has been submitted for your review.",
-        project_id=project_id, project_number=project.get("project_number", "")
-    )
-    notif_doc = notification.model_dump()
-    notif_doc['created_at'] = notif_doc['created_at'].isoformat()
-    await db.notifications.insert_one(notif_doc)
-    if current_user:
-        subject, html_body, text_body = get_review_request_email(
-            project.get("project_number", ""), project.get("name", ""),
-            current_user.get("name", ""), current_user.get("email", ""),
-            project_id, project_data=project
+    # Build unique recipient list: primary + everyone in the matrix (deduped)
+    recipients = {approver_email.lower()}
+    for a in matrix_approvers:
+        recipients.add(a["email"])
+    for recipient in recipients:
+        notification = Notification(
+            user_email=recipient, type="review_request", title="New Project Review Request",
+            message=f"Project {project.get('project_number', '')} '{project.get('name', '')}' has been submitted for your review.",
+            project_id=project_id, project_number=project.get("project_number", "")
         )
-        await send_email(approver_email, subject, html_body, text_body)
-    return {"message": "Project submitted for review", "status": "in_review"}
+        notif_doc = notification.model_dump()
+        notif_doc['created_at'] = notif_doc['created_at'].isoformat()
+        await db.notifications.insert_one(notif_doc)
+        if current_user:
+            subject, html_body, text_body = get_review_request_email(
+                project.get("project_number", ""), project.get("name", ""),
+                current_user.get("name", ""), current_user.get("email", ""),
+                project_id, project_data=project
+            )
+            await send_email(recipient, subject, html_body, text_body)
+    return {"message": "Project submitted for review", "status": "in_review", "recipients": list(recipients)}
 
 
 @router.post("/projects/{project_id}/approve")

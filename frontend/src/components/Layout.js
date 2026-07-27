@@ -11,6 +11,7 @@ import {
   Briefcase, 
   Award,
   Building2,
+  Shield,
   Calculator, 
   FolderKanban,
   LogOut,
@@ -139,6 +140,7 @@ const Layout = ({ user, onLogout }) => {
     { path: "/activity-templates", icon: FileText, label: "Activity Templates" },
     { path: "/competencies", icon: Award, label: "Competencies" },
     { path: "/billing-entities", icon: Building2, label: "Billing Entities" },
+    { path: "/approval-matrix", icon: Shield, label: "Approval Matrix" },
   ];
 
   const adminItems = [];

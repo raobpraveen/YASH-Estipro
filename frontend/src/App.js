@@ -27,6 +27,7 @@ import CashflowStatement from "@/pages/CashflowStatement";
 import ActivityTemplates from "@/pages/ActivityTemplates";
 import Competencies from "@/pages/Competencies";
 import BillingEntities from "@/pages/BillingEntities";
+import ApprovalMatrix from "@/pages/ApprovalMatrix";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import useIdleTimeout from "@/hooks/useIdleTimeout";
@@ -114,6 +115,7 @@ function App() {
               <Route path="activity-templates" element={<ActivityTemplates />} />
               <Route path="competencies" element={<Competencies />} />
               <Route path="billing-entities" element={<BillingEntities />} />
+              <Route path="approval-matrix" element={<ApprovalMatrix />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
           )}

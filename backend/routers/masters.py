@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
+import uuid
 from database import db
 from models import (
     Customer, CustomerCreate, CustomerUpdate,
@@ -13,6 +14,7 @@ from models import (
     SalesManager, SalesManagerCreate, SalesManagerUpdate,
     Competency, CompetencyCreate,
     BillingEntity, BillingEntityCreate,
+    ApprovalMatrix, ApprovalMatrixUpsert,
 )
 
 router = APIRouter()
@@ -377,3 +379,50 @@ async def delete_billing_entity(entity_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Billing entity not found")
     return {"message": "Billing entity deleted successfully"}
+
+
+# ========== Approval Matrix (per Billing Entity, multi-level) ==========
+
+@router.get("/approval-matrices", response_model=List[ApprovalMatrix])
+async def list_approval_matrices():
+    items = await db.approval_matrices.find({}, {"_id": 0}).to_list(500)
+    return items
+
+@router.get("/approval-matrices/{billing_entity_id}", response_model=ApprovalMatrix)
+async def get_approval_matrix(billing_entity_id: str):
+    m = await db.approval_matrices.find_one({"billing_entity_id": billing_entity_id}, {"_id": 0})
+    if not m:
+        raise HTTPException(status_code=404, detail="No approval matrix for this billing entity")
+    return m
+
+@router.put("/approval-matrices")
+async def upsert_approval_matrix(input: ApprovalMatrixUpsert):
+    # Enforce max 5 levels; drop empty levels; sort by level ascending
+    levels = [lvl.model_dump() for lvl in input.levels if lvl.approver_emails]
+    levels.sort(key=lambda x: x.get("level", 99))
+    if len(levels) > 5:
+        raise HTTPException(status_code=400, detail="Maximum 5 approval levels allowed")
+    entity = await db.billing_entities.find_one({"id": input.billing_entity_id}, {"_id": 0})
+    if not entity:
+        raise HTTPException(status_code=404, detail="Billing entity not found")
+    doc = {
+        "billing_entity_id": input.billing_entity_id,
+        "billing_entity_name": entity.get("name", ""),
+        "levels": levels,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    existing = await db.approval_matrices.find_one({"billing_entity_id": input.billing_entity_id}, {"_id": 0})
+    if existing:
+        await db.approval_matrices.update_one({"billing_entity_id": input.billing_entity_id}, {"$set": doc})
+        doc["id"] = existing.get("id")
+    else:
+        doc["id"] = str(uuid.uuid4())
+        await db.approval_matrices.insert_one(doc)
+    return {"message": "Approval matrix saved", "matrix": doc}
+
+@router.delete("/approval-matrices/{billing_entity_id}")
+async def delete_approval_matrix(billing_entity_id: str):
+    result = await db.approval_matrices.delete_one({"billing_entity_id": billing_entity_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Approval matrix not found")
+    return {"message": "Approval matrix deleted"}

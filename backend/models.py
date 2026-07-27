@@ -225,6 +225,26 @@ class BillingEntityCreate(BaseModel):
     description: str = ""
 
 
+class ApprovalMatrixLevel(BaseModel):
+    level: int  # 1..5
+    approver_emails: List[str] = []
+    approver_names: List[str] = []
+    label: str = ""  # e.g. "Delivery Head", "CFO"
+
+class ApprovalMatrix(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    billing_entity_id: str
+    billing_entity_name: str = ""
+    levels: List[ApprovalMatrixLevel] = []
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ApprovalMatrixUpsert(BaseModel):
+    billing_entity_id: str
+    billing_entity_name: str = ""
+    levels: List[ApprovalMatrixLevel] = []
+
+
 # ========== Project Models ==========
 
 class WaveGridAllocation(BaseModel):

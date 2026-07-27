@@ -513,6 +513,7 @@ const Projects = () => {
           </div>
         </TableCell>
         <TableCell>{project.customer_name || "—"}</TableCell>
+        <TableCell className="text-xs text-slate-600" data-testid={`billing-entity-${project.id}`}>{project.billing_entity_name || "—"}</TableCell>
         <TableCell className="text-center">
           <Badge variant="outline" className={`font-mono ${!project.is_latest_version ? "bg-gray-100" : ""}`}>
             v{project.version || 1}
@@ -1100,6 +1101,7 @@ const Projects = () => {
                       <TableHead>Project #</TableHead>
                       <TableHead>Project Name</TableHead>
                       <TableHead>Customer</TableHead>
+                      <TableHead>Billing Entity</TableHead>
                       <TableHead className="text-center">Version</TableHead>
                       <TableHead className="text-center">Status</TableHead>
                       <TableHead className="text-center">Resources</TableHead>
@@ -1136,7 +1138,7 @@ const Projects = () => {
                       }, { grandTotal: 0, totalMM: 0 });
                       return (
                         <TableRow className="bg-[#0F172A]/5 font-bold border-t-2 border-[#0F172A]">
-                          <TableCell colSpan={5} className="text-right text-[#0F172A]" data-testid="totals-label">Totals ({filteredProjects.length} projects)</TableCell>
+                          <TableCell colSpan={6} className="text-right text-[#0F172A]" data-testid="totals-label">Totals ({filteredProjects.length} projects)</TableCell>
                           <TableCell className="text-right font-mono tabular-nums" data-testid="totals-mm">{(totals.totalMM || 0).toFixed(2)}</TableCell>
                           <TableCell className="text-right font-mono tabular-nums text-emerald-700" data-testid="totals-grand-total">{(totals.grandTotal || 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</TableCell>
                           <TableCell colSpan={2}></TableCell>
